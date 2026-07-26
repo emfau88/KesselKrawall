@@ -45,7 +45,7 @@ welche Entscheidung oder Schwäche entscheidend war.
 
 ## Spielbarer Stand
 
-Die Neubauphasen 1–4 sind umgesetzt:
+Die Neubauphasen 1–5 sind umgesetzt:
 
 - vollständige Kampagne mit sieben Gegnern und einem Boss
 - Bossregel „Kesselzorn“ und Elite-Belohnung
@@ -56,7 +56,9 @@ Die Neubauphasen 1–4 sind umgesetzt:
 - Feuer-, Gift- und Schutz-Synergien
 - deterministische Kampfsimulation und Itemstatistiken
 - drei Run-Siegel, Kampagnenfortschritt sowie Sieg- und Niederlagenende
-- responsive Mobile-First-Oberfläche
+- konsequente Hochformat-Oberfläche mit getrennten Kauf-, Kampf- und
+  Ergebnisansichten
+- Fullscreen-Toggle mit iPhone-Hinweis, Safe Areas und responsiven Touchzielen
 
 ## Spielen
 

@@ -1,6 +1,6 @@
 # Kessel-Krawall – verbindliche Kernspezifikation
 
-Stand: Phase 1–4 des vollständigen Neubaus.
+Stand: Phase 1–5 des vollständigen Neubaus.
 
 ## Produktziel
 
@@ -22,11 +22,12 @@ Online-Systeme.
 - drei Merge-Stufen
 - eine Synergieschwelle bei drei Familienpunkten
 - drei Run-Siegel; eine Niederlage verbraucht ein Siegel
-- Hochformat ist vollständig unterstützt; Querformat bleibt zunächst
-  funktional
+- Hochformat ist vollständig unterstützt; mobiles Querformat fordert zum
+  Drehen auf, Desktop-Querformat bleibt funktional
 - keine Meta-Progression, vierte Familie oder Online-Funktion
 
-Die Phasen 1–4 implementieren die vollständigen Kernregeln und eine
+Die Phasen 1–5 implementieren die vollständigen Kernregeln, die mobile
+Benutzeroberfläche und eine
 abgeschlossene Acht-Runden-Kampagne.
 
 ## Kampagnendramaturgie
@@ -122,8 +123,11 @@ damit ein schlechter Zufallsstart den Run nicht entscheidet.
 - Touchziele mindestens 44 CSS-Pixel
 - funktional ab 320 CSS-Pixel Breite
 - `100dvh`, Safe Areas und reduzierte Bewegung werden berücksichtigt
+- Fullscreen-Toggle über die Browser-API; auf nicht unterstützten iPhones wird
+  der Home-Bildschirm-Weg verständlich erklärt
+- Kaufaktionen bleiben von der scrollbaren Detail- und Angebotsfläche getrennt
 
-## Abnahme Phase 1–4
+## Abnahme Phase 1–5
 
 - Shop kaufen, verkaufen und neu würfeln
 - fünf Slots per Tap umsortieren
@@ -138,4 +142,7 @@ damit ein schlechter Zufallsstart den Run nicht entscheidet.
 - Elite-Belohnung und sichtbare Bossregel
 - Kampagnenfortschritt, Run-Sieg und endgültige Niederlage
 - Runzustand wird lokal gespeichert
+- eigenständige Kauf-, Kampf- und Ergebnisdarstellung im Hochformat
+- keine abgeschnittenen oder überlagerten Bedienelemente ab 320 × 568 Pixeln
+- Fullscreen kann aktiviert und wieder verlassen werden
 - Produktions-Build und automatisierte Kernregeltests laufen fehlerfrei

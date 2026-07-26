@@ -42,6 +42,19 @@ interface BattleView {
   event: CombatEvent | null;
 }
 
+type WebkitFullscreenDocument = Document & {
+  webkitExitFullscreen?: () => Promise<void> | void;
+  webkitFullscreenElement?: Element | null;
+};
+
+type WebkitFullscreenElement = HTMLElement & {
+  webkitRequestFullscreen?: () => Promise<void> | void;
+};
+
+type LockableScreenOrientation = ScreenOrientation & {
+  lock?: (orientation: "portrait") => Promise<void>;
+};
+
 function familyClass(family: Family): string {
   return `family-${family}`;
 }
@@ -227,7 +240,10 @@ export default function Game() {
   const [combat, setCombat] = useState<CombatResult | null>(null);
   const [battleView, setBattleView] = useState<BattleView | null>(null);
   const [speed, setSpeed] = useState(2);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
   const speedRef = useRef(speed);
+  const shellRef = useRef<HTMLElement>(null);
 
   const opponent = useMemo(() => getCurrentOpponent(game), [game]);
   const selectedItem =
@@ -258,6 +274,41 @@ export default function Game() {
   useEffect(() => {
     speedRef.current = speed;
   }, [speed]);
+
+  useEffect(() => {
+    const fullscreenDocument = document as WebkitFullscreenDocument;
+    const syncFullscreenState = () => {
+      const navigatorWithStandalone = navigator as Navigator & {
+        standalone?: boolean;
+      };
+      const standalone =
+        window.matchMedia("(display-mode: fullscreen)").matches ||
+        window.matchMedia("(display-mode: standalone)").matches ||
+        navigatorWithStandalone.standalone === true;
+      setIsStandalone(standalone);
+      setIsFullscreen(
+        Boolean(
+          document.fullscreenElement ??
+            fullscreenDocument.webkitFullscreenElement,
+        ),
+      );
+    };
+
+    syncFullscreenState();
+    document.addEventListener("fullscreenchange", syncFullscreenState);
+    document.addEventListener(
+      "webkitfullscreenchange",
+      syncFullscreenState as EventListener,
+    );
+
+    return () => {
+      document.removeEventListener("fullscreenchange", syncFullscreenState);
+      document.removeEventListener(
+        "webkitfullscreenchange",
+        syncFullscreenState as EventListener,
+      );
+    };
+  }, []);
 
   useEffect(() => {
     if (!hydrated || game.phase === "battle" || game.phase === "result") return;
@@ -423,6 +474,51 @@ export default function Game() {
     announce("Ein neuer Kessel betritt den Wettstreit.");
   }
 
+  async function handleFullscreen() {
+    const fullscreenDocument = document as WebkitFullscreenDocument;
+    const fullscreenElement =
+      document.fullscreenElement ?? fullscreenDocument.webkitFullscreenElement;
+
+    try {
+      if (!fullscreenElement && isStandalone) {
+        announce("Kessel-Krawall läuft bereits bildschirmfüllend.");
+        return;
+      }
+
+      if (fullscreenElement) {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else {
+          await fullscreenDocument.webkitExitFullscreen?.();
+        }
+        announce("Vollbild verlassen.");
+        return;
+      }
+
+      const target = shellRef.current as WebkitFullscreenElement | null;
+      if (target?.requestFullscreen) {
+        await target.requestFullscreen();
+      } else if (target?.webkitRequestFullscreen) {
+        await target.webkitRequestFullscreen();
+      } else {
+        announce(
+          "Vollbild ist hier nicht verfügbar. Auf dem iPhone: Teilen → Zum Home-Bildschirm.",
+        );
+        return;
+      }
+
+      const orientation = screen.orientation as LockableScreenOrientation;
+      try {
+        await orientation.lock?.("portrait");
+      } catch {
+        // Orientation locking is optional and not supported by every browser.
+      }
+      announce("Vollbild aktiv. Viel Erfolg im Kesselturnier!");
+    } catch {
+      announce("Vollbild konnte vom Browser nicht aktiviert werden.");
+    }
+  }
+
   const playerHp = battleView?.playerHp ?? 100;
   const playerShield = battleView?.playerShield ?? 0;
   const enemyMaxHp = combat?.enemyMaxHp ?? opponent.baseHp;
@@ -430,9 +526,18 @@ export default function Game() {
   const enemyShield = battleView?.enemyShield ?? 0;
   const isCombatPhase = game.phase === "battle" || game.phase === "result";
   const activeUid = battleView?.activeUid ?? null;
+  const fullscreenActive = isFullscreen || isStandalone;
+  const fullscreenLabel = isStandalone
+    ? "App läuft bereits im Vollbild"
+    : isFullscreen
+      ? "Vollbild verlassen"
+      : "Vollbild aktivieren";
 
   return (
-    <main className={`game-shell phase-${game.phase} rank-${opponent.rank}`}>
+    <main
+      className={`game-shell phase-${game.phase} rank-${opponent.rank} ${fullscreenActive ? "is-fullscreen" : ""}`}
+      ref={shellRef}
+    >
       <header className="game-header">
         <div className="brand-lockup" aria-label="Kessel-Krawall">
           <span className="brand-kicker">MAGISCHER AUTOBATTLER</span>
@@ -456,29 +561,45 @@ export default function Game() {
             ))}
           </span>
         </div>
-        <div className="run-status">
-          <div>
-            <small>RUNDE</small>
-            <b>{game.round}/{MAX_ROUNDS}</b>
+        <div className="header-hud">
+          <div className="run-status">
+            <div>
+              <small>RUNDE</small>
+              <b>{game.round}/{MAX_ROUNDS}</b>
+            </div>
+            <div className="gold-status">
+              <small>GOLD</small>
+              <b><span aria-hidden="true">●</span> {game.gold}</b>
+            </div>
+            <div>
+              <small>SIEGEL</small>
+              <b aria-label={`${game.seals} Run-Siegel`}>
+                {Array.from({ length: 3 }, (_, index) => (
+                  <span
+                    className={index < game.seals ? "seal-on" : "seal-off"}
+                    key={index}
+                    aria-hidden="true"
+                  >
+                    ◆
+                  </span>
+                ))}
+              </b>
+            </div>
           </div>
-          <div className="gold-status">
-            <small>GOLD</small>
-            <b><span aria-hidden="true">●</span> {game.gold}</b>
-          </div>
-          <div>
-            <small>SIEGEL</small>
-            <b aria-label={`${game.seals} Run-Siegel`}>
-              {Array.from({ length: 3 }, (_, index) => (
-                <span
-                  className={index < game.seals ? "seal-on" : "seal-off"}
-                  key={index}
-                  aria-hidden="true"
-                >
-                  ◆
-                </span>
-              ))}
-            </b>
-          </div>
+          <button
+            type="button"
+            className="fullscreen-button"
+            onClick={handleFullscreen}
+            aria-label={fullscreenLabel}
+            aria-pressed={fullscreenActive}
+            title={fullscreenLabel}
+            data-testid="fullscreen-toggle"
+          >
+            <span
+              className={`fullscreen-glyph ${fullscreenActive ? "is-exit" : "is-enter"}`}
+              aria-hidden="true"
+            />
+          </button>
         </div>
       </header>
 
@@ -527,7 +648,14 @@ export default function Game() {
               </span>
             </div>
           ) : (
-            <div className="versus-mark">{isCombatPhase ? "KRAWALL!" : "VS"}</div>
+            isCombatPhase ? (
+              <div className="versus-mark">KRAWALL!</div>
+            ) : (
+              <div className="phase-message" aria-live="polite">
+                <span aria-hidden="true">✦</span>
+                <strong>{feedback}</strong>
+              </div>
+            )
           )}
         </div>
 
@@ -556,55 +684,57 @@ export default function Game() {
       {game.phase === "shop" && (
         <section className="shop-sheet" aria-label="Zutatenladen">
           <div className="sheet-handle" aria-hidden="true" />
-          <div className="shop-topline">
-            <div>
-              <span className="eyebrow">HEXENMARKT</span>
-              <h2>Drei frische Zutaten</h2>
-            </div>
-            <SynergyStrip board={game.board} />
-          </div>
-
-          {selectedDefinition && selectedItem && (
-            <div className={`item-inspector ${familyClass(selectedDefinition.family)}`}>
-              <span className="inspector-icon" aria-hidden="true">{selectedDefinition.icon}</span>
+          <div className="shop-scroll">
+            <div className="shop-topline">
               <div>
-                <strong>{selectedDefinition.name} {ROMAN_LEVEL[selectedItem.level]}</strong>
-                <p>{selectedDefinition.descriptions[selectedItem.level - 1]}</p>
+                <span className="eyebrow">HEXENMARKT</span>
+                <h2>Drei frische Zutaten</h2>
               </div>
-              <button type="button" className="sell-button" onClick={handleSell}>
-                Verkaufen <b>+{getSellValue(selectedItem)}</b>
-              </button>
+              <SynergyStrip board={game.board} />
             </div>
-          )}
 
-          <div className="offer-grid">
-            {game.offers.map((offer) => {
-              const definition = ITEM_BY_ID[offer.itemId];
-              const disabled =
-                offer.bought ||
-                game.gold < definition.cost ||
-                busy;
-              return (
-                <button
-                  type="button"
-                  key={offer.uid}
-                  className={`shop-card ${familyClass(definition.family)} ${offer.bought ? "is-bought" : ""}`}
-                  onClick={() => handleBuy(offer.uid)}
-                  disabled={disabled}
-                  data-testid={`offer-${offer.uid}`}
-                >
-                  <span className="offer-family">
-                    {FAMILY_META[definition.family].icon} {FAMILY_META[definition.family].name}
-                  </span>
-                  <span className="offer-icon" aria-hidden="true">{definition.icon}</span>
-                  <strong>{definition.name}</strong>
-                  <small>{definition.descriptions[0]}</small>
-                  <span className="offer-price">
-                    {offer.bought ? "GEKAUFT" : `● ${definition.cost}`}
-                  </span>
+            {selectedDefinition && selectedItem && (
+              <div className={`item-inspector ${familyClass(selectedDefinition.family)}`}>
+                <span className="inspector-icon" aria-hidden="true">{selectedDefinition.icon}</span>
+                <div>
+                  <strong>{selectedDefinition.name} {ROMAN_LEVEL[selectedItem.level]}</strong>
+                  <p>{selectedDefinition.descriptions[selectedItem.level - 1]}</p>
+                </div>
+                <button type="button" className="sell-button" onClick={handleSell}>
+                  Verkaufen <b>+{getSellValue(selectedItem)}</b>
                 </button>
-              );
-            })}
+              </div>
+            )}
+
+            <div className="offer-grid">
+              {game.offers.map((offer) => {
+                const definition = ITEM_BY_ID[offer.itemId];
+                const disabled =
+                  offer.bought ||
+                  game.gold < definition.cost ||
+                  busy;
+                return (
+                  <button
+                    type="button"
+                    key={offer.uid}
+                    className={`shop-card ${familyClass(definition.family)} ${offer.bought ? "is-bought" : ""}`}
+                    onClick={() => handleBuy(offer.uid)}
+                    disabled={disabled}
+                    data-testid={`offer-${offer.uid}`}
+                  >
+                    <span className="offer-family">
+                      {FAMILY_META[definition.family].icon} {FAMILY_META[definition.family].name}
+                    </span>
+                    <span className="offer-icon" aria-hidden="true">{definition.icon}</span>
+                    <strong>{definition.name}</strong>
+                    <small>{definition.descriptions[0]}</small>
+                    <span className="offer-price">
+                      {offer.bought ? "GEKAUFT" : `● ${definition.cost}`}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="shop-actions">
@@ -731,9 +861,10 @@ export default function Game() {
         </div>
       )}
 
-      <div className="feedback-toast" aria-live="polite">
-        <span aria-hidden="true">✦</span>
-        {feedback}
+      <div className="rotate-device" role="status">
+        <span aria-hidden="true">↻</span>
+        <strong>Bitte ins Hochformat drehen</strong>
+        <small>Kessel-Krawall ist für eine Hand im Hochformat gebaut.</small>
       </div>
     </main>
   );
