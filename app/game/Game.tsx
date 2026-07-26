@@ -1,6 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ArtSprite,
+  ITEM_ART,
+  OPPONENT_ART,
+  type ArtAsset,
+} from "./ArtSprite";
 import { FAMILY_META, ITEM_BY_ID } from "./data";
 import { simulateBattle } from "./simulation";
 import {
@@ -25,6 +31,7 @@ import {
 import type {
   Board,
   CombatEvent,
+  CombatEventKind,
   CombatResult,
   Family,
   GameState,
@@ -40,6 +47,11 @@ interface BattleView {
   enemyShield: number;
   activeUid: string | null;
   event: CombatEvent | null;
+}
+
+interface MergeNotice {
+  label: string;
+  art: ArtAsset;
 }
 
 type WebkitFullscreenDocument = Document & {
@@ -88,35 +100,42 @@ function HealthBar({
 function CauldronBoard({
   board,
   side,
+  cauldronAsset,
   selectedSlot,
   activeUid,
+  hitKind,
   interactive,
   onSlot,
   compact = false,
 }: {
   board: Board;
   side: "player" | "enemy";
+  cauldronAsset: ArtAsset;
   selectedSlot: number | null;
   activeUid: string | null;
+  hitKind: CombatEventKind | null;
   interactive: boolean;
   onSlot?: (slot: number) => void;
   compact?: boolean;
 }) {
   return (
-    <div className={`cauldron-board ${compact ? "is-compact" : ""}`} data-side={side}>
-      <div className="cauldron" aria-hidden="true">
-        <div className="cauldron-steam steam-one">~</div>
-        <div className="cauldron-steam steam-two">~</div>
-        <div className="cauldron-rim">
-          <span />
-        </div>
-        <div className="cauldron-body">
-          <i className="cauldron-shine" />
-        </div>
-        <div className="cauldron-feet">
-          <i />
-          <i />
-        </div>
+    <div
+      className={[
+        "cauldron-board",
+        compact ? "is-compact" : "",
+        hitKind ? `is-reacting reaction-${hitKind}` : "",
+      ].join(" ")}
+      data-side={side}
+    >
+      <div
+        className="cauldron"
+        aria-hidden="true"
+        key={`${hitKind ?? "idle"}-${activeUid ?? "rest"}`}
+      >
+        <span className="cauldron-aura" />
+        <ArtSprite asset={cauldronAsset} className="cauldron-art" />
+        <span className="cauldron-steam steam-one" />
+        <span className="cauldron-steam steam-two" />
       </div>
       <div className="slot-arc">
         {board.map((instance, slot) => {
@@ -128,7 +147,10 @@ function CauldronBoard({
             <>
               {definition ? (
                 <>
-                  <span className="item-icon" aria-hidden="true">{definition.icon}</span>
+                  <ArtSprite
+                    asset={ITEM_ART[definition.id]}
+                    className="item-icon"
+                  />
                   <span className="item-level">{ROMAN_LEVEL[instance!.level]}</span>
                   <span className={`item-family-dot ${familyClass(definition.family)}`} />
                 </>
@@ -213,7 +235,12 @@ function StatsList({ stats }: { stats: ItemCombatStats[] }) {
         const definition = ITEM_BY_ID[stat.itemId];
         return (
           <div className="stat-row" key={stat.uid}>
-            <span className="stat-icon" aria-hidden="true">{definition.icon}</span>
+            <span className="stat-icon" aria-hidden="true">
+              <ArtSprite
+                asset={ITEM_ART[definition.id]}
+                className="stat-item-art"
+              />
+            </span>
             <span className="stat-name">
               {definition.name} {ROMAN_LEVEL[stat.level]}
               <small>{stat.triggers}× ausgelöst</small>
@@ -231,11 +258,44 @@ function StatsList({ stats }: { stats: ItemCombatStats[] }) {
   );
 }
 
+function BattleVfx({ event }: { event: CombatEvent }) {
+  const projectile: ArtAsset =
+    event.kind === "poison"
+      ? "vfx-poison"
+      : event.kind === "shield" ||
+          event.kind === "synergy" ||
+          event.kind === "cleanse" ||
+          event.kind === "heal"
+        ? "vfx-shield"
+        : "vfx-fire";
+  const isSelfEffect = event.actor === event.target;
+
+  return (
+    <div
+      className={[
+        "arena-vfx",
+        `vfx-${event.kind}`,
+        `from-${event.actor}`,
+        `to-${event.target}`,
+        isSelfEffect ? "is-self-effect" : "is-projectile",
+      ].join(" ")}
+      aria-hidden="true"
+    >
+      <ArtSprite asset={projectile} className="battle-projectile" />
+      <ArtSprite asset="vfx-impact" className="battle-impact" />
+      <span className="vfx-particle particle-one" />
+      <span className="vfx-particle particle-two" />
+      <span className="vfx-particle particle-three" />
+      <span className="vfx-particle particle-four" />
+    </div>
+  );
+}
+
 export default function Game() {
   const [game, setGame] = useState<GameState>(() => createInitialState());
   const [hydrated, setHydrated] = useState(false);
   const [feedback, setFeedback] = useState("Bereite deinen Kessel vor.");
-  const [mergeNotice, setMergeNotice] = useState<string | null>(null);
+  const [mergeNotice, setMergeNotice] = useState<MergeNotice | null>(null);
   const [busy, setBusy] = useState(false);
   const [combat, setCombat] = useState<CombatResult | null>(null);
   const [battleView, setBattleView] = useState<BattleView | null>(null);
@@ -388,7 +448,10 @@ export default function Game() {
     if (result.merges?.length) {
       const merge = result.merges[result.merges.length - 1];
       const definition = ITEM_BY_ID[merge.itemId];
-      setMergeNotice(`${definition.name} ${ROMAN_LEVEL[merge.toLevel]}`);
+      setMergeNotice({
+        label: `${definition.name} ${ROMAN_LEVEL[merge.toLevel]}`,
+        art: ITEM_ART[definition.id],
+      });
       announce(
         `${definition.name} ist zu Level ${ROMAN_LEVEL[merge.toLevel]} verschmolzen.`,
       );
@@ -604,9 +667,20 @@ export default function Game() {
       </header>
 
       <section className="arena" aria-label="Kampfarena">
+        {battleView?.event && (
+          <BattleVfx
+            key={`${battleView.event.time}-${battleView.event.sourceUid}-${battleView.event.kind}`}
+            event={battleView.event}
+          />
+        )}
         <article className="combatant enemy-combatant">
           <div className="opponent-copy">
-            <span className="opponent-emblem" aria-hidden="true">{opponent.icon}</span>
+            <span className="opponent-emblem" aria-hidden="true">
+              <ArtSprite
+                asset={OPPONENT_ART[opponent.id]}
+                className="opponent-portrait"
+              />
+            </span>
             <div>
               <span className="eyebrow">
                 {opponent.rank === "boss"
@@ -625,8 +699,16 @@ export default function Game() {
           <CauldronBoard
             board={opponent.board}
             side="enemy"
+            cauldronAsset={
+              opponent.rank === "boss" ? "cauldron-boss" : "cauldron-enemy"
+            }
             selectedSlot={null}
             activeUid={activeUid}
+            hitKind={
+              battleView?.event?.target === "enemy"
+                ? battleView.event.kind
+                : null
+            }
             interactive={false}
             compact={!isCombatPhase}
           />
@@ -673,8 +755,14 @@ export default function Game() {
           <CauldronBoard
             board={game.board}
             side="player"
+            cauldronAsset="cauldron-player"
             selectedSlot={game.selectedSlot}
             activeUid={activeUid}
+            hitKind={
+              battleView?.event?.target === "player"
+                ? battleView.event.kind
+                : null
+            }
             interactive={game.phase === "shop"}
             onSlot={handleSlot}
           />
@@ -695,7 +783,12 @@ export default function Game() {
 
             {selectedDefinition && selectedItem && (
               <div className={`item-inspector ${familyClass(selectedDefinition.family)}`}>
-                <span className="inspector-icon" aria-hidden="true">{selectedDefinition.icon}</span>
+                <span className="inspector-icon" aria-hidden="true">
+                  <ArtSprite
+                    asset={ITEM_ART[selectedDefinition.id]}
+                    className="inspector-item-art"
+                  />
+                </span>
                 <div>
                   <strong>{selectedDefinition.name} {ROMAN_LEVEL[selectedItem.level]}</strong>
                   <p>{selectedDefinition.descriptions[selectedItem.level - 1]}</p>
@@ -725,7 +818,12 @@ export default function Game() {
                     <span className="offer-family">
                       {FAMILY_META[definition.family].icon} {FAMILY_META[definition.family].name}
                     </span>
-                    <span className="offer-icon" aria-hidden="true">{definition.icon}</span>
+                    <span className="offer-icon" aria-hidden="true">
+                      <ArtSprite
+                        asset={ITEM_ART[definition.id]}
+                        className="offer-item-art"
+                      />
+                    </span>
                     <strong>{definition.name}</strong>
                     <small>{definition.descriptions[0]}</small>
                     <span className="offer-price">
@@ -786,17 +884,27 @@ export default function Game() {
       {game.phase === "result" && combat && (
         <section className={`result-sheet ${combat.winner === "player" ? "is-victory" : "is-defeat"}`}>
           <div className="result-heading">
-            <span className="eyebrow">{combat.reason === "knockout" ? "K.O." : "ZEITENTSCHEIDUNG"}</span>
-            <h2>{combat.winner === "player" ? "Kessel-Sieg!" : "Siegelbruch"}</h2>
-            <p>
-              {combat.winner === "player"
-                ? game.round >= MAX_ROUNDS
-                  ? "Der Titel des Kesselturniers gehört dir."
-                  : `+${getRoundReward(game, true)} Gold in der nächsten Runde`
-                : game.round >= MAX_ROUNDS
-                  ? `${opponent.name} verteidigt den Turniertitel.`
-                  : `${opponent.name} war diesmal stärker. Der Run geht weiter.`}
-            </p>
+            <ArtSprite
+              asset={
+                combat.winner === "player"
+                  ? "result-victory"
+                  : "result-defeat"
+              }
+              className="result-emblem"
+            />
+            <div>
+              <span className="eyebrow">{combat.reason === "knockout" ? "K.O." : "ZEITENTSCHEIDUNG"}</span>
+              <h2>{combat.winner === "player" ? "Kessel-Sieg!" : "Siegelbruch"}</h2>
+              <p>
+                {combat.winner === "player"
+                  ? game.round >= MAX_ROUNDS
+                    ? "Der Titel des Kesselturniers gehört dir."
+                    : `+${getRoundReward(game, true)} Gold in der nächsten Runde`
+                  : game.round >= MAX_ROUNDS
+                    ? `${opponent.name} verteidigt den Turniertitel.`
+                    : `${opponent.name} war diesmal stärker. Der Run geht weiter.`}
+              </p>
+            </div>
           </div>
           <StatsList stats={combat.playerStats} />
           <button type="button" className="continue-button" onClick={handleContinue}>
@@ -816,7 +924,7 @@ export default function Game() {
 
       {game.phase === "gameover" && (
         <section className="gameover-sheet">
-          <span className="gameover-icon" aria-hidden="true">◇</span>
+          <ArtSprite asset="result-defeat" className="gameover-icon" />
           <span className="eyebrow">
             {game.round >= MAX_ROUNDS ? "DER BOSS BLEIBT STEHEN" : "DER KESSEL IST ERKALTET"}
           </span>
@@ -838,7 +946,7 @@ export default function Game() {
 
       {game.phase === "victory" && (
         <section className="gameover-sheet victory-sheet">
-          <span className="gameover-icon" aria-hidden="true">♛</span>
+          <ArtSprite asset="result-victory" className="gameover-icon" />
           <span className="eyebrow">KESSELMEISTER!</span>
           <h2>Du gewinnst den großen Kessel-Wettstreit.</h2>
           <p>
@@ -854,9 +962,12 @@ export default function Game() {
 
       {mergeNotice && (
         <div className="merge-overlay" role="status">
-          <div className="merge-burst" aria-hidden="true" />
+          <div className="merge-burst" aria-hidden="true">
+            <ArtSprite asset="merge-sigil" className="merge-sigil" />
+            <ArtSprite asset={mergeNotice.art} className="merge-item-art" />
+          </div>
           <span>VERSCHMOLZEN</span>
-          <strong>{mergeNotice}</strong>
+          <strong>{mergeNotice.label}</strong>
           <small>Neue Stufe · stärkere Wirkung</small>
         </div>
       )}
