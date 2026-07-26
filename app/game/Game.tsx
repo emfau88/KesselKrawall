@@ -54,6 +54,7 @@ const ROMAN_LEVEL = ["", "I", "II", "III"] as const;
 
 interface BattleView {
   time: number;
+  eventDuration: number;
   playerHp: number;
   playerShield: number;
   enemyHp: number;
@@ -152,6 +153,20 @@ function eventAmountLabel(event: CombatEvent): string {
     default:
       return `−${event.amount} LP`;
   }
+}
+
+function getEventHoldMs(
+  event: CombatEvent,
+  previous: CombatEvent | undefined,
+  speed: number,
+): number {
+  const isStatusTick = event.label.includes("tickt");
+  const isFollowUp =
+    previous !== undefined &&
+    (previous.time === event.time || previous.sourceUid === event.sourceUid);
+  const base = isStatusTick ? 150 : isFollowUp ? 190 : 360;
+  const speedFactor = speed <= 1 ? 1 : speed <= 2 ? 0.7 : 0.45;
+  return Math.max(speed <= 1 ? 140 : speed <= 2 ? 105 : 80, base * speedFactor);
 }
 
 function mergeValueLabel(definition: ItemDefinition): string {
@@ -422,11 +437,11 @@ function StatsList({ stats }: { stats: ItemCombatStats[] }) {
 function BattleVfx({
   event,
   source,
-  speed,
+  duration,
 }: {
   event: CombatEvent;
   source: EventSource | null;
-  speed: number;
+  duration: number;
 }) {
   const projectile: ArtAsset =
     event.kind === "poison"
@@ -441,8 +456,8 @@ function BattleVfx({
   const sourceY = event.actor === "player" ? 75 : 25;
   const effectStyle = {
     "--source-y": `${sourceY}%`,
-    "--event-duration": `${Math.max(220, 560 / speed)}ms`,
-    "--impact-delay": `${Math.max(100, 280 / speed)}ms`,
+    "--event-duration": `${Math.max(120, duration)}ms`,
+    "--impact-delay": `${Math.max(50, duration / 2)}ms`,
   } as CSSProperties;
 
   return (
@@ -600,6 +615,7 @@ export default function Game() {
       setBattleClock(combat.duration);
       setBattleView({
         time: combat.duration,
+        eventDuration: 0,
         playerHp: combat.finalPlayerHp,
         playerShield: combat.finalPlayerShield,
         enemyHp: combat.finalEnemyHp,
@@ -642,14 +658,18 @@ export default function Game() {
         nextEvent.time <= targetTime &&
         now >= nextEventAllowedAt
       ) {
-        const holdTime =
-          speedRef.current <= 1 ? 560 : speedRef.current <= 2 ? 360 : 220;
+        const holdTime = getEventHoldMs(
+          nextEvent,
+          combat.events[eventIndex - 1],
+          speedRef.current,
+        );
         shownTime = nextEvent.time;
         eventIndex += 1;
         eventVisible = true;
         nextEventAllowedAt = now + holdTime;
         setBattleView({
           time: nextEvent.time,
+          eventDuration: holdTime,
           playerHp: nextEvent.playerHp,
           playerShield: nextEvent.playerShield,
           enemyHp: nextEvent.enemyHp,
@@ -784,6 +804,7 @@ export default function Game() {
     setBattleEnding(null);
     setBattleView({
       time: 0,
+      eventDuration: 0,
       playerHp: battle.playerMaxHp,
       playerShield: 0,
       enemyHp: battle.enemyMaxHp,
@@ -982,7 +1003,7 @@ export default function Game() {
             key={`${battleView.event.time}-${battleView.event.sourceUid}-${battleView.event.kind}`}
             event={battleView.event}
             source={eventSource}
-            speed={speed}
+            duration={battleView.eventDuration}
           />
         )}
         <article className="combatant enemy-combatant">
