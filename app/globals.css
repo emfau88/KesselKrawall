@@ -461,6 +461,93 @@ button:focus-visible {
   justify-content: space-between;
 }
 
+.power-heading-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.power-title-button {
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: help;
+}
+
+.power-title-button i {
+  width: 17px;
+  height: 17px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(245, 197, 91, 0.45);
+  border-radius: 50%;
+  color: var(--gold);
+  font-family: Inter, sans-serif;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.power-explainer {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 7px);
+  left: 0;
+  width: min(290px, calc(100vw - 32px));
+  padding: 11px 12px;
+  border: 1px solid rgba(245, 197, 91, 0.42);
+  border-radius: 13px;
+  background:
+    radial-gradient(circle at 12% 0, rgba(245, 197, 91, 0.16), transparent 34%),
+    rgba(19, 13, 25, 0.98);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.54);
+}
+
+.power-explainer > strong {
+  color: #fff1b4;
+  font-family: Georgia, serif;
+  font-size: 13px;
+}
+
+.power-explainer p {
+  margin: 4px 0 8px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.power-explainer dl {
+  margin: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.power-explainer dl > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  color: #ddd1bd;
+  font-size: 9px;
+}
+
+.power-explainer dt,
+.power-explainer dd {
+  margin: 0;
+}
+
+.power-explainer dd {
+  color: var(--gold);
+  font-weight: 900;
+}
+
 .power-compare {
   padding: 5px 8px;
   display: flex;
@@ -469,8 +556,10 @@ button:focus-visible {
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 999px;
   color: var(--muted);
+  font-family: inherit;
   font-size: 9px;
   font-weight: 800;
+  cursor: help;
 }
 
 .compare-icon {
@@ -533,6 +622,7 @@ button:focus-visible {
   --pot-size: 110px;
   --slot-size: 50px;
   --board-height: 166px;
+  --arc-rise: 24px;
   position: relative;
   width: min(100%, 360px);
   height: var(--board-height);
@@ -542,9 +632,10 @@ button:focus-visible {
 
 .cauldron-board.is-compact {
   --pot-size: 86px;
-  --slot-size: 42px;
-  --board-height: 130px;
-  width: min(100%, 310px);
+  --slot-size: 50px;
+  --board-height: 136px;
+  --arc-rise: 18px;
+  width: min(100%, 360px);
   margin-top: -4px;
 }
 
@@ -553,6 +644,7 @@ button:focus-visible {
   --pot-size: 116px;
   --slot-size: 52px;
   --board-height: 174px;
+  --arc-rise: 25px;
 }
 
 .phase-battle .cauldron-board.is-compact,
@@ -560,6 +652,7 @@ button:focus-visible {
   --pot-size: 104px;
   --slot-size: 48px;
   --board-height: 156px;
+  --arc-rise: 22px;
   margin-top: 0;
 }
 
@@ -572,6 +665,11 @@ button:focus-visible {
   height: var(--pot-size);
   transform: translateX(-50%);
   animation: cauldron-idle 3.6s ease-in-out infinite;
+}
+
+.cauldron-board[data-side="player"] .cauldron {
+  top: auto;
+  bottom: 0;
 }
 
 .cauldron-art {
@@ -648,12 +746,35 @@ button:focus-visible {
   right: 0;
   bottom: 0;
   left: 0;
-  height: var(--slot-size);
+  height: calc(var(--slot-size) + var(--arc-rise));
   display: grid;
   grid-template-columns: repeat(5, var(--slot-size));
-  align-items: end;
+  align-items: start;
   justify-content: space-between;
   gap: 4px;
+}
+
+.cauldron-board[data-side="player"] .slot-arc {
+  top: 0;
+  bottom: auto;
+}
+
+.board-slot[data-slot="1"],
+.board-slot[data-slot="3"] {
+  top: calc(var(--arc-rise) * 0.52);
+}
+
+.board-slot[data-slot="2"] {
+  top: var(--arc-rise);
+}
+
+.cauldron-board[data-side="player"] .board-slot[data-slot="0"],
+.cauldron-board[data-side="player"] .board-slot[data-slot="4"] {
+  top: var(--arc-rise);
+}
+
+.cauldron-board[data-side="player"] .board-slot[data-slot="2"] {
+  top: 0;
 }
 
 .board-slot {
@@ -894,6 +1015,16 @@ button.board-slot:active {
 .is-self-effect.from-enemy .battle-projectile {
   top: var(--source-y);
   animation: defensive-bloom var(--event-duration) ease-out both;
+}
+
+.is-status-tick .battle-projectile {
+  top: var(--target-y);
+  left: 50%;
+  animation: status-bloom var(--event-duration) ease-out both;
+}
+
+.is-status-tick .battle-impact {
+  animation-name: status-impact;
 }
 
 .projectile-source {
@@ -1232,11 +1363,11 @@ button.board-slot:active {
 }
 
 .shop-topline {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  min-height: 112px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: end;
+  gap: 6px;
 }
 
 .shop-topline h2 {
@@ -1244,31 +1375,44 @@ button.board-slot:active {
 }
 
 .synergy-strip {
-  display: flex;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
 }
 
 .synergy-pill {
-  min-width: 42px;
-  height: 34px;
-  padding: 3px 5px;
+  min-width: 0;
+  min-height: 50px;
+  padding: 5px 6px;
   display: grid;
-  grid-template-columns: auto auto;
-  align-content: center;
-  column-gap: 3px;
+  align-content: start;
+  gap: 3px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 9px;
   color: var(--muted);
   background: rgba(0, 0, 0, 0.16);
 }
 
-.synergy-pill > span {
-  display: none;
+.synergy-heading {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 17px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 3px;
+}
+
+.synergy-heading b {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .synergy-icon {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
   filter: grayscale(0.5);
   opacity: 0.7;
 }
@@ -1279,13 +1423,40 @@ button.board-slot:active {
 }
 
 .synergy-pill strong {
-  font-size: 9px;
+  font-size: 8px;
+}
+
+.synergy-bonus {
+  min-height: 18px;
+  color: var(--muted);
+  font-size: 6px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.synergy-progress {
+  height: 3px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.synergy-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: currentColor;
+  box-shadow: 0 0 7px currentColor;
 }
 
 .synergy-pill.is-active {
   color: var(--ink);
   border-color: currentColor;
   box-shadow: 0 0 13px color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.synergy-pill.is-active .synergy-bonus {
+  color: currentColor;
 }
 
 .synergy-pill.family-fire.is-active {
@@ -1340,6 +1511,14 @@ button.board-slot:active {
   font-size: 9px;
 }
 
+.inspector-synergy {
+  display: block;
+  margin-top: 3px;
+  color: var(--gold);
+  font-size: 7px;
+  font-weight: 800;
+}
+
 .sell-button {
   min-height: 44px;
   padding: 5px 9px;
@@ -1368,7 +1547,7 @@ button.board-slot:active {
   position: relative;
   min-width: 0;
   min-height: 137px;
-  padding: 8px 6px 31px;
+  padding: 8px 6px 45px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1468,6 +1647,36 @@ button.board-slot:active {
   text-align: center;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+.offer-synergy {
+  position: absolute;
+  right: 5px;
+  bottom: 30px;
+  left: 5px;
+  min-height: 12px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: #d7c8a9;
+  font-size: 6px;
+  font-weight: 850;
+  line-height: 1.1;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shop-card.family-fire .offer-synergy {
+  color: #ffad85;
+}
+
+.shop-card.family-poison .offer-synergy {
+  color: #b9ed8f;
+}
+
+.shop-card.family-guard .offer-synergy {
+  color: #a8e3fa;
 }
 
 .offer-price {
@@ -1662,6 +1871,9 @@ button.board-slot:active {
 .speed-control button {
   min-width: 44px;
   min-height: 40px;
+  padding: 3px 6px;
+  display: grid;
+  place-items: center;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -1669,6 +1881,14 @@ button.board-slot:active {
   font-size: 10px;
   font-weight: 900;
   cursor: pointer;
+}
+
+.speed-control button small {
+  grid-column: auto;
+  color: currentColor;
+  font-size: 5px;
+  line-height: 1;
+  letter-spacing: 0.1em;
 }
 
 .speed-control button.is-active {
@@ -2297,6 +2517,38 @@ button.board-slot:active {
   }
 }
 
+@keyframes status-bloom {
+  0% {
+    opacity: 0;
+    transform: scale(0.35) rotate(-12deg);
+  }
+  32%,
+  68% {
+    opacity: 0.95;
+    transform: scale(1.05) rotate(4deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.45) rotate(16deg);
+  }
+}
+
+@keyframes status-impact {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  34%,
+  65% {
+    opacity: 0.75;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
+
 @keyframes impact-flash {
   0% {
     opacity: 0;
@@ -2501,7 +2753,7 @@ button.board-slot:active {
   }
 }
 
-@media (max-height: 700px) {
+@media (max-height: 760px) {
   .game-header {
     min-height: 56px;
     padding-top: max(5px, env(safe-area-inset-top));
@@ -2535,6 +2787,7 @@ button.board-slot:active {
     --pot-size: 88px;
     --slot-size: 42px;
     --board-height: 132px;
+    --arc-rise: 18px;
     margin-top: -10px;
     margin-bottom: 0;
   }
@@ -2543,6 +2796,7 @@ button.board-slot:active {
     --pot-size: 86px;
     --slot-size: 40px;
     --board-height: 128px;
+    --arc-rise: 18px;
     margin-top: -8px;
     margin-bottom: 0;
   }
@@ -2556,7 +2810,7 @@ button.board-slot:active {
   }
 
   .shop-topline {
-    min-height: 36px;
+    min-height: 78px;
   }
 
   .shop-topline h2 {
@@ -2709,7 +2963,7 @@ button.board-slot:active {
 
   .shop-card {
     min-height: 112px;
-    padding: 4px 4px 26px;
+    padding: 4px 4px 41px;
   }
 
   .offer-icon {
@@ -2884,14 +3138,16 @@ button.board-slot:active {
     --pot-size: 160px;
     --slot-size: 62px;
     --board-height: 232px;
+    --arc-rise: 34px;
     width: min(100%, 520px);
   }
 
   .cauldron-board.is-compact {
     --pot-size: 128px;
-    --slot-size: 52px;
-    --board-height: 188px;
-    width: min(100%, 450px);
+    --slot-size: 62px;
+    --board-height: 190px;
+    --arc-rise: 27px;
+    width: min(100%, 520px);
   }
 
   .phase-battle .cauldron-board,
@@ -2899,6 +3155,7 @@ button.board-slot:active {
     --pot-size: 166px;
     --slot-size: 64px;
     --board-height: 242px;
+    --arc-rise: 36px;
   }
 
   .item-level {
@@ -2974,7 +3231,7 @@ button.board-slot:active {
   }
 
   .shop-topline {
-    min-height: 64px;
+    min-height: 112px;
   }
 
   .shop-topline h2 {
@@ -2982,13 +3239,25 @@ button.board-slot:active {
   }
 
   .synergy-pill {
-    min-width: 50px;
-    height: 40px;
+    min-width: 0;
+    min-height: 54px;
   }
 
   .synergy-icon {
-    width: 22px;
-    height: 22px;
+    width: 18px;
+    height: 18px;
+  }
+
+  .synergy-heading {
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+  }
+
+  .synergy-heading b {
+    font-size: 8px;
+  }
+
+  .synergy-bonus {
+    font-size: 6px;
   }
 
   .offer-grid {
@@ -3001,7 +3270,7 @@ button.board-slot:active {
     display: grid;
     grid-template-columns: 72px 1fr auto;
     grid-template-rows: auto auto;
-    padding: 12px 62px 12px 12px;
+    padding: 12px 62px 24px 12px;
     text-align: left;
     border-width: 1px;
     background:
@@ -3031,6 +3300,27 @@ button.board-slot:active {
 
   .shop-card > strong,
   .shop-card > small {
+    grid-column: 2;
+    text-align: left;
+  }
+
+  .shop-card > strong {
+    grid-row: 1;
+    align-self: end;
+  }
+
+  .shop-card > small {
+    grid-row: 2;
+    align-self: start;
+  }
+
+  .offer-synergy {
+    right: 62px;
+    bottom: 7px;
+    left: 84px;
+    min-height: 13px;
+    place-items: center start;
+    font-size: 7px;
     text-align: left;
   }
 

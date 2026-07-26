@@ -7,6 +7,8 @@ import {
   buyOffer,
   createInitialState,
   getFamilyWeights,
+  getPowerBreakdown,
+  getPowerValue,
   getSellValue,
   isSynergyActive,
 } from "../app/game/state";
@@ -69,6 +71,19 @@ test("family weight preserves invested copies through merges", () => {
   assert.equal(weights.guard, 2);
   assert.equal(isSynergyActive(board, "fire"), true);
   assert.equal(isSynergyActive(board, "guard"), false);
+});
+
+test("power breakdown separates item value from the build-rating synergy bonus", () => {
+  const board = [item("fire-3", "chili", 3), null, null, null, null];
+  const breakdown = getPowerBreakdown(board);
+
+  assert.equal(breakdown.synergyCount, 1);
+  assert.ok(breakdown.synergyBonus > 0);
+  assert.equal(breakdown.total, getPowerValue(board));
+  assert.equal(
+    breakdown.total,
+    breakdown.itemValue + breakdown.synergyBonus,
+  );
 });
 
 test("sell value is exactly half the represented investment", () => {

@@ -25,6 +25,7 @@ import {
   createInitialState,
   getCurrentOpponent,
   getFamilyWeights,
+  getPowerBreakdown,
   getPowerValue,
   getRoundReward,
   getSellValue,
@@ -61,6 +62,20 @@ interface BattleView {
   enemyShield: number;
   activeUid: string | null;
   event: CombatEvent | null;
+  eventLabel: string | null;
+  eventAmount: string | null;
+  sourceCount: number;
+}
+
+interface CombatBeat {
+  time: number;
+  event: CombatEvent;
+  snapshot: CombatEvent;
+  events: CombatEvent[];
+  label: string;
+  amountLabel: string;
+  sourceCount: number;
+  isStatusTick: boolean;
 }
 
 interface MergeNotice {
@@ -131,42 +146,124 @@ function eventIcon(kind: CombatEventKind): UiAsset {
   }
 }
 
-function eventAmountLabel(event: CombatEvent): string {
-  switch (event.kind) {
-    case "heal":
-      return `+${event.amount} LP`;
-    case "shield":
-    case "synergy":
-      return `+${event.amount} Schild`;
-    case "cleanse":
-      return `−${event.amount} Gift`;
-    case "poison":
-      return event.label.includes("tickt")
-        ? `−${event.amount} LP`
-        : `+${event.amount} Gift`;
-    case "burn":
-      return event.label.includes("tickt")
-        ? `−${event.amount} LP`
-        : `+${event.amount} Brand`;
-    case "boss":
-      return `+${event.amount}%`;
-    default:
-      return `−${event.amount} LP`;
-  }
+function isStatusTick(event: CombatEvent): boolean {
+  return event.label.includes("tickt");
 }
 
-function getEventHoldMs(
-  event: CombatEvent,
-  previous: CombatEvent | undefined,
+function summarizeEventAmounts(events: CombatEvent[]): string {
+  const totals = new Map<string, { amount: number; format: (amount: number) => string }>();
+
+  for (const event of events) {
+    const statusDamage = isStatusTick(event);
+    let key = "damage";
+    let format = (amount: number) => `−${amount} LP`;
+
+    if (event.kind === "heal") {
+      key = "heal";
+      format = (amount) => `+${amount} LP`;
+    } else if (event.kind === "shield" || event.kind === "synergy") {
+      key = "shield";
+      format = (amount) => `+${amount} Schild`;
+    } else if (event.kind === "cleanse") {
+      key = "cleanse";
+      format = (amount) => `−${amount} Gift`;
+    } else if (event.kind === "poison" && !statusDamage) {
+      key = "poison";
+      format = (amount) => `+${amount} Gift`;
+    } else if (event.kind === "burn" && !statusDamage) {
+      key = "burn";
+      format = (amount) => `+${amount} Brand`;
+    } else if (event.kind === "boss") {
+      key = "boss";
+      format = (amount) => `+${amount}%`;
+    }
+
+    const current = totals.get(key);
+    totals.set(key, {
+      amount: (current?.amount ?? 0) + event.amount,
+      format,
+    });
+  }
+
+  return [...totals.values()]
+    .map(({ amount, format }) => format(amount))
+    .join(" · ");
+}
+
+function createCombatBeats(events: CombatEvent[]): CombatBeat[] {
+  const beats: CombatBeat[] = [];
+
+  for (let index = 0; index < events.length; ) {
+    const first = events[index];
+    const firstIsStatus = isStatusTick(first);
+    const grouped = [first];
+    let cursor = index + 1;
+
+    while (cursor < events.length) {
+      const candidate = events[cursor];
+      if (candidate.time !== first.time) break;
+
+      const sameStatusWave =
+        firstIsStatus &&
+        isStatusTick(candidate) &&
+        candidate.kind === first.kind &&
+        candidate.target === first.target;
+      const sameItemActivation =
+        !firstIsStatus &&
+        !isStatusTick(candidate) &&
+        candidate.actor === first.actor &&
+        candidate.sourceUid === first.sourceUid;
+
+      if (!sameStatusWave && !sameItemActivation) break;
+      grouped.push(candidate);
+      cursor += 1;
+    }
+
+    const snapshot = grouped[grouped.length - 1];
+    const sourceCount = new Set(grouped.map((event) => event.sourceUid)).size;
+    const label = firstIsStatus
+      ? `${first.kind === "poison" ? "Gift" : "Brand"} tickt${
+          sourceCount > 1 ? ` · ${sourceCount} Quellen` : ""
+        }`
+      : grouped.length > 1
+        ? `${first.label} · ${grouped.length} Effekte`
+        : first.label;
+
+    beats.push({
+      time: first.time,
+      event: first,
+      snapshot,
+      events: grouped,
+      label,
+      amountLabel: summarizeEventAmounts(grouped),
+      sourceCount,
+      isStatusTick: firstIsStatus,
+    });
+    index = cursor;
+  }
+
+  return beats;
+}
+
+function getBeatHoldMs(
+  beat: CombatBeat,
+  previous: CombatBeat | undefined,
   speed: number,
 ): number {
-  const isStatusTick = event.label.includes("tickt");
-  const isFollowUp =
-    previous !== undefined &&
-    (previous.time === event.time || previous.sourceUid === event.sourceUid);
-  const base = isStatusTick ? 150 : isFollowUp ? 190 : 360;
-  const speedFactor = speed <= 1 ? 1 : speed <= 2 ? 0.7 : 0.45;
-  return Math.max(speed <= 1 ? 140 : speed <= 2 ? 105 : 80, base * speedFactor);
+  const sameWave = previous?.time === beat.time;
+  const base =
+    beat.event.kind === "boss"
+      ? 1_450
+      : beat.isStatusTick
+        ? 620
+        : beat.events.length > 1
+          ? 1_080
+          : sameWave
+            ? 780
+            : 920;
+  const speedFactor = speed <= 1 ? 1 : speed <= 2 ? 0.66 : 0.42;
+  const minimum = speed <= 1 ? 540 : speed <= 2 ? 340 : 220;
+  return Math.round(Math.max(minimum, base * speedFactor));
 }
 
 function mergeValueLabel(definition: ItemDefinition): string {
@@ -378,20 +475,40 @@ function SynergyStrip({ board }: { board: Board }) {
       {(Object.keys(FAMILY_META) as Family[]).map((family) => {
         const meta = FAMILY_META[family];
         const active = weights[family] >= 3;
+        const shownWeight = Math.min(weights[family], 3);
         return (
           <div
             key={family}
             className={`synergy-pill ${familyClass(family)} ${active ? "is-active" : ""}`}
             title={meta.shortBonus}
+            aria-label={`${meta.name}: ${shownWeight} von 3. ${
+              active ? `Aktiv: ${meta.shortBonus}` : `Noch ${3 - shownWeight} bis zur Synergie`
+            }`}
           >
-            <UiIcon asset={FAMILY_ICON[family]} className="synergy-icon" />
-            <span>{meta.name}</span>
-            <strong>{Math.min(weights[family], 3)}/3</strong>
+            <span className="synergy-heading">
+              <UiIcon asset={FAMILY_ICON[family]} className="synergy-icon" />
+              <b>{meta.name}</b>
+              <strong>{shownWeight}/3</strong>
+            </span>
+            <span className="synergy-bonus">
+              {active ? meta.shortBonus : `Noch ${3 - shownWeight} bis zum Bonus`}
+            </span>
+            <span className="synergy-progress" aria-hidden="true">
+              <i style={{ width: `${(shownWeight / 3) * 100}%` }} />
+            </span>
           </div>
         );
       })}
     </div>
   );
+}
+
+function offerSynergyLabel(board: Board, family: Family): string {
+  const current = Math.min(getFamilyWeights(board)[family], 3);
+  const familyName = FAMILY_META[family].name;
+  if (current >= 3) return `${familyName}-Synergie aktiv`;
+  if (current === 2) return `Aktiviert ${familyName}-Synergie`;
+  return `${familyName} ${current} → ${current + 1}/3`;
 }
 
 function StatsList({ stats }: { stats: ItemCombatStats[] }) {
@@ -453,6 +570,7 @@ function BattleVfx({
         ? "vfx-shield"
         : "vfx-fire";
   const isSelfEffect = event.actor === event.target;
+  const statusTick = isStatusTick(event);
   const sourceY = event.actor === "player" ? 75 : 25;
   const effectStyle = {
     "--source-y": `${sourceY}%`,
@@ -469,7 +587,11 @@ function BattleVfx({
         `to-${event.target}`,
         source ? familyClass(source.family) : "",
         source ? `source-slot-${source.slot}` : "",
-        isSelfEffect ? "is-self-effect" : "is-projectile",
+        statusTick
+          ? "is-status-tick"
+          : isSelfEffect
+            ? "is-self-effect"
+            : "is-projectile",
       ].join(" ")}
       style={effectStyle}
       aria-hidden="true"
@@ -503,6 +625,7 @@ export default function Game() {
   const [battleClock, setBattleClock] = useState(0);
   const [battleEnding, setBattleEnding] = useState<CombatResult["reason"] | null>(null);
   const [speed, setSpeed] = useState(1);
+  const [showPowerHelp, setShowPowerHelp] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const speedRef = useRef(speed);
@@ -515,7 +638,8 @@ export default function Game() {
   const selectedDefinition = selectedItem
     ? ITEM_BY_ID[selectedItem.itemId]
     : null;
-  const playerPower = getPowerValue(game.board);
+  const playerPowerBreakdown = getPowerBreakdown(game.board);
+  const playerPower = playerPowerBreakdown.total;
   const enemyPower = getPowerValue(opponent.board);
 
   useEffect(() => {
@@ -598,13 +722,15 @@ export default function Game() {
 
   useEffect(() => {
     if (game.phase !== "battle" || !combat) return;
-    let eventIndex = 0;
+    const combatBeats = createCombatBeats(combat.events);
+    let beatIndex = 0;
     let targetTime = 0;
     let shownTime = 0;
     let lastRealTime = performance.now();
-    let nextEventAllowedAt = lastRealTime;
+    let nextBeatAllowedAt = lastRealTime;
+    let beatHiddenAt = lastRealTime;
     let lastClockPaint = lastRealTime;
-    let eventVisible = false;
+    let beatVisible = false;
     let finished = false;
     let animationFrame = 0;
     let finishTimer = 0;
@@ -622,6 +748,9 @@ export default function Game() {
         enemyShield: combat.finalEnemyShield,
         activeUid: null,
         event: null,
+        eventLabel: null,
+        eventAmount: null,
+        sourceCount: 0,
       });
       setBattleEnding(combat.reason);
       navigator.vibrate?.(
@@ -652,47 +781,56 @@ export default function Game() {
       );
       lastRealTime = now;
 
-      const nextEvent = combat.events[eventIndex];
+      const nextBeat = combatBeats[beatIndex];
       if (
-        nextEvent &&
-        nextEvent.time <= targetTime &&
-        now >= nextEventAllowedAt
+        nextBeat &&
+        nextBeat.time <= targetTime &&
+        now >= nextBeatAllowedAt
       ) {
-        const holdTime = getEventHoldMs(
-          nextEvent,
-          combat.events[eventIndex - 1],
+        const holdTime = getBeatHoldMs(
+          nextBeat,
+          combatBeats[beatIndex - 1],
           speedRef.current,
         );
-        shownTime = nextEvent.time;
-        eventIndex += 1;
-        eventVisible = true;
-        nextEventAllowedAt = now + holdTime;
+        const visibleDuration = Math.round(holdTime * 0.82);
+        shownTime = nextBeat.time;
+        beatIndex += 1;
+        beatVisible = true;
+        beatHiddenAt = now + visibleDuration;
+        nextBeatAllowedAt = now + holdTime;
         setBattleView({
-          time: nextEvent.time,
-          eventDuration: holdTime,
-          playerHp: nextEvent.playerHp,
-          playerShield: nextEvent.playerShield,
-          enemyHp: nextEvent.enemyHp,
-          enemyShield: nextEvent.enemyShield,
-          activeUid: nextEvent.sourceUid,
-          event: nextEvent,
+          time: nextBeat.time,
+          eventDuration: visibleDuration,
+          playerHp: nextBeat.snapshot.playerHp,
+          playerShield: nextBeat.snapshot.playerShield,
+          enemyHp: nextBeat.snapshot.enemyHp,
+          enemyShield: nextBeat.snapshot.enemyShield,
+          activeUid:
+            nextBeat.sourceCount === 1 ? nextBeat.event.sourceUid : null,
+          event: nextBeat.event,
+          eventLabel: nextBeat.label,
+          eventAmount: nextBeat.amountLabel,
+          sourceCount: nextBeat.sourceCount,
         });
-      } else if (eventVisible && now >= nextEventAllowedAt) {
-        eventVisible = false;
+      } else if (beatVisible && now >= beatHiddenAt) {
+        beatVisible = false;
         setBattleView((current) =>
           current
             ? {
                 ...current,
                 activeUid: null,
                 event: null,
+                eventLabel: null,
+                eventAmount: null,
+                sourceCount: 0,
               }
             : current,
         );
       }
 
-      const waitingEvent = combat.events[eventIndex];
+      const waitingBeat = combatBeats[beatIndex];
       const hasBacklog = Boolean(
-        waitingEvent && waitingEvent.time <= targetTime,
+        waitingBeat && waitingBeat.time <= targetTime,
       );
       const visibleTime = hasBacklog ? shownTime : targetTime;
       if (now - lastClockPaint >= 100) {
@@ -701,9 +839,9 @@ export default function Game() {
       }
 
       if (
-        eventIndex >= combat.events.length &&
+        beatIndex >= combatBeats.length &&
         targetTime >= combat.duration &&
-        now >= nextEventAllowedAt
+        now >= nextBeatAllowedAt
       ) {
         finishBattle();
         return;
@@ -811,6 +949,9 @@ export default function Game() {
       enemyShield: 0,
       activeUid: null,
       event: null,
+      eventLabel: null,
+      eventAmount: null,
+      sourceCount: 0,
     });
     setGame(result.state);
     announce("Der Kessel-Krawall beginnt!");
@@ -899,11 +1040,14 @@ export default function Game() {
   const enemyShield = battleView?.enemyShield ?? 0;
   const isCombatPhase = game.phase === "battle" || game.phase === "result";
   const activeUid = battleView?.activeUid ?? null;
-  const eventSource = findEventSource(
-    battleView?.event ?? null,
-    game.board,
-    opponent.board,
-  );
+  const eventSource =
+    (battleView?.sourceCount ?? 0) <= 1
+      ? findEventSource(
+          battleView?.event ?? null,
+          game.board,
+          opponent.board,
+        )
+      : null;
   const remainingBattleSeconds = Math.max(
     0,
     Math.ceil(((combat?.duration ?? 0) - battleClock) / 1000),
@@ -1071,8 +1215,8 @@ export default function Game() {
           ) : battleView?.event ? (
             <div className="combat-callout" key={`${battleView.event.time}-${battleView.event.sourceUid}`}>
               <UiIcon asset={eventIcon(battleView.event.kind)} className="callout-icon" />
-              <strong>{battleView.event.label}</strong>
-              <span>{eventAmountLabel(battleView.event)}</span>
+              <strong>{battleView.eventLabel}</strong>
+              <span>{battleView.eventAmount}</span>
             </div>
           ) : decisionCountdown ? (
             <div className="decision-countdown" role="timer">
@@ -1094,14 +1238,60 @@ export default function Game() {
 
         <article className="combatant player-combatant">
           <div className="player-heading">
-            <div>
+            <div className="power-heading-wrap">
               <span className="eyebrow">DEIN ZAUBERKESSEL</span>
-              <h2>Macht {playerPower}</h2>
+              <h2>
+                <button
+                  type="button"
+                  className="power-title-button"
+                  onClick={() => setShowPowerHelp((current) => !current)}
+                  aria-expanded={showPowerHelp}
+                  aria-controls="power-explainer"
+                >
+                  Macht {playerPower}
+                  <i aria-hidden="true">i</i>
+                </button>
+              </h2>
+              {showPowerHelp && (
+                <div className="power-explainer" id="power-explainer">
+                  <strong>Macht ist dein Buildwert</strong>
+                  <p>
+                    Eine grobe Stärkeeinschätzung zum Vergleichen – kein eigener
+                    Kampfbonus.
+                  </p>
+                  <dl>
+                    <div>
+                      <dt>Zutaten &amp; Tempo</dt>
+                      <dd>{playerPowerBreakdown.itemValue}</dd>
+                    </div>
+                    <div>
+                      <dt>
+                        {playerPowerBreakdown.synergyCount} aktive{" "}
+                        {playerPowerBreakdown.synergyCount === 1
+                          ? "Synergie"
+                          : "Synergien"}
+                      </dt>
+                      <dd>+{playerPowerBreakdown.synergyBonus}</dd>
+                    </div>
+                    <div>
+                      <dt>Gesamte Macht</dt>
+                      <dd>{playerPower}</dd>
+                    </div>
+                  </dl>
+                </div>
+              )}
             </div>
-            <div className="power-compare" aria-label={`Gegnerische Macht ungefähr ${enemyPower}`}>
+            <button
+              type="button"
+              className="power-compare"
+              onClick={() => setShowPowerHelp((current) => !current)}
+              aria-label={`Gegnerische Macht ungefähr ${enemyPower}. Erklärung öffnen`}
+              aria-expanded={showPowerHelp}
+              aria-controls="power-explainer"
+            >
               <UiIcon asset="power" className="compare-icon" />
               Gegner ≈ {enemyPower}
-            </div>
+            </button>
           </div>
           <HealthBar hp={playerHp} maxHp={100} shield={playerShield} label="Dein Kessel" />
           <CauldronBoard
@@ -1147,6 +1337,10 @@ export default function Game() {
                 <div>
                   <strong>{selectedDefinition.name} {ROMAN_LEVEL[selectedItem.level]}</strong>
                   <p>{selectedDefinition.descriptions[selectedItem.level - 1]}</p>
+                  <small className="inspector-synergy">
+                    {FAMILY_META[selectedDefinition.family].name} · zählt{" "}
+                    {2 ** (selectedItem.level - 1)} für die 3er-Synergie
+                  </small>
                 </div>
                 <button type="button" className="sell-button" onClick={handleSell}>
                   Verkaufen <b>+{getSellValue(selectedItem)}</b>
@@ -1185,6 +1379,9 @@ export default function Game() {
                     </span>
                     <strong>{definition.name}</strong>
                     <small>{definition.descriptions[0]}</small>
+                    <span className="offer-synergy">
+                      {offerSynergyLabel(game.board, definition.family)}
+                    </span>
                     <span className="offer-price">
                       {offer.bought ? (
                         "GEKAUFT"
@@ -1246,7 +1443,9 @@ export default function Game() {
             <small>
               {decisionCountdown
                 ? `${remainingBattleSeconds} s bis zur Zeitentscheidung`
-                : "Aktionen werden einzeln ausgespielt"}
+                : speed === 1
+                  ? "Lesemodus · Aktionen werden gebündelt"
+                  : `Beschleunigte Regie auf ${speed}×`}
             </small>
           </div>
           <div className="battle-score-grid">
@@ -1269,14 +1468,14 @@ export default function Game() {
             />
             <span>
               {battleView?.event
-                ? `${eventSource ? `Slot ${eventSource.slot + 1} · ` : ""}${battleView.event.label}`
+                ? `${eventSource ? `Slot ${eventSource.slot + 1} · ` : ""}${battleView.eventLabel}`
                 : decisionCountdown
                   ? `Zeitentscheidung in ${remainingBattleSeconds}`
                   : "Kessel laden ihre Zauber"}
             </span>
             <strong>
               {battleView?.event
-                ? eventAmountLabel(battleView.event)
+                ? battleView.eventAmount
                 : "…"}
             </strong>
           </div>
@@ -1290,7 +1489,7 @@ export default function Game() {
                   className={speed === value ? "is-active" : ""}
                   onClick={() => setSpeed(value)}
                 >
-                  {value}×
+                  {value}×{value === 1 ? <small>KLAR</small> : null}
                 </button>
               ))}
             </div>

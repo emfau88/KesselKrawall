@@ -130,9 +130,14 @@ export function isSynergyActive(board: Board, family: Family): boolean {
   return getFamilyWeights(board)[family] >= SYNERGY_THRESHOLD;
 }
 
-export function getPowerValue(board: Board): number {
+export function getPowerBreakdown(board: Board): {
+  itemValue: number;
+  synergyCount: number;
+  synergyBonus: number;
+  total: number;
+} {
   const weights = getFamilyWeights(board);
-  let power = board.reduce((sum, instance) => {
+  const rawItemValue = board.reduce((sum, instance) => {
     if (!instance) return sum;
     const definition = ITEM_BY_ID[instance.itemId];
     const levelIndex = instance.level - 1;
@@ -142,10 +147,22 @@ export function getPowerValue(board: Board): number {
     const tempo = 4 / definition.cooldown[levelIndex];
     return sum + raw * tempo + definition.cost * instance.level;
   }, 0);
-  for (const family of Object.keys(weights) as Family[]) {
-    if (weights[family] >= SYNERGY_THRESHOLD) power *= 1.12;
-  }
-  return Math.round(power);
+  const synergyCount = (Object.keys(weights) as Family[]).filter(
+    (family) => weights[family] >= SYNERGY_THRESHOLD,
+  ).length;
+  const total = Math.round(rawItemValue * 1.12 ** synergyCount);
+  const itemValue = Math.round(rawItemValue);
+
+  return {
+    itemValue,
+    synergyCount,
+    synergyBonus: Math.max(0, total - itemValue),
+    total,
+  };
+}
+
+export function getPowerValue(board: Board): number {
+  return getPowerBreakdown(board).total;
 }
 
 function mergeBoard(board: Board): { board: Board; merges: MergeStep[] } {

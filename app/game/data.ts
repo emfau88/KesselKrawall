@@ -14,19 +14,19 @@ export const FAMILY_META: Record<
     name: "Feuer",
     icon: "🔥",
     color: "#ff7a3d",
-    shortBonus: "+22 % Direktschaden",
+    shortBonus: "22 % mehr Direktschaden",
   },
   poison: {
     name: "Gift",
     icon: "☠",
     color: "#86d85d",
-    shortBonus: "+1 Giftstapel",
+    shortBonus: "+1 Gift und 5 % schneller",
   },
   guard: {
     name: "Schutz",
     icon: "◆",
     color: "#6ccff6",
-    shortBonus: "Startschild & +15 %",
+    shortBonus: "12 Startschild und 15 % stärker",
   },
 };
 
