@@ -33,6 +33,34 @@ export const ART_FILES = {
 
 export type ArtAsset = keyof typeof ART_FILES;
 
+export const UI_FILES = {
+  battle: "battle.png",
+  coin: "coin.png",
+  elite: "elite.png",
+  "family-fire": "family-fire.png",
+  "family-guard": "family-guard.png",
+  "family-poison": "family-poison.png",
+  health: "health.png",
+  power: "power.png",
+  reroll: "reroll.png",
+  "run-seal": "run-seal.png",
+  shield: "shield.png",
+  speed: "speed.png",
+  "status-burn": "status-burn.png",
+  "status-heal": "status-heal.png",
+  "status-poison": "status-poison.png",
+  "status-rage": "status-rage.png",
+} as const;
+
+export type UiAsset = keyof typeof UI_FILES;
+
+export const BACKDROP_FILES = {
+  arena: "tournament-arena.webp",
+  market: "witch-market.webp",
+} as const;
+
+export type BackdropAsset = keyof typeof BACKDROP_FILES;
+
 export const ITEM_ART: Record<string, ArtAsset> = {
   chili: "item-chili",
   "dragon-tooth": "item-dragon-tooth",
@@ -72,6 +100,48 @@ export function ArtSprite({
     <img
       className={`art-sprite ${className}`.trim()}
       src={`assets/art/${ART_FILES[asset]}`}
+      alt=""
+      aria-hidden="true"
+      draggable={false}
+      decoding="async"
+    />
+  );
+}
+
+export function UiIcon({
+  asset,
+  className = "",
+}: {
+  asset: UiAsset;
+  className?: string;
+}) {
+  return (
+    // A relative URL keeps public assets valid at both / and the GitHub Pages base path.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      className={`ui-icon ${className}`.trim()}
+      src={`assets/ui/${UI_FILES[asset]}`}
+      alt=""
+      aria-hidden="true"
+      draggable={false}
+      decoding="async"
+    />
+  );
+}
+
+export function BackdropImage({
+  backdrop,
+  className = "",
+}: {
+  backdrop: BackdropAsset;
+  className?: string;
+}) {
+  return (
+    // A relative URL keeps public assets valid at both / and the GitHub Pages base path.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      className={`backdrop-image ${className}`.trim()}
+      src={`assets/backgrounds/${BACKDROP_FILES[backdrop]}`}
       alt=""
       aria-hidden="true"
       draggable={false}

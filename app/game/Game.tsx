@@ -3,9 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArtSprite,
+  BackdropImage,
   ITEM_ART,
   OPPONENT_ART,
+  UiIcon,
   type ArtAsset,
+  type UiAsset,
 } from "./ArtSprite";
 import { FAMILY_META, ITEM_BY_ID } from "./data";
 import { simulateBattle } from "./simulation";
@@ -71,6 +74,31 @@ function familyClass(family: Family): string {
   return `family-${family}`;
 }
 
+const FAMILY_ICON: Record<Family, UiAsset> = {
+  fire: "family-fire",
+  poison: "family-poison",
+  guard: "family-guard",
+};
+
+function eventIcon(kind: CombatEventKind): UiAsset {
+  switch (kind) {
+    case "poison":
+      return "status-poison";
+    case "burn":
+      return "status-burn";
+    case "heal":
+      return "status-heal";
+    case "shield":
+    case "cleanse":
+    case "synergy":
+      return "shield";
+    case "boss":
+      return "status-rage";
+    default:
+      return "battle";
+  }
+}
+
 function HealthBar({
   hp,
   maxHp,
@@ -86,9 +114,15 @@ function HealthBar({
   return (
     <div className="health-cluster" aria-label={`${label}: ${hp} Leben, ${shield} Schild`}>
       <div className="health-meta">
+        <UiIcon asset="health" className="health-icon" />
         <span>{label}</span>
         <strong>{Math.max(0, hp)} / {maxHp}</strong>
-        {shield > 0 && <span className="shield-value">◆ {shield}</span>}
+        {shield > 0 && (
+          <span className="shield-value">
+            <UiIcon asset="shield" className="health-icon" />
+            {shield}
+          </span>
+        )}
       </div>
       <div className="health-track">
         <span style={{ width: `${hpPercent}%` }} />
@@ -208,7 +242,7 @@ function SynergyStrip({ board }: { board: Board }) {
             className={`synergy-pill ${familyClass(family)} ${active ? "is-active" : ""}`}
             title={meta.shortBonus}
           >
-            <span aria-hidden="true">{meta.icon}</span>
+            <UiIcon asset={FAMILY_ICON[family]} className="synergy-icon" />
             <span>{meta.name}</span>
             <strong>{Math.min(weights[family], 3)}/3</strong>
           </div>
@@ -632,7 +666,7 @@ export default function Game() {
             </div>
             <div className="gold-status">
               <small>GOLD</small>
-              <b><span aria-hidden="true">●</span> {game.gold}</b>
+              <b><UiIcon asset="coin" className="hud-icon" /> {game.gold}</b>
             </div>
             <div>
               <small>SIEGEL</small>
@@ -643,7 +677,7 @@ export default function Game() {
                     key={index}
                     aria-hidden="true"
                   >
-                    ◆
+                    <UiIcon asset="run-seal" className="seal-icon" />
                   </span>
                 ))}
               </b>
@@ -667,6 +701,7 @@ export default function Game() {
       </header>
 
       <section className="arena" aria-label="Kampfarena">
+        <BackdropImage backdrop="arena" className="arena-backdrop" />
         {battleView?.event && (
           <BattleVfx
             key={`${battleView.event.time}-${battleView.event.sourceUid}-${battleView.event.kind}`}
@@ -680,6 +715,9 @@ export default function Game() {
                 asset={OPPONENT_ART[opponent.id]}
                 className="opponent-portrait"
               />
+              {opponent.rank !== "regular" && (
+                <UiIcon asset="elite" className="opponent-rank-icon" />
+              )}
             </span>
             <div>
               <span className="eyebrow">
@@ -717,6 +755,7 @@ export default function Game() {
         <div className={`effect-lane ${battleView?.event ? `event-${battleView.event.kind}` : ""}`}>
           {battleView?.event ? (
             <div className="combat-callout" key={`${battleView.event.time}-${battleView.event.sourceUid}`}>
+              <UiIcon asset={eventIcon(battleView.event.kind)} className="callout-icon" />
               <strong>{battleView.event.label}</strong>
               <span>
                 {battleView.event.kind === "heal"
@@ -748,6 +787,7 @@ export default function Game() {
               <h2>Macht {playerPower}</h2>
             </div>
             <div className="power-compare" aria-label={`Gegnerische Macht ungefähr ${enemyPower}`}>
+              <UiIcon asset="power" className="compare-icon" />
               Gegner ≈ {enemyPower}
             </div>
           </div>
@@ -771,6 +811,7 @@ export default function Game() {
 
       {game.phase === "shop" && (
         <section className="shop-sheet" aria-label="Zutatenladen">
+          <BackdropImage backdrop="market" className="panel-backdrop market-backdrop" />
           <div className="sheet-handle" aria-hidden="true" />
           <div className="shop-scroll">
             <div className="shop-topline">
@@ -816,7 +857,11 @@ export default function Game() {
                     data-testid={`offer-${offer.uid}`}
                   >
                     <span className="offer-family">
-                      {FAMILY_META[definition.family].icon} {FAMILY_META[definition.family].name}
+                      <UiIcon
+                        asset={FAMILY_ICON[definition.family]}
+                        className="offer-family-icon"
+                      />
+                      {FAMILY_META[definition.family].name}
                     </span>
                     <span className="offer-icon" aria-hidden="true">
                       <ArtSprite
@@ -827,7 +872,14 @@ export default function Game() {
                     <strong>{definition.name}</strong>
                     <small>{definition.descriptions[0]}</small>
                     <span className="offer-price">
-                      {offer.bought ? "GEKAUFT" : `● ${definition.cost}`}
+                      {offer.bought ? (
+                        "GEKAUFT"
+                      ) : (
+                        <>
+                          <UiIcon asset="coin" className="price-icon" />
+                          {definition.cost}
+                        </>
+                      )}
                     </span>
                   </button>
                 );
@@ -842,9 +894,17 @@ export default function Game() {
               onClick={handleReroll}
               disabled={busy || (game.rerollsUsed > 0 && game.gold < 1)}
             >
-              <span aria-hidden="true">↻</span>
+              <UiIcon asset="reroll" className="button-icon" />
               Neu würfeln
-              <b>{game.rerollsUsed === 0 ? "GRATIS" : "● 1"}</b>
+              <b>
+                {game.rerollsUsed === 0 ? (
+                  "GRATIS"
+                ) : (
+                  <>
+                    <UiIcon asset="coin" className="price-icon" /> 1
+                  </>
+                )}
+              </b>
             </button>
             <button
               type="button"
@@ -852,7 +912,7 @@ export default function Game() {
               onClick={handleFight}
               disabled={busy || !game.board.some(Boolean)}
             >
-              <span>KAMPF STARTEN</span>
+              <span><UiIcon asset="battle" className="button-icon" /> KAMPF STARTEN</span>
               <b>{opponent.rank === "boss" ? "BOSS: " : "Gegen "}{opponent.name}</b>
             </button>
           </div>
@@ -861,22 +921,52 @@ export default function Game() {
 
       {game.phase === "battle" && (
         <section className="battle-controls" aria-label="Kampfsteuerung">
-          <div>
+          <BackdropImage backdrop="arena" className="panel-backdrop battle-backdrop" />
+          <div className="battle-status">
+            <UiIcon asset="battle" className="battle-title-icon" />
             <span className="live-dot" aria-hidden="true" />
             <strong>Kampf läuft</strong>
             <small>{Math.ceil((combat?.duration ?? 0) / 1000)} s Simulation</small>
           </div>
-          <div className="speed-control" aria-label="Kampfgeschwindigkeit">
-            {[1, 2, 4].map((value) => (
-              <button
-                type="button"
-                key={value}
-                className={speed === value ? "is-active" : ""}
-                onClick={() => setSpeed(value)}
-              >
-                {value}×
-              </button>
-            ))}
+          <div className="battle-score-grid">
+            <div>
+              <span>{opponent.name}</span>
+              <strong>{Math.max(0, enemyHp)}</strong>
+              <small><UiIcon asset="shield" className="score-icon" /> {enemyShield}</small>
+            </div>
+            <UiIcon asset="power" className="score-versus-icon" />
+            <div>
+              <span>Dein Kessel</span>
+              <strong>{Math.max(0, playerHp)}</strong>
+              <small><UiIcon asset="shield" className="score-icon" /> {playerShield}</small>
+            </div>
+          </div>
+          <div className={`battle-event-panel ${battleView?.event ? `event-${battleView.event.kind}` : ""}`}>
+            <UiIcon
+              asset={battleView?.event ? eventIcon(battleView.event.kind) : "speed"}
+              className="battle-event-icon"
+            />
+            <span>{battleView?.event?.label ?? "Kessel laden ihre Zauber"}</span>
+            <strong>
+              {battleView?.event
+                ? `${["heal", "shield", "cleanse", "synergy"].includes(battleView.event.kind) ? "+" : "−"}${battleView.event.amount}`
+                : "…"}
+            </strong>
+          </div>
+          <div className="battle-speed">
+            <span><UiIcon asset="speed" className="speed-icon" /> TEMPO</span>
+            <div className="speed-control" aria-label="Kampfgeschwindigkeit">
+              {[1, 2, 4].map((value) => (
+                <button
+                  type="button"
+                  key={value}
+                  className={speed === value ? "is-active" : ""}
+                  onClick={() => setSpeed(value)}
+                >
+                  {value}×
+                </button>
+              ))}
+            </div>
           </div>
         </section>
       )}

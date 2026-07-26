@@ -60,6 +60,19 @@ button:focus-visible {
   -webkit-user-drag: none;
 }
 
+.ui-icon,
+.backdrop-image {
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.backdrop-image {
+  object-fit: cover;
+}
+
 .game-shell {
   position: relative;
   isolation: isolate;
@@ -209,13 +222,35 @@ button:focus-visible {
 
 .run-status b {
   margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 13px;
   line-height: 1;
   white-space: nowrap;
 }
 
+.hud-icon {
+  width: 15px;
+  height: 15px;
+  margin-right: 2px;
+}
+
 .gold-status b {
   color: var(--gold);
+}
+
+.seal-on,
+.seal-off {
+  display: inline-grid;
+  width: 12px;
+  height: 12px;
+  place-items: center;
+}
+
+.seal-icon {
+  width: 13px;
+  height: 13px;
 }
 
 .seal-on {
@@ -223,9 +258,18 @@ button:focus-visible {
   font-size: 9px;
 }
 
+.seal-on .seal-icon {
+  filter: saturate(1.25) drop-shadow(0 0 5px rgba(202, 116, 237, 0.72));
+}
+
 .seal-off {
   color: #504458;
   font-size: 9px;
+}
+
+.seal-off .seal-icon {
+  filter: grayscale(1);
+  opacity: 0.22;
 }
 
 .fullscreen-button {
@@ -284,6 +328,27 @@ button:focus-visible {
   overflow: hidden;
 }
 
+.arena::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, rgba(10, 7, 15, 0.56), rgba(17, 11, 23, 0.32) 44%, rgba(9, 7, 14, 0.72)),
+    radial-gradient(circle at 50% 49%, transparent 0 29%, rgba(8, 6, 12, 0.38) 76%);
+  pointer-events: none;
+}
+
+.arena-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-position: center;
+  filter: saturate(0.9) contrast(1.04);
+}
+
 .phase-shop .arena {
   grid-template-rows: minmax(0, 0.72fr) 32px minmax(0, 1.28fr);
 }
@@ -291,6 +356,7 @@ button:focus-visible {
 .combatant {
   min-height: 0;
   position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
 }
@@ -356,6 +422,7 @@ button:focus-visible {
 }
 
 .opponent-emblem {
+  position: relative;
   width: 42px;
   height: 42px;
   padding: 1px;
@@ -367,6 +434,16 @@ button:focus-visible {
   border-radius: 50%;
   background: linear-gradient(145deg, #342640, #17111d);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.opponent-rank-icon {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  z-index: 2;
+  width: 18px;
+  height: 18px;
+  filter: drop-shadow(0 0 4px rgba(245, 197, 91, 0.72));
 }
 
 .opponent-portrait {
@@ -386,11 +463,19 @@ button:focus-visible {
 
 .power-compare {
   padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 999px;
   color: var(--muted);
   font-size: 9px;
   font-weight: 800;
+}
+
+.compare-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .health-cluster {
@@ -400,10 +485,16 @@ button:focus-visible {
 
 .health-meta {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 7px;
   color: var(--muted);
   font-size: 8px;
+}
+
+.health-icon {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
 }
 
 .health-meta strong {
@@ -413,6 +504,9 @@ button:focus-visible {
 
 .shield-value {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
   color: var(--guard);
   font-weight: 900;
 }
@@ -436,41 +530,46 @@ button:focus-visible {
 }
 
 .cauldron-board {
+  --pot-size: 110px;
+  --slot-size: 50px;
+  --board-height: 166px;
   position: relative;
-  width: min(100%, 330px);
-  height: 128px;
-  min-height: 102px;
+  width: min(100%, 360px);
+  height: var(--board-height);
+  min-height: var(--board-height);
   margin: auto auto 0;
 }
 
 .cauldron-board.is-compact {
-  height: 91px;
-  min-height: 76px;
-  transform: scale(0.78);
-  transform-origin: center bottom;
-  margin-top: -8px;
+  --pot-size: 86px;
+  --slot-size: 42px;
+  --board-height: 130px;
+  width: min(100%, 310px);
+  margin-top: -4px;
 }
 
 .phase-battle .cauldron-board,
 .phase-result .cauldron-board {
-  transform: scale(1.08);
-  transform-origin: center;
+  --pot-size: 116px;
+  --slot-size: 52px;
+  --board-height: 174px;
 }
 
 .phase-battle .cauldron-board.is-compact,
 .phase-result .cauldron-board.is-compact {
-  height: 128px;
-  transform: scale(1.02);
+  --pot-size: 104px;
+  --slot-size: 48px;
+  --board-height: 156px;
   margin-top: 0;
 }
 
 .cauldron {
   position: absolute;
   z-index: 2;
-  top: 7px;
+  top: 0;
   left: 50%;
-  width: 122px;
-  height: 122px;
+  width: var(--pot-size);
+  height: var(--pot-size);
   transform: translateX(-50%);
   animation: cauldron-idle 3.6s ease-in-out infinite;
 }
@@ -520,11 +619,11 @@ button:focus-visible {
 }
 
 .steam-one {
-  left: 42px;
+  left: 34%;
 }
 
 .steam-two {
-  right: 40px;
+  right: 32%;
   animation-delay: -1.2s;
 }
 
@@ -545,14 +644,22 @@ button:focus-visible {
 
 .slot-arc {
   position: absolute;
-  inset: 0;
+  z-index: 5;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: var(--slot-size);
+  display: grid;
+  grid-template-columns: repeat(5, var(--slot-size));
+  align-items: end;
+  justify-content: space-between;
+  gap: 4px;
 }
 
 .board-slot {
-  position: absolute;
-  z-index: 5;
-  width: 54px;
-  height: 54px;
+  position: relative;
+  width: var(--slot-size);
+  height: var(--slot-size);
   padding: 0;
   display: grid;
   place-items: center;
@@ -571,36 +678,6 @@ button.board-slot {
 
 button.board-slot:active {
   transform: scale(0.94);
-}
-
-.board-slot[data-slot="0"] {
-  left: 0;
-  top: 10px;
-}
-
-.board-slot[data-slot="1"] {
-  left: 18%;
-  top: 62px;
-}
-
-.board-slot[data-slot="2"] {
-  left: 50%;
-  top: 74px;
-  transform: translateX(-50%);
-}
-
-.board-slot[data-slot="3"] {
-  right: 18%;
-  top: 62px;
-}
-
-.board-slot[data-slot="4"] {
-  right: 0;
-  top: 10px;
-}
-
-button.board-slot[data-slot="2"]:active {
-  transform: translateX(-50%) scale(0.94);
 }
 
 .board-slot.is-empty {
@@ -639,8 +716,8 @@ button.board-slot[data-slot="2"]:active {
 }
 
 .item-icon {
-  width: 43px;
-  height: 43px;
+  width: calc(var(--slot-size) - 9px);
+  height: calc(var(--slot-size) - 9px);
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.45));
 }
 
@@ -856,15 +933,21 @@ button.board-slot[data-slot="2"]:active {
   position: relative;
   min-width: 116px;
   padding: 5px 9px;
-  display: flex;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 9px;
+  gap: 6px;
   border: 1px solid rgba(255, 255, 255, 0.17);
   border-radius: 999px;
   background: rgba(20, 15, 27, 0.94);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.38);
   animation: callout-in 280ms ease;
+}
+
+.callout-icon {
+  width: 24px;
+  height: 24px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
 }
 
 .combat-callout strong {
@@ -921,6 +1004,28 @@ button.board-slot[data-slot="2"]:active {
   backdrop-filter: blur(18px);
 }
 
+.panel-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.22;
+  filter: saturate(0.8) contrast(1.1);
+}
+
+.shop-sheet::after,
+.battle-controls::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(31, 20, 38, 0.72), rgba(16, 11, 22, 0.91)),
+    radial-gradient(circle at 50% 25%, transparent, rgba(10, 7, 14, 0.56) 78%);
+  pointer-events: none;
+}
+
 .shop-sheet {
   max-height: 46dvh;
   padding: 11px 12px 0;
@@ -931,6 +1036,8 @@ button.board-slot[data-slot="2"]:active {
 }
 
 .shop-scroll {
+  position: relative;
+  z-index: 2;
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
@@ -942,6 +1049,7 @@ button.board-slot[data-slot="2"]:active {
 
 .sheet-handle {
   position: absolute;
+  z-index: 3;
   top: 5px;
   left: 50%;
   width: 38px;
@@ -982,12 +1090,20 @@ button.board-slot[data-slot="2"]:active {
   background: rgba(0, 0, 0, 0.16);
 }
 
-.synergy-pill > span:nth-child(2) {
+.synergy-pill > span {
   display: none;
 }
 
-.synergy-pill span {
-  font-size: 10px;
+.synergy-icon {
+  width: 18px;
+  height: 18px;
+  filter: grayscale(0.5);
+  opacity: 0.7;
+}
+
+.synergy-pill.is-active .synergy-icon {
+  filter: saturate(1.15) drop-shadow(0 0 5px currentColor);
+  opacity: 1;
 }
 
 .synergy-pill strong {
@@ -1121,6 +1237,9 @@ button.board-slot[data-slot="2"]:active {
 }
 
 .offer-family {
+  display: flex;
+  align-items: center;
+  gap: 3px;
   align-self: stretch;
   overflow: hidden;
   color: var(--muted);
@@ -1130,6 +1249,12 @@ button.board-slot[data-slot="2"]:active {
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+.offer-family-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
 }
 
 .offer-icon {
@@ -1179,8 +1304,10 @@ button.board-slot[data-slot="2"]:active {
   bottom: 5px;
   left: 5px;
   min-height: 23px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
   border: 1px solid rgba(245, 197, 91, 0.22);
   border-radius: 8px;
   background: rgba(8, 6, 11, 0.46);
@@ -1228,10 +1355,30 @@ button.board-slot[data-slot="2"]:active {
   font-size: 19px;
 }
 
+.button-icon {
+  width: 25px;
+  height: 25px;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.36));
+}
+
+.secondary-button > .button-icon {
+  grid-row: 1 / 3;
+  margin-right: 6px;
+}
+
 .secondary-button b {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   color: var(--gold);
   font-size: 8px;
   text-align: left;
+}
+
+.price-icon {
+  width: 12px;
+  height: 12px;
 }
 
 .fight-button {
@@ -1246,6 +1393,17 @@ button.board-slot[data-slot="2"]:active {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.64),
     0 5px 19px rgba(213, 135, 37, 0.34);
+}
+
+.fight-button > span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.fight-button .button-icon {
+  width: 21px;
+  height: 21px;
 }
 
 .fight-button b {
@@ -1266,12 +1424,23 @@ button.board-slot[data-slot="2"]:active {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  isolation: isolate;
+  overflow: hidden;
 }
 
-.battle-controls > div:first-child {
+.battle-controls > *:not(.panel-backdrop) {
+  position: relative;
+  z-index: 2;
+}
+
+.battle-status {
   display: grid;
   grid-template-columns: auto 1fr;
   column-gap: 8px;
+}
+
+.battle-title-icon {
+  display: none;
 }
 
 .battle-controls strong {
@@ -1293,6 +1462,21 @@ button.board-slot[data-slot="2"]:active {
   background: var(--fire);
   box-shadow: 0 0 12px var(--fire);
   animation: live-pulse 1s infinite;
+}
+
+.battle-score-grid,
+.battle-event-panel {
+  display: none;
+}
+
+.battle-speed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.battle-speed > span {
+  display: none;
 }
 
 .speed-control {
@@ -1844,21 +2028,19 @@ button.board-slot[data-slot="2"]:active {
   }
 
   .phase-shop .player-combatant .cauldron-board {
-    height: 108px;
-    min-height: 98px;
-    margin-top: -15px;
-    margin-bottom: -3px;
-    transform: scale(0.88);
-    transform-origin: center bottom;
+    --pot-size: 88px;
+    --slot-size: 42px;
+    --board-height: 132px;
+    margin-top: -10px;
+    margin-bottom: 0;
   }
 
   .phase-battle .cauldron-board {
-    height: 108px;
-    min-height: 98px;
-    margin-top: -10px;
-    margin-bottom: -3px;
-    transform: scale(0.82);
-    transform-origin: center bottom;
+    --pot-size: 86px;
+    --slot-size: 40px;
+    --board-height: 128px;
+    margin-top: -8px;
+    margin-bottom: 0;
   }
 
   .phase-result .cauldron-board {
@@ -1977,16 +2159,12 @@ button.board-slot[data-slot="2"]:active {
   }
 
   .board-slot {
-    width: 50px;
-    height: 50px;
+    border-radius: 14px;
   }
 
-  .board-slot[data-slot="1"] {
-    left: 16%;
-  }
-
-  .board-slot[data-slot="3"] {
-    right: 16%;
+  .cauldron-board {
+    --slot-size: 44px;
+    width: min(100%, 330px);
   }
 
   .shop-sheet {
@@ -2052,18 +2230,153 @@ button.board-slot[data-slot="2"]:active {
 
 @media (min-width: 700px) and (orientation: landscape) {
   .game-shell {
-    width: min(100%, 980px);
-    grid-template-columns: minmax(0, 1fr) 360px;
+    width: min(100%, 1500px);
+    grid-template-columns: minmax(0, 1fr) 420px;
     grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .game-shell:fullscreen,
+  .game-shell:-webkit-full-screen,
+  .game-shell.is-fullscreen {
+    width: 100vw;
+    max-width: 1500px;
   }
 
   .game-header {
     grid-column: 1 / 3;
+    min-height: 76px;
+    padding: 12px 20px;
+  }
+
+  .brand-kicker {
+    font-size: 10px;
+  }
+
+  .brand-lockup strong {
+    font-size: 27px;
+  }
+
+  .run-status > div {
+    min-width: 58px;
+    padding: 7px 8px;
+  }
+
+  .run-status small {
+    font-size: 8px;
+  }
+
+  .run-status b {
+    font-size: 14px;
   }
 
   .arena {
     grid-column: 1;
     grid-row: 2;
+    padding: 14px 26px 18px;
+    grid-template-rows: minmax(0, 1fr) 44px minmax(0, 1fr);
+  }
+
+  .phase-shop .arena {
+    grid-template-rows: minmax(0, 0.82fr) 44px minmax(0, 1.18fr);
+  }
+
+  .arena::after {
+    background:
+      linear-gradient(90deg, rgba(8, 6, 12, 0.2), transparent 40% 60%, rgba(8, 6, 12, 0.28)),
+      linear-gradient(180deg, rgba(9, 6, 13, 0.34), rgba(13, 8, 18, 0.12) 45%, rgba(7, 5, 11, 0.5));
+  }
+
+  .combatant {
+    padding: 8px 12px;
+    border-radius: 18px;
+    background: linear-gradient(90deg, rgba(8, 5, 12, 0.36), rgba(8, 5, 12, 0.05) 56%, transparent);
+  }
+
+  .player-combatant {
+    background: linear-gradient(90deg, rgba(8, 5, 12, 0.36), rgba(8, 5, 12, 0.05) 56%, transparent);
+  }
+
+  .opponent-copy,
+  .player-heading {
+    min-height: 62px;
+    gap: 13px;
+  }
+
+  .opponent-emblem {
+    width: 56px;
+    height: 56px;
+  }
+
+  .opponent-copy h2,
+  .player-heading h2 {
+    font-size: 24px;
+  }
+
+  .opponent-copy p,
+  .opponent-copy blockquote {
+    font-size: 11px;
+  }
+
+  .health-meta {
+    font-size: 10px;
+  }
+
+  .health-meta strong {
+    font-size: 11px;
+  }
+
+  .health-track {
+    height: 9px;
+  }
+
+  .cauldron-board {
+    --pot-size: 160px;
+    --slot-size: 62px;
+    --board-height: 232px;
+    width: min(100%, 520px);
+  }
+
+  .cauldron-board.is-compact {
+    --pot-size: 128px;
+    --slot-size: 52px;
+    --board-height: 188px;
+    width: min(100%, 450px);
+  }
+
+  .phase-battle .cauldron-board,
+  .phase-result .cauldron-board {
+    --pot-size: 166px;
+    --slot-size: 64px;
+    --board-height: 242px;
+  }
+
+  .item-level {
+    right: -5px;
+    bottom: -5px;
+    min-width: 24px;
+    height: 24px;
+    font-size: 11px;
+  }
+
+  .effect-lane::before,
+  .effect-lane::after {
+    width: 38%;
+  }
+
+  .phase-message {
+    min-height: 34px;
+    padding: 7px 14px;
+    font-size: 10px;
+  }
+
+  .combat-callout {
+    min-width: 180px;
+    padding: 8px 12px;
+  }
+
+  .combat-callout strong {
+    max-width: 190px;
+    font-size: 11px;
   }
 
   .shop-sheet,
@@ -2078,17 +2391,55 @@ button.board-slot[data-slot="2"]:active {
     border-radius: 0;
   }
 
+  .shop-sheet {
+    padding: 20px 16px 0;
+  }
+
+  .market-backdrop {
+    opacity: 0.48;
+    object-position: center;
+  }
+
+  .shop-sheet::after {
+    background:
+      linear-gradient(180deg, rgba(35, 21, 40, 0.56), rgba(18, 12, 24, 0.83)),
+      radial-gradient(circle at 50% 45%, transparent 0 28%, rgba(8, 5, 12, 0.4) 86%);
+  }
+
+  .shop-topline {
+    min-height: 64px;
+  }
+
+  .shop-topline h2 {
+    font-size: 22px;
+  }
+
+  .synergy-pill {
+    min-width: 50px;
+    height: 40px;
+  }
+
+  .synergy-icon {
+    width: 22px;
+    height: 22px;
+  }
+
   .offer-grid {
     grid-template-columns: 1fr;
+    gap: 9px;
   }
 
   .shop-card {
-    min-height: 94px;
+    min-height: 112px;
     display: grid;
-    grid-template-columns: 40px 1fr auto;
+    grid-template-columns: 72px 1fr auto;
     grid-template-rows: auto auto;
-    padding: 8px 50px 8px 8px;
+    padding: 12px 62px 12px 12px;
     text-align: left;
+    border-width: 1px;
+    background:
+      radial-gradient(circle at 12% 50%, rgba(255, 255, 255, 0.1), transparent 26%),
+      linear-gradient(105deg, rgba(54, 35, 62, 0.94), rgba(25, 17, 31, 0.9));
   }
 
   .offer-family {
@@ -2097,7 +2448,18 @@ button.board-slot[data-slot="2"]:active {
 
   .offer-icon {
     grid-row: 1 / 3;
+    width: 66px;
+    height: 66px;
     margin: 0;
+  }
+
+  .shop-card > strong {
+    font-size: 15px;
+  }
+
+  .shop-card > small {
+    font-size: 9px;
+    line-height: 1.35;
   }
 
   .shop-card > strong,
@@ -2107,11 +2469,191 @@ button.board-slot[data-slot="2"]:active {
 
   .offer-price {
     top: 50%;
-    right: 6px;
+    right: 10px;
     bottom: auto;
     left: auto;
-    width: 42px;
+    width: 46px;
+    min-height: 30px;
     transform: translateY(-50%);
+  }
+
+  .shop-actions {
+    padding: 12px 0 16px;
+    background: rgba(17, 11, 22, 0.82);
+  }
+
+  .battle-controls {
+    padding: 30px 24px 22px;
+    display: grid;
+    grid-template-rows: auto auto minmax(112px, 1fr) auto;
+    align-items: stretch;
+    gap: 18px;
+  }
+
+  .battle-backdrop {
+    opacity: 0.42;
+    object-position: 62% center;
+  }
+
+  .battle-controls::after {
+    background:
+      linear-gradient(180deg, rgba(25, 16, 31, 0.62), rgba(12, 8, 18, 0.9)),
+      radial-gradient(circle at 50% 40%, transparent 0 16%, rgba(7, 5, 11, 0.44) 76%);
+  }
+
+  .battle-status {
+    grid-template-columns: 42px auto 1fr;
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: 9px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(245, 197, 91, 0.2);
+  }
+
+  .battle-title-icon {
+    grid-row: 1 / 3;
+    display: block;
+    width: 42px;
+    height: 42px;
+  }
+
+  .battle-status .live-dot {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    width: 10px;
+    height: 10px;
+  }
+
+  .battle-status strong {
+    grid-column: 3;
+    font-family: Georgia, serif;
+    font-size: 20px;
+  }
+
+  .battle-status small {
+    grid-column: 3;
+    font-size: 9px;
+  }
+
+  .battle-score-grid {
+    display: grid;
+    grid-template-columns: 1fr 38px 1fr;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .battle-score-grid > div {
+    min-width: 0;
+    padding: 12px 10px;
+    display: grid;
+    justify-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    background: rgba(8, 5, 12, 0.54);
+  }
+
+  .battle-score-grid span {
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 8px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .battle-score-grid strong {
+    margin: 3px 0;
+    color: #ff8c70;
+    font-family: Georgia, serif;
+    font-size: 24px;
+  }
+
+  .battle-score-grid > div:last-child strong {
+    color: #b9ef8d;
+  }
+
+  .battle-score-grid small {
+    grid-column: auto;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 9px;
+  }
+
+  .score-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .score-versus-icon {
+    width: 38px;
+    height: 38px;
+    filter: drop-shadow(0 0 9px rgba(245, 197, 91, 0.25));
+  }
+
+  .battle-event-panel {
+    padding: 22px;
+    display: grid;
+    grid-template-columns: 64px 1fr auto;
+    align-self: stretch;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid rgba(245, 197, 91, 0.2);
+    border-radius: 18px;
+    background:
+      radial-gradient(circle at 18% 50%, rgba(245, 197, 91, 0.12), transparent 34%),
+      rgba(9, 6, 13, 0.58);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .battle-event-icon {
+    width: 64px;
+    height: 64px;
+    filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.48));
+  }
+
+  .battle-event-panel span {
+    font-family: Georgia, serif;
+    font-size: 16px;
+    font-weight: 800;
+  }
+
+  .battle-event-panel strong {
+    color: var(--danger);
+    font-size: 23px;
+  }
+
+  .battle-event-panel.event-heal strong,
+  .battle-event-panel.event-cleanse strong {
+    color: var(--poison);
+  }
+
+  .battle-event-panel.event-shield strong,
+  .battle-event-panel.event-synergy strong {
+    color: var(--guard);
+  }
+
+  .battle-speed {
+    justify-content: space-between;
+    padding-top: 15px;
+    border-top: 1px solid rgba(245, 197, 91, 0.2);
+  }
+
+  .battle-speed > span {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--gold);
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+  }
+
+  .speed-icon {
+    width: 25px;
+    height: 25px;
   }
 }
 
