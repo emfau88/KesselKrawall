@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import {
+  createCombatBeats,
+  getBeatHoldMs,
+  getBeatVisibleMs,
+} from "../app/game/combatPresentation";
 import { CAMPAIGN_OPPONENTS, ITEM_BY_ID } from "../app/game/data";
 import { getItemCooldownMs, simulateBattle } from "../app/game/simulation";
 import {
@@ -205,4 +210,85 @@ test("the boss visibly triggers Kesselzorn below half health", () => {
         event.kind === "boss" && event.label === "Kesselzorn entfacht",
     ),
   );
+});
+
+test("combat presentation preserves every simulated event and final snapshot", () => {
+  const board = [
+    item("p1", "chili", 2),
+    item("p2", "ember-core", 1),
+    item("p3", "slime-shroom", 2),
+    null,
+    null,
+  ];
+  const battle = simulateBattle(board, CAMPAIGN_OPPONENTS[3]);
+  const beats = createCombatBeats(battle.events);
+
+  assert.deepEqual(
+    beats.flatMap((beat) => beat.events),
+    battle.events,
+  );
+  assert.equal(beats.at(-1)?.snapshot.playerHp, battle.finalPlayerHp);
+  assert.equal(beats.at(-1)?.snapshot.enemyHp, battle.finalEnemyHp);
+});
+
+test("combat presentation spotlights first item uses and compresses repeats", () => {
+  const board = [
+    item("p1", "chili", 1),
+    item("p2", "ember-core", 1),
+    null,
+    null,
+    null,
+  ];
+  const battle = simulateBattle(board, CAMPAIGN_OPPONENTS[0]);
+  const beats = createCombatBeats(battle.events);
+
+  for (const sourceUid of ["p1", "p2"]) {
+    const firstBeat = beats.find((beat) =>
+      beat.activeUids.includes(sourceUid),
+    );
+    assert.equal(firstBeat?.tier, "hero");
+  }
+  assert.ok(beats.length < battle.events.length);
+  assert.ok(beats.some((beat) => beat.contributions.length > 1));
+});
+
+test("combat presentation exposes persistent poison timing at the health bar", () => {
+  const board = [
+    item("p1", "slime-shroom", 2),
+    item("p2", "nightwing", 1),
+    null,
+    null,
+    null,
+  ];
+  const battle = simulateBattle(board, CAMPAIGN_OPPONENTS[0]);
+  const beats = createCombatBeats(battle.events);
+  const poisoned = beats.find((beat) => beat.statuses.enemy.poison.stacks > 0);
+
+  assert.ok(poisoned);
+  assert.ok(poisoned.statuses.enemy.poison.expiresAt > poisoned.time);
+  assert.equal(poisoned.statuses.enemy.poison.interval, 2_000);
+  assert.ok(poisoned.statuses.enemy.poison.nextTickAt > poisoned.time);
+});
+
+test("combat director keeps dense playback within a bounded visual budget", () => {
+  const board = [
+    item("p1", "chili", 2),
+    item("p2", "ember-core", 1),
+    item("p3", "slime-shroom", 2),
+    null,
+    null,
+  ];
+  const battle = simulateBattle(board, CAMPAIGN_OPPONENTS[3]);
+  const beats = createCombatBeats(battle.events);
+  let playbackEnd = 0;
+  let visibleTime = 0;
+
+  for (const beat of beats) {
+    const hold = getBeatHoldMs(beat, 1);
+    playbackEnd = Math.max(playbackEnd, beat.time) + hold;
+    visibleTime += getBeatVisibleMs(beat, hold);
+  }
+
+  assert.ok(playbackEnd < 20_000);
+  assert.ok(visibleTime / playbackEnd < 0.65);
 });

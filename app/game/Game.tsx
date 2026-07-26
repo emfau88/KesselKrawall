@@ -16,6 +16,18 @@ import {
   type ArtAsset,
   type UiAsset,
 } from "./ArtSprite";
+import {
+  createCombatBeats,
+  createEmptyCombatStatuses,
+  getBeatHoldMs,
+  getBeatVisibleMs,
+  isStatusTick,
+  type CombatBeatTier,
+  type CombatContribution,
+  type CombatSideStatus,
+  type CombatStatusSnapshot,
+  type TimedCombatStatus,
+} from "./combatPresentation";
 import { FAMILY_META, ITEM_BY_ID } from "./data";
 import { getItemCooldownMs, simulateBattle } from "./simulation";
 import {
@@ -54,28 +66,20 @@ import type {
 const ROMAN_LEVEL = ["", "I", "II", "III"] as const;
 
 interface BattleView {
+  beatId: string;
   time: number;
   eventDuration: number;
   playerHp: number;
   playerShield: number;
   enemyHp: number;
   enemyShield: number;
-  activeUid: string | null;
+  activeUids: string[];
   event: CombatEvent | null;
   eventLabel: string | null;
   eventAmount: string | null;
-  sourceCount: number;
-}
-
-interface CombatBeat {
-  time: number;
-  event: CombatEvent;
-  snapshot: CombatEvent;
-  events: CombatEvent[];
-  label: string;
-  amountLabel: string;
-  sourceCount: number;
-  isStatusTick: boolean;
+  tier: CombatBeatTier | null;
+  contributions: CombatContribution[];
+  statuses: CombatStatusSnapshot;
 }
 
 interface MergeNotice {
@@ -146,126 +150,6 @@ function eventIcon(kind: CombatEventKind): UiAsset {
   }
 }
 
-function isStatusTick(event: CombatEvent): boolean {
-  return event.label.includes("tickt");
-}
-
-function summarizeEventAmounts(events: CombatEvent[]): string {
-  const totals = new Map<string, { amount: number; format: (amount: number) => string }>();
-
-  for (const event of events) {
-    const statusDamage = isStatusTick(event);
-    let key = "damage";
-    let format = (amount: number) => `−${amount} LP`;
-
-    if (event.kind === "heal") {
-      key = "heal";
-      format = (amount) => `+${amount} LP`;
-    } else if (event.kind === "shield" || event.kind === "synergy") {
-      key = "shield";
-      format = (amount) => `+${amount} Schild`;
-    } else if (event.kind === "cleanse") {
-      key = "cleanse";
-      format = (amount) => `−${amount} Gift`;
-    } else if (event.kind === "poison" && !statusDamage) {
-      key = "poison";
-      format = (amount) => `+${amount} Gift`;
-    } else if (event.kind === "burn" && !statusDamage) {
-      key = "burn";
-      format = (amount) => `+${amount} Brand`;
-    } else if (event.kind === "boss") {
-      key = "boss";
-      format = (amount) => `+${amount}%`;
-    }
-
-    const current = totals.get(key);
-    totals.set(key, {
-      amount: (current?.amount ?? 0) + event.amount,
-      format,
-    });
-  }
-
-  return [...totals.values()]
-    .map(({ amount, format }) => format(amount))
-    .join(" · ");
-}
-
-function createCombatBeats(events: CombatEvent[]): CombatBeat[] {
-  const beats: CombatBeat[] = [];
-
-  for (let index = 0; index < events.length; ) {
-    const first = events[index];
-    const firstIsStatus = isStatusTick(first);
-    const grouped = [first];
-    let cursor = index + 1;
-
-    while (cursor < events.length) {
-      const candidate = events[cursor];
-      if (candidate.time !== first.time) break;
-
-      const sameStatusWave =
-        firstIsStatus &&
-        isStatusTick(candidate) &&
-        candidate.kind === first.kind &&
-        candidate.target === first.target;
-      const sameItemActivation =
-        !firstIsStatus &&
-        !isStatusTick(candidate) &&
-        candidate.actor === first.actor &&
-        candidate.sourceUid === first.sourceUid;
-
-      if (!sameStatusWave && !sameItemActivation) break;
-      grouped.push(candidate);
-      cursor += 1;
-    }
-
-    const snapshot = grouped[grouped.length - 1];
-    const sourceCount = new Set(grouped.map((event) => event.sourceUid)).size;
-    const label = firstIsStatus
-      ? `${first.kind === "poison" ? "Gift" : "Brand"} tickt${
-          sourceCount > 1 ? ` · ${sourceCount} Quellen` : ""
-        }`
-      : grouped.length > 1
-        ? `${first.label} · ${grouped.length} Effekte`
-        : first.label;
-
-    beats.push({
-      time: first.time,
-      event: first,
-      snapshot,
-      events: grouped,
-      label,
-      amountLabel: summarizeEventAmounts(grouped),
-      sourceCount,
-      isStatusTick: firstIsStatus,
-    });
-    index = cursor;
-  }
-
-  return beats;
-}
-
-function getBeatHoldMs(
-  beat: CombatBeat,
-  previous: CombatBeat | undefined,
-  speed: number,
-): number {
-  const sameWave = previous?.time === beat.time;
-  const base =
-    beat.event.kind === "boss"
-      ? 1_450
-      : beat.isStatusTick
-        ? 620
-        : beat.events.length > 1
-          ? 1_080
-          : sameWave
-            ? 780
-            : 920;
-  const speedFactor = speed <= 1 ? 1 : speed <= 2 ? 0.66 : 0.42;
-  const minimum = speed <= 1 ? 540 : speed <= 2 ? 340 : 220;
-  return Math.round(Math.max(minimum, base * speedFactor));
-}
-
 function mergeValueLabel(definition: ItemDefinition): string {
   switch (definition.effect) {
     case "poison":
@@ -315,16 +199,125 @@ function findEventSource(
   };
 }
 
+function formatEffectDuration(milliseconds: number): string {
+  if (milliseconds < 1_000) return "<1 s";
+  return `${Math.ceil(milliseconds / 100) / 10} s`;
+}
+
+function TimedStatusBadge({
+  label,
+  asset,
+  status,
+  battleTime,
+  className,
+}: {
+  label: string;
+  asset: UiAsset;
+  status: TimedCombatStatus;
+  battleTime: number;
+  className: string;
+}) {
+  const remaining = Math.max(0, status.expiresAt - battleTime);
+  if (status.stacks <= 0 || remaining <= 0) return null;
+
+  const untilTick = Math.max(0, status.nextTickAt - battleTime);
+  const progress = status.interval > 0
+    ? Math.max(0, Math.min(1, 1 - untilTick / status.interval))
+    : 0;
+  const description =
+    `${label}: ${status.stacks} Stapel, noch etwa ${formatEffectDuration(remaining)}, ` +
+    `nächster Tick in ${formatEffectDuration(untilTick)}`;
+  const style = {
+    "--status-progress": `${progress * 360}deg`,
+  } as CSSProperties;
+
+  return (
+    <span
+      className={`combat-status ${className}`}
+      style={style}
+      title={description}
+      aria-label={description}
+    >
+      <span className="status-ring">
+        <UiIcon asset={asset} className="status-icon" />
+      </span>
+      <b>{status.stacks}</b>
+      <small>{formatEffectDuration(remaining)}</small>
+    </span>
+  );
+}
+
+function CombatStatusRow({
+  status,
+  shield,
+  battleTime,
+}: {
+  status: CombatSideStatus;
+  shield: number;
+  battleTime: number;
+}) {
+  return (
+    <div className="combat-status-row" aria-label="Aktive Kampfeffekte">
+      {shield > 0 && (
+        <span
+          className="combat-status status-shield"
+          title={`Schild: ${shield}. Bleibt, bis er durch Schaden verbraucht wird.`}
+          aria-label={`Schild ${shield}, bleibt bis zum Verbrauch`}
+        >
+          <span className="status-ring">
+            <UiIcon asset="shield" className="status-icon" />
+          </span>
+          <b>{shield}</b>
+          <small>aktiv</small>
+        </span>
+      )}
+      <TimedStatusBadge
+        label="Gift"
+        asset="status-poison"
+        status={status.poison}
+        battleTime={battleTime}
+        className="status-poison"
+      />
+      <TimedStatusBadge
+        label="Brand"
+        asset="status-burn"
+        status={status.burn}
+        battleTime={battleTime}
+        className="status-burn"
+      />
+      {status.rage && (
+        <span
+          className="combat-status status-rage"
+          title="Kesselzorn: +25 % Kraft für den restlichen Kampf."
+          aria-label="Kesselzorn, 25 Prozent mehr Kraft, dauerhaft"
+        >
+          <span className="status-ring">
+            <UiIcon asset="status-rage" className="status-icon" />
+          </span>
+          <b>+25%</b>
+          <small>∞</small>
+        </span>
+      )}
+    </div>
+  );
+}
+
 function HealthBar({
   hp,
   maxHp,
   shield,
   label,
+  status,
+  battleTime,
+  showStatuses,
 }: {
   hp: number;
   maxHp: number;
   shield: number;
   label: string;
+  status: CombatSideStatus;
+  battleTime: number;
+  showStatuses: boolean;
 }) {
   const hpPercent = Math.max(0, Math.min(100, (hp / maxHp) * 100));
   return (
@@ -343,6 +336,13 @@ function HealthBar({
       <div className="health-track">
         <span style={{ width: `${hpPercent}%` }} />
       </div>
+      {showStatuses && (
+        <CombatStatusRow
+          status={status}
+          shield={shield}
+          battleTime={battleTime}
+        />
+      )}
     </div>
   );
 }
@@ -352,25 +352,25 @@ function CauldronBoard({
   side,
   cauldronAsset,
   selectedSlot,
-  activeUid,
+  activeUids = [],
   hitKind,
   interactive,
   onSlot,
   compact = false,
   combatActive = false,
-  combatSpeed = 1,
+  combatTime = 0,
 }: {
   board: Board;
   side: "player" | "enemy";
   cauldronAsset: ArtAsset;
   selectedSlot: number | null;
-  activeUid: string | null;
+  activeUids: readonly string[];
   hitKind: CombatEventKind | null;
   interactive: boolean;
   onSlot?: (slot: number) => void;
   compact?: boolean;
   combatActive?: boolean;
-  combatSpeed?: number;
+  combatTime?: number;
 }) {
   return (
     <div
@@ -384,7 +384,7 @@ function CauldronBoard({
       <div
         className="cauldron"
         aria-hidden="true"
-        key={`${hitKind ?? "idle"}-${activeUid ?? "rest"}`}
+        key={`${hitKind ?? "idle"}-${activeUids.join("-") || "rest"}`}
       >
         <span className="cauldron-aura" />
         <ArtSprite asset={cauldronAsset} className="cauldron-art" />
@@ -418,19 +418,19 @@ function CauldronBoard({
             instance ? "is-filled" : "is-empty",
             combatActive && instance ? "is-cooling" : "",
             selectedSlot === slot ? "is-selected" : "",
-            activeUid === instance?.uid ? "is-active" : "",
+            instance && activeUids.includes(instance.uid) ? "is-active" : "",
             definition ? familyClass(definition.family) : "",
           ].join(" ");
-          const slotStyle =
-            definition && combatActive
-              ? ({
-                  "--cooldown-duration": `${Math.max(
-                    650,
-                    getItemCooldownMs(board, slot) / combatSpeed,
-                  )}ms`,
-                  "--cooldown-color": FAMILY_META[definition.family].color,
-                } as CSSProperties)
-              : undefined;
+          const cooldown =
+            definition && combatActive ? getItemCooldownMs(board, slot) : 0;
+          const cooldownProgress =
+            cooldown > 0 ? (combatTime % cooldown) / cooldown : 0;
+          const slotStyle = definition && combatActive
+            ? ({
+                "--cooldown-progress": `${cooldownProgress * 360}deg`,
+                "--cooldown-color": FAMILY_META[definition.family].color,
+              } as CSSProperties)
+            : undefined;
 
           return interactive ? (
             <button
@@ -551,14 +551,62 @@ function StatsList({ stats }: { stats: ItemCombatStats[] }) {
   );
 }
 
+function CombatContributionStrip({
+  contributions,
+  playerBoard,
+  enemyBoard,
+}: {
+  contributions: CombatContribution[];
+  playerBoard: Board;
+  enemyBoard: Board;
+}) {
+  return (
+    <span className="contribution-strip" aria-label="Beiträge dieses Angriffs">
+      {contributions.map((contribution) => {
+        const source = findEventSource(
+          contribution.event,
+          playerBoard,
+          enemyBoard,
+        );
+        const accessibleLabel =
+          `${source?.name ?? contribution.label}: ${contribution.amountLabel}`;
+
+        return (
+          <span
+            className={`contribution-chip from-${contribution.actor}`}
+            key={`${contribution.actor}:${contribution.sourceUid}`}
+            title={accessibleLabel}
+            aria-label={accessibleLabel}
+          >
+            {source ? (
+              <ArtSprite asset={source.art} className="contribution-art" />
+            ) : (
+              <UiIcon
+                asset={eventIcon(contribution.event.kind)}
+                className="contribution-art"
+              />
+            )}
+            <span>
+              <small>{source?.name ?? contribution.label}</small>
+              <b>{contribution.amountLabel}</b>
+            </span>
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 function BattleVfx({
   event,
   source,
   duration,
+  tier,
 }: {
   event: CombatEvent;
   source: EventSource | null;
   duration: number;
+  tier: CombatBeatTier;
 }) {
   const projectile: ArtAsset =
     event.kind === "poison"
@@ -585,6 +633,7 @@ function BattleVfx({
         `vfx-${event.kind}`,
         `from-${event.actor}`,
         `to-${event.target}`,
+        `tier-${tier}`,
         source ? familyClass(source.family) : "",
         source ? `source-slot-${source.slot}` : "",
         statusTick
@@ -596,20 +645,18 @@ function BattleVfx({
       style={effectStyle}
       aria-hidden="true"
     >
-      {source && (
-        <div className="projectile-source">
-          <span className="source-item-frame">
-            <ArtSprite asset={source.art} className="source-item-art" />
-          </span>
-          <strong>{source.name}</strong>
-        </div>
-      )}
       <ArtSprite asset={projectile} className="battle-projectile" />
       <ArtSprite asset="vfx-impact" className="battle-impact" />
-      <span className="vfx-particle particle-one" />
-      <span className="vfx-particle particle-two" />
-      <span className="vfx-particle particle-three" />
-      <span className="vfx-particle particle-four" />
+      {tier !== "ambient" && (
+        <span className="vfx-particle particle-one" />
+      )}
+      {tier === "hero" && (
+        <>
+          <span className="vfx-particle particle-two" />
+          <span className="vfx-particle particle-three" />
+          <span className="vfx-particle particle-four" />
+        </>
+      )}
     </div>
   );
 }
@@ -723,6 +770,8 @@ export default function Game() {
   useEffect(() => {
     if (game.phase !== "battle" || !combat) return;
     const combatBeats = createCombatBeats(combat.events);
+    const finalStatuses =
+      combatBeats.at(-1)?.statuses ?? createEmptyCombatStatuses();
     let beatIndex = 0;
     let targetTime = 0;
     let shownTime = 0;
@@ -740,17 +789,20 @@ export default function Game() {
       finished = true;
       setBattleClock(combat.duration);
       setBattleView({
+        beatId: "finished",
         time: combat.duration,
         eventDuration: 0,
         playerHp: combat.finalPlayerHp,
         playerShield: combat.finalPlayerShield,
         enemyHp: combat.finalEnemyHp,
         enemyShield: combat.finalEnemyShield,
-        activeUid: null,
+        activeUids: [],
         event: null,
         eventLabel: null,
         eventAmount: null,
-        sourceCount: 0,
+        tier: null,
+        contributions: [],
+        statuses: finalStatuses,
       });
       setBattleEnding(combat.reason);
       navigator.vibrate?.(
@@ -787,30 +839,28 @@ export default function Game() {
         nextBeat.time <= targetTime &&
         now >= nextBeatAllowedAt
       ) {
-        const holdTime = getBeatHoldMs(
-          nextBeat,
-          combatBeats[beatIndex - 1],
-          speedRef.current,
-        );
-        const visibleDuration = Math.round(holdTime * 0.82);
+        const holdTime = getBeatHoldMs(nextBeat, speedRef.current);
+        const visibleDuration = getBeatVisibleMs(nextBeat, holdTime);
         shownTime = nextBeat.time;
         beatIndex += 1;
         beatVisible = true;
         beatHiddenAt = now + visibleDuration;
         nextBeatAllowedAt = now + holdTime;
         setBattleView({
+          beatId: nextBeat.id,
           time: nextBeat.time,
           eventDuration: visibleDuration,
           playerHp: nextBeat.snapshot.playerHp,
           playerShield: nextBeat.snapshot.playerShield,
           enemyHp: nextBeat.snapshot.enemyHp,
           enemyShield: nextBeat.snapshot.enemyShield,
-          activeUid:
-            nextBeat.sourceCount === 1 ? nextBeat.event.sourceUid : null,
+          activeUids: nextBeat.activeUids,
           event: nextBeat.event,
           eventLabel: nextBeat.label,
           eventAmount: nextBeat.amountLabel,
-          sourceCount: nextBeat.sourceCount,
+          tier: nextBeat.tier,
+          contributions: nextBeat.contributions,
+          statuses: nextBeat.statuses,
         });
       } else if (beatVisible && now >= beatHiddenAt) {
         beatVisible = false;
@@ -818,11 +868,12 @@ export default function Game() {
           current
             ? {
                 ...current,
-                activeUid: null,
+                activeUids: [],
                 event: null,
                 eventLabel: null,
                 eventAmount: null,
-                sourceCount: 0,
+                tier: null,
+                contributions: [],
               }
             : current,
         );
@@ -941,17 +992,20 @@ export default function Game() {
     setBattleClock(0);
     setBattleEnding(null);
     setBattleView({
+      beatId: "opening",
       time: 0,
       eventDuration: 0,
       playerHp: battle.playerMaxHp,
       playerShield: 0,
       enemyHp: battle.enemyMaxHp,
       enemyShield: 0,
-      activeUid: null,
+      activeUids: [],
       event: null,
       eventLabel: null,
       eventAmount: null,
-      sourceCount: 0,
+      tier: null,
+      contributions: [],
+      statuses: createEmptyCombatStatuses(),
     });
     setGame(result.state);
     announce("Der Kessel-Krawall beginnt!");
@@ -1039,15 +1093,14 @@ export default function Game() {
   const enemyHp = battleView?.enemyHp ?? enemyMaxHp;
   const enemyShield = battleView?.enemyShield ?? 0;
   const isCombatPhase = game.phase === "battle" || game.phase === "result";
-  const activeUid = battleView?.activeUid ?? null;
-  const eventSource =
-    (battleView?.sourceCount ?? 0) <= 1
-      ? findEventSource(
-          battleView?.event ?? null,
-          game.board,
-          opponent.board,
-        )
-      : null;
+  const activeUids = battleView?.activeUids ?? [];
+  const combatStatuses =
+    battleView?.statuses ?? createEmptyCombatStatuses();
+  const eventSource = findEventSource(
+    battleView?.event ?? null,
+    game.board,
+    opponent.board,
+  );
   const remainingBattleSeconds = Math.max(
     0,
     Math.ceil(((combat?.duration ?? 0) - battleClock) / 1000),
@@ -1142,12 +1195,13 @@ export default function Game() {
 
       <section className="arena" aria-label="Kampfarena">
         <BackdropImage backdrop="arena" className="arena-backdrop" />
-        {battleView?.event && (
+        {battleView?.event && battleView.tier && (
           <BattleVfx
-            key={`${battleView.event.time}-${battleView.event.sourceUid}-${battleView.event.kind}`}
+            key={battleView.beatId}
             event={battleView.event}
             source={eventSource}
             duration={battleView.eventDuration}
+            tier={battleView.tier}
           />
         )}
         <article className="combatant enemy-combatant">
@@ -1175,7 +1229,15 @@ export default function Game() {
             </div>
             {!isCombatPhase && <blockquote>„{opponent.quote}“</blockquote>}
           </div>
-          <HealthBar hp={enemyHp} maxHp={enemyMaxHp} shield={enemyShield} label={opponent.name} />
+          <HealthBar
+            hp={enemyHp}
+            maxHp={enemyMaxHp}
+            shield={enemyShield}
+            label={opponent.name}
+            status={combatStatuses.enemy}
+            battleTime={battleClock}
+            showStatuses={isCombatPhase}
+          />
           <CauldronBoard
             board={opponent.board}
             side="enemy"
@@ -1183,7 +1245,7 @@ export default function Game() {
               opponent.rank === "boss" ? "cauldron-boss" : "cauldron-enemy"
             }
             selectedSlot={null}
-            activeUid={activeUid}
+            activeUids={activeUids}
             hitKind={
               battleView?.event?.target === "enemy"
                 ? battleView.event.kind
@@ -1192,7 +1254,7 @@ export default function Game() {
             interactive={false}
             compact={!isCombatPhase}
             combatActive={game.phase === "battle"}
-            combatSpeed={speed}
+            combatTime={battleClock}
           />
         </article>
 
@@ -1213,10 +1275,35 @@ export default function Game() {
               </strong>
             </div>
           ) : battleView?.event ? (
-            <div className="combat-callout" key={`${battleView.event.time}-${battleView.event.sourceUid}`}>
-              <UiIcon asset={eventIcon(battleView.event.kind)} className="callout-icon" />
-              <strong>{battleView.eventLabel}</strong>
-              <span>{battleView.eventAmount}</span>
+            <div
+              className={`combat-callout tier-${battleView.tier ?? "standard"} ${
+                battleView.contributions.length > 1 ? "is-volley" : ""
+              }`}
+              key={battleView.beatId}
+            >
+              {battleView.contributions.length > 1 ? (
+                <>
+                  <CombatContributionStrip
+                    contributions={battleView.contributions}
+                    playerBoard={game.board}
+                    enemyBoard={opponent.board}
+                  />
+                  <span className="volley-total">{battleView.eventAmount}</span>
+                </>
+              ) : (
+                <>
+                  {eventSource ? (
+                    <ArtSprite asset={eventSource.art} className="callout-icon" />
+                  ) : (
+                    <UiIcon
+                      asset={eventIcon(battleView.event.kind)}
+                      className="callout-icon"
+                    />
+                  )}
+                  <strong>{battleView.eventLabel}</strong>
+                  <span>{battleView.eventAmount}</span>
+                </>
+              )}
             </div>
           ) : decisionCountdown ? (
             <div className="decision-countdown" role="timer">
@@ -1293,13 +1380,21 @@ export default function Game() {
               Gegner ≈ {enemyPower}
             </button>
           </div>
-          <HealthBar hp={playerHp} maxHp={100} shield={playerShield} label="Dein Kessel" />
+          <HealthBar
+            hp={playerHp}
+            maxHp={100}
+            shield={playerShield}
+            label="Dein Kessel"
+            status={combatStatuses.player}
+            battleTime={battleClock}
+            showStatuses={isCombatPhase}
+          />
           <CauldronBoard
             board={game.board}
             side="player"
             cauldronAsset="cauldron-player"
             selectedSlot={game.selectedSlot}
-            activeUid={activeUid}
+            activeUids={activeUids}
             hitKind={
               battleView?.event?.target === "player"
                 ? battleView.event.kind
@@ -1308,7 +1403,7 @@ export default function Game() {
             interactive={game.phase === "shop"}
             onSlot={handleSlot}
             combatActive={game.phase === "battle"}
-            combatSpeed={speed}
+            combatTime={battleClock}
           />
         </article>
       </section>
