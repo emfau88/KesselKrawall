@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -64,6 +65,7 @@ import type {
 } from "./types";
 
 const ROMAN_LEVEL = ["", "I", "II", "III"] as const;
+type AppScreen = "menu" | "game";
 
 interface BattleView {
   beatId: string;
@@ -80,6 +82,7 @@ interface BattleView {
   tier: CombatBeatTier | null;
   contributions: CombatContribution[];
   statuses: CombatStatusSnapshot;
+  impactLanded: boolean;
 }
 
 interface MergeNotice {
@@ -106,6 +109,20 @@ interface EventSource {
   family: Family;
   slot: number;
   side: Side;
+}
+
+interface VfxTiming {
+  chargeMs: number;
+  flightMs: number;
+  impactAtMs: number;
+  impactMs: number;
+}
+
+interface VfxGeometry {
+  width: number;
+  height: number;
+  path: string;
+  style: CSSProperties;
 }
 
 type WebkitFullscreenDocument = Document & {
@@ -597,6 +614,48 @@ function CombatContributionStrip({
   );
 }
 
+function getVfxTiming(
+  duration: number,
+  event: CombatEvent,
+): VfxTiming {
+  const total = Math.max(150, duration);
+  const travels = event.actor !== event.target && !isStatusTick(event);
+
+  if (!travels) {
+    const impactAtMs = Math.round(total * 0.24);
+    return {
+      chargeMs: impactAtMs,
+      flightMs: 0,
+      impactAtMs,
+      impactMs: total - impactAtMs,
+    };
+  }
+
+  const chargeMs = Math.round(total * 0.14);
+  const flightMs = Math.round(total * 0.58);
+  const impactAtMs = chargeMs + flightMs;
+  return {
+    chargeMs,
+    flightMs,
+    impactAtMs,
+    impactMs: Math.max(30, total - impactAtMs),
+  };
+}
+
+function quadraticPoint(
+  from: number,
+  control: number,
+  to: number,
+  progress: number,
+): number {
+  const inverse = 1 - progress;
+  return (
+    inverse * inverse * from +
+    2 * inverse * progress * control +
+    progress * progress * to
+  );
+}
+
 function BattleVfx({
   event,
   source,
@@ -608,8 +667,12 @@ function BattleVfx({
   duration: number;
   tier: CombatBeatTier;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [geometry, setGeometry] = useState<VfxGeometry | null>(null);
+  const sourceFamily = source?.family;
+  const sourceSlot = source?.slot;
   const projectile: ArtAsset =
-    event.kind === "poison"
+    event.kind === "poison" || sourceFamily === "poison"
       ? "vfx-poison"
       : event.kind === "shield" ||
           event.kind === "synergy" ||
@@ -619,17 +682,105 @@ function BattleVfx({
         : "vfx-fire";
   const isSelfEffect = event.actor === event.target;
   const statusTick = isStatusTick(event);
-  const sourceY = event.actor === "player" ? 75 : 25;
+  const timing = getVfxTiming(duration, event);
   const effectStyle = {
-    "--source-y": `${sourceY}%`,
     "--event-duration": `${Math.max(120, duration)}ms`,
-    "--impact-delay": `${Math.max(50, duration / 2)}ms`,
+    "--charge-duration": `${timing.chargeMs}ms`,
+    "--flight-duration": `${timing.flightMs}ms`,
+    "--impact-delay": `${timing.impactAtMs}ms`,
+    "--impact-duration": `${timing.impactMs}ms`,
+    ...geometry?.style,
   } as CSSProperties;
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const arena = container?.parentElement;
+    if (!container || !arena) return;
+
+    const sourceSelector = sourceSlot !== undefined
+      ? `.cauldron-board[data-side="${event.actor}"] .board-slot[data-slot="${sourceSlot}"]`
+      : `.cauldron-board[data-side="${event.actor}"] .cauldron`;
+    const sourceElement =
+      arena.querySelector<HTMLElement>(sourceSelector) ??
+      arena.querySelector<HTMLElement>(
+        `.cauldron-board[data-side="${event.actor}"] .cauldron`,
+      );
+    const targetElement = arena.querySelector<HTMLElement>(
+      `.cauldron-board[data-side="${event.target}"] .cauldron`,
+    );
+    if (!sourceElement || !targetElement) return;
+
+    const arenaRect = arena.getBoundingClientRect();
+    const sourceRect = sourceElement.getBoundingClientRect();
+    const targetRect = targetElement.getBoundingClientRect();
+    const fromX = sourceRect.left + sourceRect.width / 2 - arenaRect.left;
+    const fromY = sourceRect.top + sourceRect.height / 2 - arenaRect.top;
+    const toX = targetRect.left + targetRect.width / 2 - arenaRect.left;
+    const toY = targetRect.top + targetRect.height * 0.52 - arenaRect.top;
+    const centerX = arenaRect.width / 2;
+    const nearCenter = Math.abs(fromX - centerX) < arenaRect.width * 0.05;
+    const curveDirection = nearCenter
+      ? event.actor === "player"
+        ? 1
+        : -1
+      : fromX < centerX
+        ? -1
+        : 1;
+    const curveStrength =
+      Math.min(88, arenaRect.width * 0.075) *
+      (sourceFamily === "poison" ? 1.22 : 1);
+    const controlX = Math.max(
+      24,
+      Math.min(
+        arenaRect.width - 24,
+        (fromX + toX) / 2 + curveDirection * curveStrength,
+      ),
+    );
+    const controlY =
+      (fromY + toY) / 2 +
+      (event.actor === "player" ? -1 : 1) *
+        Math.min(34, arenaRect.height * 0.035);
+    const point = (progress: number) => ({
+      x: quadraticPoint(fromX, controlX, toX, progress),
+      y: quadraticPoint(fromY, controlY, toY, progress),
+    });
+    const point25 = point(0.25);
+    const point50 = point(0.5);
+    const point75 = point(0.75);
+    const path = `M ${fromX.toFixed(1)} ${fromY.toFixed(1)} Q ${controlX.toFixed(1)} ${controlY.toFixed(1)} ${toX.toFixed(1)} ${toY.toFixed(1)}`;
+    const style = {
+      "--from-x": `${fromX}px`,
+      "--from-y": `${fromY}px`,
+      "--point-25-x": `${point25.x}px`,
+      "--point-25-y": `${point25.y}px`,
+      "--point-50-x": `${point50.x}px`,
+      "--point-50-y": `${point50.y}px`,
+      "--point-75-x": `${point75.x}px`,
+      "--point-75-y": `${point75.y}px`,
+      "--to-x": `${toX}px`,
+      "--to-y": `${toY}px`,
+    } as CSSProperties;
+
+    setGeometry({
+      width: arenaRect.width,
+      height: arenaRect.height,
+      path,
+      style,
+    });
+  }, [
+    event.actor,
+    event.sourceUid,
+    event.target,
+    sourceFamily,
+    sourceSlot,
+  ]);
 
   return (
     <div
+      ref={containerRef}
       className={[
         "arena-vfx",
+        geometry ? "is-anchored" : "",
         `vfx-${event.kind}`,
         `from-${event.actor}`,
         `to-${event.target}`,
@@ -645,6 +796,15 @@ function BattleVfx({
       style={effectStyle}
       aria-hidden="true"
     >
+      {geometry && !isSelfEffect && !statusTick && (
+        <svg
+          className="projectile-trail"
+          viewBox={`0 0 ${geometry.width} ${geometry.height}`}
+          preserveAspectRatio="none"
+        >
+          <path d={geometry.path} pathLength="1" />
+        </svg>
+      )}
       <ArtSprite asset={projectile} className="battle-projectile" />
       <ArtSprite asset="vfx-impact" className="battle-impact" />
       {tier !== "ambient" && (
@@ -663,7 +823,10 @@ function BattleVfx({
 
 export default function Game() {
   const [game, setGame] = useState<GameState>(() => createInitialState());
+  const [screen, setScreen] = useState<AppScreen>("menu");
   const [hydrated, setHydrated] = useState(false);
+  const [hasStoredRun, setHasStoredRun] = useState(false);
+  const [confirmNewRun, setConfirmNewRun] = useState(false);
   const [feedback, setFeedback] = useState("Bereite deinen Kessel vor.");
   const [mergeNotices, setMergeNotices] = useState<MergeNotice[]>([]);
   const [busy, setBusy] = useState(false);
@@ -677,6 +840,7 @@ export default function Game() {
   const [isStandalone, setIsStandalone] = useState(false);
   const speedRef = useRef(speed);
   const shellRef = useRef<HTMLElement>(null);
+  const confirmNewRunRef = useRef<HTMLButtonElement>(null);
   const mergeNotice = mergeNotices[0] ?? null;
 
   const opponent = useMemo(() => getCurrentOpponent(game), [game]);
@@ -695,7 +859,10 @@ export default function Game() {
         const saved = window.localStorage.getItem(STORAGE_KEY);
         if (saved) {
           const parsed = sanitizeStoredState(JSON.parse(saved));
-          if (parsed) setGame(parsed);
+          if (parsed) {
+            setGame(parsed);
+            setHasStoredRun(true);
+          }
         }
       } catch {
         // A blocked or corrupted local store must never block the game.
@@ -759,13 +926,30 @@ export default function Game() {
   }, []);
 
   useEffect(() => {
-    if (!hydrated || game.phase === "battle" || game.phase === "result") return;
+    if (
+      !hydrated ||
+      screen !== "game" ||
+      game.phase === "battle" ||
+      game.phase === "result"
+    ) {
+      return;
+    }
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(game));
     } catch {
       // Device storage is optional; the active session remains playable.
     }
-  }, [game, hydrated]);
+  }, [game, hydrated, screen]);
+
+  useEffect(() => {
+    if (!confirmNewRun) return;
+    confirmNewRunRef.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setConfirmNewRun(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [confirmNewRun]);
 
   useEffect(() => {
     if (game.phase !== "battle" || !combat) return;
@@ -783,10 +967,12 @@ export default function Game() {
     let finished = false;
     let animationFrame = 0;
     let finishTimer = 0;
+    let impactTimer = 0;
 
     const finishBattle = () => {
       if (finished) return;
       finished = true;
+      window.clearTimeout(impactTimer);
       setBattleClock(combat.duration);
       setBattleView({
         beatId: "finished",
@@ -803,6 +989,7 @@ export default function Game() {
         tier: null,
         contributions: [],
         statuses: finalStatuses,
+        impactLanded: true,
       });
       setBattleEnding(combat.reason);
       navigator.vibrate?.(
@@ -846,22 +1033,40 @@ export default function Game() {
         beatVisible = true;
         beatHiddenAt = now + visibleDuration;
         nextBeatAllowedAt = now + holdTime;
-        setBattleView({
+        setBattleView((current) => ({
           beatId: nextBeat.id,
           time: nextBeat.time,
           eventDuration: visibleDuration,
-          playerHp: nextBeat.snapshot.playerHp,
-          playerShield: nextBeat.snapshot.playerShield,
-          enemyHp: nextBeat.snapshot.enemyHp,
-          enemyShield: nextBeat.snapshot.enemyShield,
+          playerHp: current?.playerHp ?? combat.playerMaxHp,
+          playerShield: current?.playerShield ?? 0,
+          enemyHp: current?.enemyHp ?? combat.enemyMaxHp,
+          enemyShield: current?.enemyShield ?? 0,
           activeUids: nextBeat.activeUids,
           event: nextBeat.event,
           eventLabel: nextBeat.label,
           eventAmount: nextBeat.amountLabel,
           tier: nextBeat.tier,
           contributions: nextBeat.contributions,
-          statuses: nextBeat.statuses,
-        });
+          statuses: current?.statuses ?? createEmptyCombatStatuses(),
+          impactLanded: false,
+        }));
+        window.clearTimeout(impactTimer);
+        const timing = getVfxTiming(visibleDuration, nextBeat.event);
+        impactTimer = window.setTimeout(() => {
+          setBattleView((current) =>
+            current?.beatId === nextBeat.id
+              ? {
+                  ...current,
+                  playerHp: nextBeat.snapshot.playerHp,
+                  playerShield: nextBeat.snapshot.playerShield,
+                  enemyHp: nextBeat.snapshot.enemyHp,
+                  enemyShield: nextBeat.snapshot.enemyShield,
+                  statuses: nextBeat.statuses,
+                  impactLanded: true,
+                }
+              : current,
+          );
+        }, timing.impactAtMs);
       } else if (beatVisible && now >= beatHiddenAt) {
         beatVisible = false;
         setBattleView((current) =>
@@ -874,6 +1079,7 @@ export default function Game() {
                 eventAmount: null,
                 tier: null,
                 contributions: [],
+                impactLanded: false,
               }
             : current,
         );
@@ -904,6 +1110,7 @@ export default function Game() {
     return () => {
       window.cancelAnimationFrame(animationFrame);
       window.clearTimeout(finishTimer);
+      window.clearTimeout(impactTimer);
     };
   }, [combat, game.phase, opponent.name]);
 
@@ -1006,6 +1213,7 @@ export default function Game() {
       tier: null,
       contributions: [],
       statuses: createEmptyCombatStatuses(),
+      impactLanded: true,
     });
     setGame(result.state);
     announce("Der Kessel-Krawall beginnt!");
@@ -1042,6 +1250,44 @@ export default function Game() {
     announce("Ein neuer Kessel betritt den Wettstreit.");
   }
 
+  function startNewRunFromMenu() {
+    handleReset();
+    setConfirmNewRun(false);
+    setHasStoredRun(true);
+    setScreen("game");
+  }
+
+  function handleNewRunRequest() {
+    if (hasStoredRun) {
+      setConfirmNewRun(true);
+      return;
+    }
+    startNewRunFromMenu();
+  }
+
+  function handleContinueRun() {
+    setConfirmNewRun(false);
+    setScreen("game");
+    announce("Willkommen zurück im Kesselturnier.");
+  }
+
+  function handleReturnToMenu() {
+    setGame((current) =>
+      current.phase === "battle" || current.phase === "result"
+        ? { ...current, phase: "shop" }
+        : current,
+    );
+    setCombat(null);
+    setBattleView(null);
+    setBattleClock(0);
+    setBattleEnding(null);
+    setMergeNotices([]);
+    setBusy(false);
+    setShowPowerHelp(false);
+    setHasStoredRun(true);
+    setScreen("menu");
+  }
+
   async function handleFullscreen() {
     const fullscreenDocument = document as WebkitFullscreenDocument;
     const fullscreenElement =
@@ -1075,13 +1321,21 @@ export default function Game() {
         return;
       }
 
-      const orientation = screen.orientation as LockableScreenOrientation;
+      const orientation = window.screen.orientation as LockableScreenOrientation;
       try {
         await orientation.lock?.("portrait");
       } catch {
         // Orientation locking is optional and not supported by every browser.
       }
       announce("Vollbild aktiv. Viel Erfolg im Kesselturnier!");
+      window.setTimeout(() => {
+        setIsFullscreen(
+          Boolean(
+            document.fullscreenElement ??
+              fullscreenDocument.webkitFullscreenElement,
+          ),
+        );
+      }, 300);
     } catch {
       announce("Vollbild konnte vom Browser nicht aktiviert werden.");
     }
@@ -1122,6 +1376,221 @@ export default function Game() {
     : isFullscreen
       ? "Vollbild verlassen"
       : "Vollbild aktivieren";
+
+  if (screen === "menu") {
+    const menuOpponent = getCurrentOpponent(game);
+    const runStateLabel =
+      game.phase === "victory"
+        ? "Turnier gewonnen"
+        : game.phase === "gameover"
+          ? "Run beendet"
+          : `Runde ${game.round} von ${MAX_ROUNDS}`;
+
+    return (
+      <main
+        className={`main-menu-shell ${fullscreenActive ? "is-fullscreen" : ""}`}
+        ref={shellRef}
+      >
+        <BackdropImage backdrop="menu" className="main-menu-backdrop" />
+        <div className="main-menu-shade" aria-hidden="true" />
+
+        <header className="main-menu-topbar">
+          <span className="menu-edition">
+            <i aria-hidden="true">✦</i>
+            MAGISCHER AUTOBATTLER
+          </span>
+          <div className="menu-top-actions">
+            {hasStoredRun && hydrated && (
+              <span className="menu-save-state" aria-label={`Gespeichert: ${runStateLabel}`}>
+                <UiIcon asset="run-seal" className="menu-save-icon" />
+                {runStateLabel}
+              </span>
+            )}
+            <button
+              type="button"
+              className="menu-fullscreen-button"
+              onClick={handleFullscreen}
+              aria-label={fullscreenLabel}
+              aria-pressed={fullscreenActive}
+              title={fullscreenLabel}
+            >
+              <span
+                className={`fullscreen-glyph ${fullscreenActive ? "is-exit" : "is-enter"}`}
+                aria-hidden="true"
+              />
+              <span>{fullscreenActive ? "Fenster" : "Vollbild"}</span>
+            </button>
+          </div>
+        </header>
+
+        <div className="main-menu-layout">
+          <section className="menu-hero" aria-labelledby="main-menu-title">
+            <div className="menu-title-lockup">
+              <span className="menu-title-kicker">DAS GROSSE KESSELTURNIER</span>
+              <h1 id="main-menu-title">
+                <span>Kessel</span>
+                <i aria-hidden="true">–</i>
+                <span>Krawall</span>
+              </h1>
+              <p>Zutaten wählen. Magie entfesseln. Den Großkessel bezwingen.</p>
+            </div>
+
+            <div className="menu-cauldron-stage" aria-hidden="true">
+              <span className="menu-magic-ring" />
+              <ArtSprite asset="item-chili" className="menu-ingredient menu-ingredient-fire" />
+              <ArtSprite asset="item-slime-shroom" className="menu-ingredient menu-ingredient-poison" />
+              <ArtSprite asset="item-egg-shell" className="menu-ingredient menu-ingredient-guard" />
+              <ArtSprite asset="cauldron-player" className="menu-cauldron" />
+              <span className="menu-stage-glow" />
+            </div>
+
+            <div className="menu-family-legend" aria-label="Baue Synergien aus Feuer, Gift und Schutz">
+              <span><UiIcon asset="family-fire" className="menu-family-icon" /> Feuer</span>
+              <span><UiIcon asset="family-poison" className="menu-family-icon" /> Gift</span>
+              <span><UiIcon asset="family-guard" className="menu-family-icon" /> Schutz</span>
+            </div>
+          </section>
+
+          <section className="menu-command-panel" aria-label="Hauptmenü">
+            <div className="menu-primary-actions">
+              {hasStoredRun && hydrated && (
+                <button
+                  type="button"
+                  className="menu-primary-button"
+                  onClick={handleContinueRun}
+                >
+                  <span>
+                    <UiIcon asset="battle" className="menu-button-icon" />
+                    RUN FORTSETZEN
+                  </span>
+                  <small>
+                    {runStateLabel}
+                    {game.phase !== "victory" && game.phase !== "gameover"
+                      ? ` · ${game.seals} Siegel · gegen ${menuOpponent.name}`
+                      : ` · ${game.victories} Siege`}
+                  </small>
+                </button>
+              )}
+              <button
+                type="button"
+                className={hasStoredRun ? "menu-secondary-button" : "menu-primary-button"}
+                onClick={handleNewRunRequest}
+                disabled={!hydrated}
+              >
+                <span>
+                  <UiIcon asset="power" className="menu-button-icon" />
+                  NEUEN RUN STARTEN
+                </span>
+                <small>
+                  {hasStoredRun
+                    ? "Ersetzt den gespeicherten Run nach Bestätigung"
+                    : hydrated
+                      ? "7 Gold · 3 Siegel · 8 Gegner"
+                      : "Spielstand wird geprüft …"}
+                </small>
+              </button>
+            </div>
+
+            <div className="menu-explainer-grid">
+              <article>
+                <span className="menu-info-icon">
+                  <UiIcon asset="battle" className="menu-card-icon" />
+                </span>
+                <div>
+                  <h2>Was ist ein Run?</h2>
+                  <p>
+                    Eine Reise durch acht Kämpfe. Du kaufst Zutaten, mergst sie
+                    und baust Synergien. Dein Kessel kämpft danach automatisch.
+                  </p>
+                </div>
+              </article>
+              <article>
+                <span className="menu-info-icon is-seal">
+                  <UiIcon asset="run-seal" className="menu-card-icon" />
+                </span>
+                <div>
+                  <h2>Siegel &amp; Niederlagen</h2>
+                  <p>
+                    Drei Siegel schützen deinen Run. Eine Niederlage bricht ein
+                    Siegel, aber du ziehst weiter. Ohne Siegel endet der Run.
+                  </p>
+                </div>
+              </article>
+            </div>
+
+            <section className="menu-coming-soon" aria-labelledby="coming-soon-title">
+              <div className="menu-section-heading">
+                <div>
+                  <span className="eyebrow">DER WETTSTREIT WÄCHST</span>
+                  <h2 id="coming-soon-title">Bald im Kesselkabinett</h2>
+                </div>
+                <span className="coming-soon-badge">DEMNÄCHST</span>
+              </div>
+              <div className="coming-soon-grid">
+                <article>
+                  <UiIcon asset="battle" className="coming-soon-icon" />
+                  <div><strong>Neue Kampagnen</strong><small>Weitere Turniere &amp; Bosse</small></div>
+                </article>
+                <article>
+                  <UiIcon asset="power" className="coming-soon-icon" />
+                  <div><strong>Freischaltbare Upgrades</strong><small>Dauerhafte Kesselkünste</small></div>
+                </article>
+                <article>
+                  <UiIcon asset="elite" className="coming-soon-icon" />
+                  <div><strong>Belohnungen</strong><small>Trophäen für starke Runs</small></div>
+                </article>
+              </div>
+            </section>
+          </section>
+        </div>
+
+        {confirmNewRun && (
+          <div
+            className="new-run-dialog-backdrop"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setConfirmNewRun(false);
+            }}
+          >
+            <section
+              className="new-run-dialog"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="new-run-dialog-title"
+              aria-describedby="new-run-dialog-description"
+            >
+              <span className="dialog-seal" aria-hidden="true">
+                <UiIcon asset="run-seal" className="dialog-seal-icon" />
+              </span>
+              <span className="eyebrow">SPIELSTAND ERSETZEN</span>
+              <h2 id="new-run-dialog-title">Wirklich einen neuen Run beginnen?</h2>
+              <p id="new-run-dialog-description">
+                Dein gespeicherter Stand ({runStateLabel}) wird durch einen
+                frischen Run mit 7 Gold und 3 Siegeln ersetzt.
+              </p>
+              <div className="dialog-actions">
+                <button
+                  type="button"
+                  className="dialog-cancel-button"
+                  onClick={() => setConfirmNewRun(false)}
+                >
+                  ABBRECHEN
+                </button>
+                <button
+                  type="button"
+                  className="dialog-confirm-button"
+                  onClick={startNewRunFromMenu}
+                  ref={confirmNewRunRef}
+                >
+                  NEUEN RUN STARTEN
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+      </main>
+    );
+  }
 
   return (
     <main
@@ -1176,6 +1645,16 @@ export default function Game() {
               </b>
             </div>
           </div>
+          <button
+            type="button"
+            className="menu-return-button"
+            onClick={handleReturnToMenu}
+            aria-label="Zum Hauptmenü"
+            title="Zum Hauptmenü"
+          >
+            <span className="menu-return-glyph" aria-hidden="true" />
+            <small>MENÜ</small>
+          </button>
           <button
             type="button"
             className="fullscreen-button"
@@ -1247,7 +1726,8 @@ export default function Game() {
             selectedSlot={null}
             activeUids={activeUids}
             hitKind={
-              battleView?.event?.target === "enemy"
+              battleView?.impactLanded &&
+              battleView.event?.target === "enemy"
                 ? battleView.event.kind
                 : null
             }
@@ -1278,7 +1758,7 @@ export default function Game() {
             <div
               className={`combat-callout tier-${battleView.tier ?? "standard"} ${
                 battleView.contributions.length > 1 ? "is-volley" : ""
-              }`}
+              } ${battleView.impactLanded ? "has-landed" : "is-pending"}`}
               key={battleView.beatId}
             >
               {battleView.contributions.length > 1 ? (
@@ -1396,7 +1876,8 @@ export default function Game() {
             selectedSlot={game.selectedSlot}
             activeUids={activeUids}
             hitKind={
-              battleView?.event?.target === "player"
+              battleView?.impactLanded &&
+              battleView.event?.target === "player"
                 ? battleView.event.kind
                 : null
             }
@@ -1556,7 +2037,11 @@ export default function Game() {
               <small><UiIcon asset="shield" className="score-icon" /> {playerShield}</small>
             </div>
           </div>
-          <div className={`battle-event-panel ${battleView?.event ? `event-${battleView.event.kind}` : ""}`}>
+          <div
+            className={`battle-event-panel ${
+              battleView?.event ? `event-${battleView.event.kind}` : ""
+            } ${battleView?.impactLanded ? "has-landed" : "is-pending"}`}
+          >
             <UiIcon
               asset={battleView?.event ? eventIcon(battleView.event.kind) : "speed"}
               className="battle-event-icon"
@@ -1570,7 +2055,9 @@ export default function Game() {
             </span>
             <strong>
               {battleView?.event
-                ? battleView.eventAmount
+                ? battleView.impactLanded
+                  ? battleView.eventAmount
+                  : "im Anflug …"
                 : "…"}
             </strong>
           </div>

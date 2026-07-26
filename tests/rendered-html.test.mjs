@@ -22,17 +22,19 @@ async function render() {
   );
 }
 
-test("server-renders the Kessel-Krawall game shell", async () => {
+test("server-renders the Kessel-Krawall main menu before the game", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
   assert.match(html, /<title>Kessel-Krawall<\/title>/i);
-  assert.match(html, /KESSEL/);
-  assert.match(html, /KRAWALL/);
-  assert.match(html, /HEXENMARKT/);
-  assert.match(html, /KAMPF STARTEN/);
-  assert.match(html, /Neu würfeln/);
+  assert.match(html, /Kessel/);
+  assert.match(html, /Krawall/);
+  assert.match(html, /NEUEN RUN STARTEN/);
+  assert.match(html, /Was ist ein Run/);
+  assert.match(html, /Siegel &amp; Niederlagen/);
+  assert.match(html, /DEMNÄCHST/);
+  assert.doesNotMatch(html, /HEXENMARKT|KAMPF STARTEN/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
