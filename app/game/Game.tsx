@@ -11,7 +11,9 @@ import {
   getCurrentOpponent,
   getFamilyWeights,
   getPowerValue,
+  getRoundReward,
   getSellValue,
+  MAX_ROUNDS,
   rerollShop,
   resetRun,
   sanitizeStoredState,
@@ -381,7 +383,7 @@ export default function Game() {
     if (busy) return;
     const result = beginBattle(game);
     if (result.error) return announce(result.error);
-    const battle = simulateBattle(game.board, opponent, game.round);
+    const battle = simulateBattle(game.board, opponent);
     setCombat(battle);
     setBattleView({
       playerHp: battle.playerMaxHp,
@@ -401,7 +403,15 @@ export default function Game() {
     setGame((current) => advanceAfterBattle(current, won));
     setCombat(null);
     setBattleView(null);
-    announce(won ? "Siegbonus erhalten. Nächster Gegner!" : "Ein Siegel ist gebrochen.");
+    if (game.round >= MAX_ROUNDS) {
+      announce(
+        won
+          ? "Der Großkessel fällt. Du gewinnst das Kesselturnier!"
+          : "Der Großkessel verteidigt seinen Titel.",
+      );
+    } else {
+      announce(won ? "Siegbonus erhalten. Nächster Gegner!" : "Ein Siegel ist gebrochen.");
+    }
   }
 
   function handleReset() {
@@ -415,23 +425,41 @@ export default function Game() {
 
   const playerHp = battleView?.playerHp ?? 100;
   const playerShield = battleView?.playerShield ?? 0;
-  const enemyMaxHp = combat?.enemyMaxHp ?? opponent.baseHp + Math.max(0, game.round - 1) * 4;
+  const enemyMaxHp = combat?.enemyMaxHp ?? opponent.baseHp;
   const enemyHp = battleView?.enemyHp ?? enemyMaxHp;
   const enemyShield = battleView?.enemyShield ?? 0;
   const isCombatPhase = game.phase === "battle" || game.phase === "result";
   const activeUid = battleView?.activeUid ?? null;
 
   return (
-    <main className={`game-shell phase-${game.phase}`}>
+    <main className={`game-shell phase-${game.phase} rank-${opponent.rank}`}>
       <header className="game-header">
         <div className="brand-lockup" aria-label="Kessel-Krawall">
           <span className="brand-kicker">MAGISCHER AUTOBATTLER</span>
           <strong>KESSEL <i>•</i> KRAWALL</strong>
+          <span
+            className="round-pips"
+            aria-label={`Kampagnenfortschritt: Runde ${game.round} von ${MAX_ROUNDS}`}
+          >
+            {Array.from({ length: MAX_ROUNDS }, (_, index) => (
+              <i
+                className={
+                  index + 1 < game.round
+                    ? "is-cleared"
+                    : index + 1 === game.round
+                      ? "is-current"
+                      : ""
+                }
+                key={index}
+                aria-hidden="true"
+              />
+            ))}
+          </span>
         </div>
         <div className="run-status">
           <div>
             <small>RUNDE</small>
-            <b>{game.round}</b>
+            <b>{game.round}/{MAX_ROUNDS}</b>
           </div>
           <div className="gold-status">
             <small>GOLD</small>
@@ -459,7 +487,14 @@ export default function Game() {
           <div className="opponent-copy">
             <span className="opponent-emblem" aria-hidden="true">{opponent.icon}</span>
             <div>
-              <span className="eyebrow">{opponent.title}</span>
+              <span className="eyebrow">
+                {opponent.rank === "boss"
+                  ? "BOSS · "
+                  : opponent.rank === "elite"
+                    ? "ELITE · "
+                    : ""}
+                {opponent.title}
+              </span>
               <h2>{opponent.name}</h2>
               <p>{opponent.threat}</p>
             </div>
@@ -481,7 +516,13 @@ export default function Game() {
             <div className="combat-callout" key={`${battleView.event.time}-${battleView.event.sourceUid}`}>
               <strong>{battleView.event.label}</strong>
               <span>
-                {battleView.event.kind === "heal" ? "+" : battleView.event.kind === "shield" ? "◆ " : "−"}
+                {battleView.event.kind === "heal"
+                  ? "+"
+                  : battleView.event.kind === "shield"
+                    ? "◆ "
+                    : battleView.event.kind === "boss"
+                      ? "▲ "
+                      : "−"}
                 {battleView.event.amount}
               </span>
             </div>
@@ -584,7 +625,7 @@ export default function Game() {
               disabled={busy || !game.board.some(Boolean)}
             >
               <span>KAMPF STARTEN</span>
-              <b>Gegen {opponent.name}</b>
+              <b>{opponent.rank === "boss" ? "BOSS: " : "Gegen "}{opponent.name}</b>
             </button>
           </div>
         </section>
@@ -619,14 +660,26 @@ export default function Game() {
             <h2>{combat.winner === "player" ? "Kessel-Sieg!" : "Siegelbruch"}</h2>
             <p>
               {combat.winner === "player"
-                ? `+${6 + Math.floor(game.round / 2)} Gold in der nächsten Runde`
-                : `${opponent.name} war diesmal stärker. Der Run geht weiter.`}
+                ? game.round >= MAX_ROUNDS
+                  ? "Der Titel des Kesselturniers gehört dir."
+                  : `+${getRoundReward(game, true)} Gold in der nächsten Runde`
+                : game.round >= MAX_ROUNDS
+                  ? `${opponent.name} verteidigt den Turniertitel.`
+                  : `${opponent.name} war diesmal stärker. Der Run geht weiter.`}
             </p>
           </div>
           <StatsList stats={combat.playerStats} />
           <button type="button" className="continue-button" onClick={handleContinue}>
-            {combat.winner === "player" ? "BELOHNUNG NEHMEN" : "WEITERKÄMPFEN"}
-            <span>Runde {game.round + 1} vorbereiten →</span>
+            {game.round >= MAX_ROUNDS
+              ? "TURNIER ABSCHLIESSEN"
+              : combat.winner === "player"
+                ? "BELOHNUNG NEHMEN"
+                : "WEITERKÄMPFEN"}
+            <span>
+              {game.round >= MAX_ROUNDS
+                ? "Ergebnis des Runs ansehen →"
+                : `Runde ${game.round + 1} vorbereiten →`}
+            </span>
           </button>
         </section>
       )}
@@ -634,12 +687,37 @@ export default function Game() {
       {game.phase === "gameover" && (
         <section className="gameover-sheet">
           <span className="gameover-icon" aria-hidden="true">◇</span>
-          <span className="eyebrow">DER KESSEL IST ERKALTET</span>
-          <h2>Der Run endet in Runde {game.round}.</h2>
-          <p>Deine Zutaten warten schon auf den nächsten Versuch.</p>
+          <span className="eyebrow">
+            {game.round >= MAX_ROUNDS ? "DER BOSS BLEIBT STEHEN" : "DER KESSEL IST ERKALTET"}
+          </span>
+          <h2>
+            {game.round >= MAX_ROUNDS
+              ? "Der Großkessel verteidigt seinen Titel."
+              : `Der Run endet in Runde ${game.round}.`}
+          </h2>
+          <p>
+            {game.victories} Siege · Macht {playerPower}. Deine Zutaten warten
+            schon auf den nächsten Versuch.
+          </p>
           <button type="button" className="continue-button" onClick={handleReset}>
             NEUEN RUN STARTEN
             <span>7 Gold · 3 Siegel · frischer Shop</span>
+          </button>
+        </section>
+      )}
+
+      {game.phase === "victory" && (
+        <section className="gameover-sheet victory-sheet">
+          <span className="gameover-icon" aria-hidden="true">♛</span>
+          <span className="eyebrow">KESSELMEISTER!</span>
+          <h2>Du gewinnst den großen Kessel-Wettstreit.</h2>
+          <p>
+            {game.victories} Siege · {game.seals} Siegel übrig · finale Macht{" "}
+            {playerPower}
+          </p>
+          <button type="button" className="continue-button" onClick={handleReset}>
+            NOCH EINEN RUN STARTEN
+            <span>Neue Angebote · neue Buildrichtung</span>
           </button>
         </section>
       )}

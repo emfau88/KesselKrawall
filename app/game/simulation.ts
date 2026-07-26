@@ -33,6 +33,7 @@ interface Combatant {
   burn: Map<string, number>;
   stats: Map<string, ItemCombatStats>;
   runtimes: RuntimeItem[];
+  powerMultiplier: number;
 }
 
 interface World {
@@ -40,6 +41,8 @@ interface World {
   player: Combatant;
   enemy: Combatant;
   events: CombatEvent[];
+  bossRuleTriggered: boolean;
+  bossRule: OpponentDefinition["bossRule"];
 }
 
 function roundAmount(value: number): number {
@@ -248,6 +251,7 @@ function createCombatant(
     burn: new Map(),
     stats,
     runtimes,
+    powerMultiplier: 1,
   };
 }
 
@@ -330,8 +334,9 @@ function activateItem(
   const placementPower = familyPowerMultiplier(actor, slot, definition);
   const directMultiplier = directDamageMultiplier(actor) * placementPower;
   const defensiveMultiplier = guardMultiplier(actor) * placementPower;
-  let primary = definition.values[index];
-  const secondary = definition.secondaryValues?.[index] ?? 0;
+  let primary = definition.values[index] * actor.powerMultiplier;
+  const secondary =
+    (definition.secondaryValues?.[index] ?? 0) * actor.powerMultiplier;
 
   if (definition.scalesWithFamily) {
     const weight = getFamilyWeights(actor.board)[definition.scalesWithFamily];
@@ -508,14 +513,15 @@ function finalWinner(world: World): Side {
 export function simulateBattle(
   playerBoard: Board,
   opponent: OpponentDefinition,
-  round = 1,
 ): CombatResult {
-  const enemyMaxHp = opponent.baseHp + Math.max(0, round - 1) * 4;
+  const enemyMaxHp = opponent.baseHp;
   const world: World = {
     time: 0,
     player: createCombatant("player", playerBoard, PLAYER_MAX_HP),
     enemy: createCombatant("enemy", opponent.board, enemyMaxHp),
     events: [],
+    bossRuleTriggered: false,
+    bossRule: opponent.bossRule,
   };
   addStartingSynergyShield(world, world.player);
   addStartingSynergyShield(world, world.enemy);
@@ -537,6 +543,25 @@ export function simulateBattle(
       if (enemyAliveAtStart) {
         tickStatus(world, world.enemy, world.enemy.poison, "poison");
       }
+    }
+
+    if (
+      world.bossRule === "rageAtHalf" &&
+      !world.bossRuleTriggered &&
+      world.enemy.hp > 0 &&
+      world.enemy.hp <= world.enemy.maxHp / 2
+    ) {
+      world.bossRuleTriggered = true;
+      world.enemy.powerMultiplier = 1.25;
+      pushEvent(
+        world,
+        "boss",
+        "enemy",
+        "enemy",
+        "boss-kesselzorn",
+        "Kesselzorn entfacht",
+        25,
+      );
     }
 
     const actions: Array<{ actor: Combatant; target: Combatant; item: RuntimeItem }> = [];

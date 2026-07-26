@@ -1,4 +1,4 @@
-import { CORE_OPPONENTS, ITEM_BY_ID, ITEMS } from "./data";
+import { CAMPAIGN_OPPONENTS, ITEM_BY_ID, ITEMS } from "./data";
 import type {
   Board,
   Family,
@@ -11,7 +11,8 @@ import type {
 
 export const BOARD_SIZE = 5;
 export const SYNERGY_THRESHOLD = 3;
-export const STORAGE_KEY = "kessel-krawall-run-v1";
+export const MAX_ROUNDS = CAMPAIGN_OPPONENTS.length;
+export const STORAGE_KEY = "kessel-krawall-run-v2";
 
 export interface ActionResult {
   state: GameState;
@@ -99,11 +100,12 @@ function rollOffers(
 
 export function createInitialState(seed = 0x4b4b2026): GameState {
   const base: GameState = {
-    version: 1,
+    version: 2,
     phase: "shop",
     round: 1,
     gold: 7,
     seals: 3,
+    victories: 0,
     board: Array.from({ length: BOARD_SIZE }, () => null),
     offers: [],
     rerollsUsed: 0,
@@ -321,15 +323,27 @@ export function advanceAfterBattle(
   playerWon: boolean,
 ): GameState {
   const seals = playerWon ? state.seals : state.seals - 1;
-  if (seals <= 0) return { ...state, seals: 0, phase: "gameover" };
+  const victories = state.victories + (playerWon ? 1 : 0);
+  if (state.round >= MAX_ROUNDS) {
+    return {
+      ...state,
+      seals: Math.max(0, seals),
+      victories,
+      phase: playerWon ? "victory" : "gameover",
+    };
+  }
+  if (seals <= 0) {
+    return { ...state, seals: 0, victories, phase: "gameover" };
+  }
 
   const nextRound = state.round + 1;
-  const income = 5 + Math.floor(state.round / 2) + (playerWon ? 1 : 0);
+  const income = getRoundReward(state, playerWon);
   const base: GameState = {
     ...state,
     phase: "shop",
     round: nextRound,
     seals,
+    victories,
     gold: state.gold + income,
     rerollsUsed: 0,
     selectedSlot: null,
@@ -343,14 +357,29 @@ export function resetRun(seed = Date.now() >>> 0): GameState {
 }
 
 export function getCurrentOpponent(state: GameState) {
-  return CORE_OPPONENTS[(state.round - 1) % CORE_OPPONENTS.length];
+  return CAMPAIGN_OPPONENTS[
+    Math.min(Math.max(0, state.round - 1), CAMPAIGN_OPPONENTS.length - 1)
+  ];
+}
+
+export function getRoundReward(
+  state: GameState,
+  playerWon: boolean,
+): number {
+  const opponent = getCurrentOpponent(state);
+  return (
+    5 +
+    Math.floor(state.round / 2) +
+    (playerWon ? 1 : 0) +
+    (playerWon ? (opponent.rewardBonus ?? 0) : 0)
+  );
 }
 
 export function sanitizeStoredState(value: unknown): GameState | null {
   if (!value || typeof value !== "object") return null;
   const candidate = value as Partial<GameState>;
   if (
-    candidate.version !== 1 ||
+    candidate.version !== 2 ||
     !Array.isArray(candidate.board) ||
     candidate.board.length !== BOARD_SIZE ||
     !Array.isArray(candidate.offers) ||
@@ -366,6 +395,8 @@ export function sanitizeStoredState(value: unknown): GameState | null {
       : (candidate.phase ?? "shop");
   return {
     ...(candidate as GameState),
+    victories:
+      typeof candidate.victories === "number" ? candidate.victories : 0,
     phase: safePhase,
     selectedSlot: null,
   };

@@ -1,6 +1,6 @@
 # Kessel-Krawall – verbindliche Kernspezifikation
 
-Stand: Phase 1–3 des vollständigen Neubaus.
+Stand: Phase 1–4 des vollständigen Neubaus.
 
 ## Produktziel
 
@@ -26,9 +26,23 @@ Online-Systeme.
   funktional
 - keine Meta-Progression, vierte Familie oder Online-Funktion
 
-Die aktuelle Phase 1–3 implementiert die vollständigen Kernregeln und einen
-spielbaren, wiederholbaren Testlauf mit drei Gegnerarchetypen. Die finale
-Acht-Runden-Dramaturgie gehört zu Phase 4.
+Die Phasen 1–4 implementieren die vollständigen Kernregeln und eine
+abgeschlossene Acht-Runden-Kampagne.
+
+## Kampagnendramaturgie
+
+1. **Zischbert:** verständlicher Feuerstart ohne Schutz
+2. **Moor-Martha:** erster sichtbarer Giftaufbau
+3. **Schild-Siggi:** Schutz und niedriger Gegenschaden
+4. **Knister-Klara:** erste familienübergreifende Kombination
+5. **Tox-Toni:** aktive Gift-Synergie
+6. **Brösel-Berta:** Schutz-Synergie mit Feuerdruck
+7. **Meisterin Mirea:** Elite-Feuerbuild und zwei Bonusgold
+8. **Der Großkessel:** Boss mit Kesselzorn
+
+Der Großkessel verstärkt unter 50 % Lebensenergie alle eigenen Wirkungen um
+25 %. Dies ist seine einzige exklusive Regel und wird im Kampf sichtbar
+angekündigt.
 
 ## Economy
 
@@ -109,7 +123,7 @@ damit ein schlechter Zufallsstart den Run nicht entscheidet.
 - funktional ab 320 CSS-Pixel Breite
 - `100dvh`, Safe Areas und reduzierte Bewegung werden berücksichtigt
 
-## Abnahme Phase 1–3
+## Abnahme Phase 1–4
 
 - Shop kaufen, verkaufen und neu würfeln
 - fünf Slots per Tap umsortieren
@@ -120,5 +134,8 @@ damit ein schlechter Zufallsstart den Run nicht entscheidet.
 - deterministische Kampfauflösung mit Schaden, Gift, Brand, Heilung und Schild
 - Kampfstatistik pro Spieleritem
 - Ergebnis-, Weiter- und Neustartzustand
+- sieben individuelle Gegner und ein finaler Boss
+- Elite-Belohnung und sichtbare Bossregel
+- Kampagnenfortschritt, Run-Sieg und endgültige Niederlage
 - Runzustand wird lokal gespeichert
 - Produktions-Build und automatisierte Kernregeltests laufen fehlerfrei

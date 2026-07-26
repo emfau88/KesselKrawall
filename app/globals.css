@@ -113,6 +113,30 @@ button:focus-visible {
   text-shadow: 0 2px 16px rgba(245, 197, 91, 0.16);
 }
 
+.round-pips {
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.round-pips i {
+  width: 10px;
+  height: 3px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.round-pips i.is-cleared {
+  background: #8b5aad;
+}
+
+.round-pips i.is-current {
+  width: 15px;
+  background: var(--gold);
+  box-shadow: 0 0 7px rgba(245, 197, 91, 0.55);
+}
+
 .brand-lockup i {
   color: var(--gold);
   font-style: normal;
@@ -204,6 +228,16 @@ button:focus-visible {
   font-family: Georgia, "Times New Roman", serif;
   font-size: 18px;
   line-height: 1;
+}
+
+.rank-elite .opponent-emblem,
+.rank-boss .opponent-emblem {
+  border-color: rgba(245, 197, 91, 0.7);
+  box-shadow: 0 0 19px rgba(245, 197, 91, 0.26);
+}
+
+.rank-boss .opponent-copy .eyebrow {
+  color: #ff8f63;
 }
 
 .opponent-copy p {
@@ -637,6 +671,16 @@ button.board-slot[data-slot="2"]:active {
 
 .event-burn .combat-callout span {
   color: var(--fire);
+}
+
+.event-boss .combat-callout {
+  border-color: rgba(255, 117, 69, 0.66);
+  background: rgba(76, 24, 18, 0.95);
+  box-shadow: 0 0 24px rgba(255, 117, 69, 0.34);
+}
+
+.event-boss .combat-callout span {
+  color: #ffb064;
 }
 
 .shop-sheet,
@@ -1156,6 +1200,17 @@ button.board-slot[data-slot="2"]:active {
   font-size: 10px;
 }
 
+.victory-sheet {
+  background:
+    radial-gradient(circle at 50% 0, rgba(245, 197, 91, 0.2), transparent 52%),
+    linear-gradient(180deg, rgba(51, 34, 49, 0.99), rgba(24, 17, 31, 0.99));
+}
+
+.victory-sheet .gameover-icon,
+.victory-sheet h2 {
+  color: var(--gold);
+}
+
 .merge-overlay {
   position: absolute;
   z-index: 100;
@@ -1350,6 +1405,18 @@ button.board-slot[data-slot="2"]:active {
 
   .brand-kicker {
     display: none;
+  }
+
+  .round-pips {
+    margin-top: 4px;
+  }
+
+  .round-pips i {
+    width: 8px;
+  }
+
+  .round-pips i.is-current {
+    width: 12px;
   }
 
   .brand-lockup {

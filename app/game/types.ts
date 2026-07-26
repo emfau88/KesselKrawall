@@ -1,7 +1,14 @@
 export type Family = "fire" | "poison" | "guard";
 export type ItemLevel = 1 | 2 | 3;
-export type GamePhase = "shop" | "battle" | "result" | "gameover";
+export type GamePhase =
+  | "shop"
+  | "battle"
+  | "result"
+  | "victory"
+  | "gameover";
 export type Side = "player" | "enemy";
+export type OpponentRank = "regular" | "elite" | "boss";
+export type BossRule = "rageAtHalf";
 
 export type EffectType =
   | "damage"
@@ -61,8 +68,11 @@ export interface OpponentDefinition {
   icon: string;
   quote: string;
   threat: string;
+  rank: OpponentRank;
   baseHp: number;
   board: Board;
+  rewardBonus?: number;
+  bossRule?: BossRule;
 }
 
 export interface MergeStep {
@@ -73,11 +83,12 @@ export interface MergeStep {
 }
 
 export interface GameState {
-  version: 1;
+  version: 2;
   phase: GamePhase;
   round: number;
   gold: number;
   seals: number;
+  victories: number;
   board: Board;
   offers: ShopOffer[];
   rerollsUsed: number;
@@ -104,7 +115,8 @@ export type CombatEventKind =
   | "heal"
   | "shield"
   | "cleanse"
-  | "synergy";
+  | "synergy"
+  | "boss";
 
 export interface CombatEvent {
   time: number;

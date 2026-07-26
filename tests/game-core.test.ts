@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { CORE_OPPONENTS, ITEM_BY_ID } from "../app/game/data";
+import { CAMPAIGN_OPPONENTS, ITEM_BY_ID } from "../app/game/data";
 import { simulateBattle } from "../app/game/simulation";
 import {
   advanceAfterBattle,
@@ -81,8 +81,8 @@ test("battle simulation is deterministic and produces item statistics", () => {
     null,
     null,
   ];
-  const first = simulateBattle(board, CORE_OPPONENTS[0], 2);
-  const second = simulateBattle(board, CORE_OPPONENTS[0], 2);
+  const first = simulateBattle(board, CAMPAIGN_OPPONENTS[0]);
+  const second = simulateBattle(board, CAMPAIGN_OPPONENTS[0]);
   assert.deepEqual(first, second);
   assert.ok(first.events.length > 0);
   assert.ok(first.duration <= 25_000);
@@ -95,4 +95,56 @@ test("a defeat consumes one run seal but advances the round", () => {
   assert.equal(next.seals, 2);
   assert.equal(next.round, 2);
   assert.equal(next.phase, "shop");
+});
+
+test("campaign contains seven opponents and one final boss", () => {
+  assert.equal(CAMPAIGN_OPPONENTS.length, 8);
+  assert.equal(
+    CAMPAIGN_OPPONENTS.filter((opponent) => opponent.rank === "elite").length,
+    1,
+  );
+  assert.equal(CAMPAIGN_OPPONENTS[7].rank, "boss");
+  assert.equal(CAMPAIGN_OPPONENTS[7].bossRule, "rageAtHalf");
+});
+
+test("winning the eighth fight completes the campaign", () => {
+  const state = {
+    ...createInitialState(43),
+    round: 8,
+    victories: 7,
+  };
+  const completed = advanceAfterBattle(state, true);
+  assert.equal(completed.phase, "victory");
+  assert.equal(completed.victories, 8);
+  assert.equal(completed.round, 8);
+});
+
+test("losing to the boss ends the run even with seals remaining", () => {
+  const state = {
+    ...createInitialState(44),
+    round: 8,
+    seals: 3,
+    victories: 6,
+  };
+  const completed = advanceAfterBattle(state, false);
+  assert.equal(completed.phase, "gameover");
+  assert.equal(completed.seals, 2);
+  assert.equal(completed.round, 8);
+});
+
+test("the boss visibly triggers Kesselzorn below half health", () => {
+  const board = [
+    item("f1", "chili", 3),
+    item("f2", "dragon-tooth", 3),
+    item("f3", "ember-core", 3),
+    item("p1", "nightwing", 3),
+    item("g1", "moon-salt", 3),
+  ];
+  const battle = simulateBattle(board, CAMPAIGN_OPPONENTS[7]);
+  assert.ok(
+    battle.events.some(
+      (event) =>
+        event.kind === "boss" && event.label === "Kesselzorn entfacht",
+    ),
+  );
 });
