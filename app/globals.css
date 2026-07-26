@@ -2026,7 +2026,23 @@ button.board-slot[data-slot="2"]:active {
   }
 
   .shop-card {
-    min-height: 119px;
+    min-height: 112px;
+    padding: 4px 4px 26px;
+  }
+
+  .offer-icon {
+    width: 42px;
+    height: 42px;
+    margin: 0;
+  }
+
+  .shop-card > small {
+    margin-top: 1px;
+    -webkit-line-clamp: 1;
+  }
+
+  .offer-price {
+    min-height: 21px;
   }
 
   .shop-sheet {
