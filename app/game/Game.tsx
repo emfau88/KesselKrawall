@@ -20,8 +20,7 @@ import {
 import {
   createCombatBeats,
   createEmptyCombatStatuses,
-  getBeatHoldMs,
-  getBeatVisibleMs,
+  getCombatBeatTiming,
   isStatusTick,
   type CombatBeatTier,
   type CombatContribution,
@@ -71,6 +70,7 @@ interface BattleView {
   beatId: string;
   time: number;
   eventDuration: number;
+  shotStaggerMs: number;
   playerHp: number;
   playerShield: number;
   enemyHp: number;
@@ -81,6 +81,10 @@ interface BattleView {
   eventAmount: string | null;
   tier: CombatBeatTier | null;
   contributions: CombatContribution[];
+  focusedContributionId: string | null;
+  landedContributionIds: string[];
+  impactEvent: CombatEvent | null;
+  impactContributionId: string | null;
   statuses: CombatStatusSnapshot;
   impactLanded: boolean;
 }
@@ -109,6 +113,7 @@ interface EventSource {
   family: Family;
   slot: number;
   side: Side;
+  cooldownMs: number;
 }
 
 interface VfxTiming {
@@ -213,7 +218,12 @@ function findEventSource(
     family: definition.family,
     slot,
     side: event.actor,
+    cooldownMs: getItemCooldownMs(board, slot),
   };
+}
+
+function formatCooldown(milliseconds: number): string {
+  return `${(milliseconds / 1_000).toFixed(1).replace(".", ",")} s`;
 }
 
 function formatEffectDuration(milliseconds: number): string {
@@ -572,10 +582,14 @@ function CombatContributionStrip({
   contributions,
   playerBoard,
   enemyBoard,
+  focusedContributionId,
+  landedContributionIds,
 }: {
   contributions: CombatContribution[];
   playerBoard: Board;
   enemyBoard: Board;
+  focusedContributionId: string | null;
+  landedContributionIds: string[];
 }) {
   return (
     <span className="contribution-strip" aria-label="Beiträge dieses Angriffs">
@@ -585,13 +599,21 @@ function CombatContributionStrip({
           playerBoard,
           enemyBoard,
         );
+        const landed = landedContributionIds.includes(contribution.id);
+        const focused = focusedContributionId === contribution.id;
         const accessibleLabel =
-          `${source?.name ?? contribution.label}: ${contribution.amountLabel}`;
+          `${source?.name ?? contribution.label}: ${contribution.amountLabel}` +
+          `${source ? `, Angriff alle ${formatCooldown(source.cooldownMs)}` : ""}`;
 
         return (
           <span
-            className={`contribution-chip from-${contribution.actor}`}
-            key={`${contribution.actor}:${contribution.sourceUid}`}
+            className={[
+              "contribution-chip",
+              `from-${contribution.actor}`,
+              landed ? "is-landed" : "is-pending",
+              focused ? "is-focused" : "",
+            ].join(" ")}
+            key={contribution.id}
             title={accessibleLabel}
             aria-label={accessibleLabel}
           >
@@ -604,7 +626,10 @@ function CombatContributionStrip({
               />
             )}
             <span>
-              <small>{source?.name ?? contribution.label}</small>
+              <small>
+                {source?.name ?? contribution.label}
+                {source ? ` · ${formatCooldown(source.cooldownMs)}` : ""}
+              </small>
               <b>{contribution.amountLabel}</b>
             </span>
           </span>
@@ -622,7 +647,7 @@ function getVfxTiming(
   const travels = event.actor !== event.target && !isStatusTick(event);
 
   if (!travels) {
-    const impactAtMs = Math.round(total * 0.24);
+    const impactAtMs = Math.round(total * 0.28);
     return {
       chargeMs: impactAtMs,
       flightMs: 0,
@@ -631,8 +656,8 @@ function getVfxTiming(
     };
   }
 
-  const chargeMs = Math.round(total * 0.14);
-  const flightMs = Math.round(total * 0.58);
+  const chargeMs = Math.round(total * 0.22);
+  const flightMs = Math.round(total * 0.5);
   const impactAtMs = chargeMs + flightMs;
   return {
     chargeMs,
@@ -656,39 +681,81 @@ function quadraticPoint(
   );
 }
 
+function quadraticAngle(
+  fromX: number,
+  fromY: number,
+  controlX: number,
+  controlY: number,
+  toX: number,
+  toY: number,
+  progress: number,
+): number {
+  const inverse = 1 - progress;
+  const tangentX =
+    2 * inverse * (controlX - fromX) +
+    2 * progress * (toX - controlX);
+  const tangentY =
+    2 * inverse * (controlY - fromY) +
+    2 * progress * (toY - controlY);
+  return Math.atan2(tangentY, tangentX) * (180 / Math.PI);
+}
+
 function BattleVfx({
   event,
   source,
   duration,
   tier,
+  delayMs,
+  layerIndex,
 }: {
   event: CombatEvent;
   source: EventSource | null;
   duration: number;
   tier: CombatBeatTier;
+  delayMs: number;
+  layerIndex: number;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [geometry, setGeometry] = useState<VfxGeometry | null>(null);
   const sourceFamily = source?.family;
   const sourceSlot = source?.slot;
-  const projectile: ArtAsset =
-    event.kind === "poison" || sourceFamily === "poison"
-      ? "vfx-poison"
-      : event.kind === "shield" ||
-          event.kind === "synergy" ||
-          event.kind === "cleanse" ||
-          event.kind === "heal"
-        ? "vfx-shield"
-        : "vfx-fire";
   const isSelfEffect = event.actor === event.target;
   const statusTick = isStatusTick(event);
+  const poisonEffect = event.kind === "poison" || sourceFamily === "poison";
+  const defensiveEffect =
+    event.kind === "shield" ||
+    event.kind === "synergy" ||
+    event.kind === "cleanse" ||
+    event.kind === "heal";
+  const projectile: ArtAsset = statusTick
+    ? poisonEffect
+      ? "vfx-poison"
+      : "vfx-fire"
+    : isSelfEffect || defensiveEffect
+      ? "vfx-ward-bloom"
+      : poisonEffect
+        ? "vfx-poison-projectile"
+        : sourceFamily === "guard"
+          ? "vfx-shield"
+          : "vfx-fire-projectile";
+  const projectileClass = statusTick
+    ? "projectile-status"
+    : isSelfEffect || defensiveEffect
+      ? "projectile-ward"
+      : poisonEffect
+        ? "projectile-poison"
+        : sourceFamily === "guard"
+          ? "projectile-guard"
+          : "projectile-fire";
   const timing = getVfxTiming(duration, event);
   const effectStyle = {
     "--event-duration": `${Math.max(120, duration)}ms`,
+    "--shot-delay": `${delayMs}ms`,
     "--charge-duration": `${timing.chargeMs}ms`,
     "--flight-duration": `${timing.flightMs}ms`,
-    "--impact-delay": `${timing.impactAtMs}ms`,
+    "--impact-delay": `${delayMs + timing.impactAtMs}ms`,
     "--impact-duration": `${timing.impactMs}ms`,
+    zIndex: 7 + layerIndex,
     ...geometry?.style,
   } as CSSProperties;
 
@@ -747,6 +814,16 @@ function BattleVfx({
     const point25 = point(0.25);
     const point50 = point(0.5);
     const point75 = point(0.75);
+    const angle = (progress: number) =>
+      quadraticAngle(
+        fromX,
+        fromY,
+        controlX,
+        controlY,
+        toX,
+        toY,
+        progress,
+      );
     const path = `M ${fromX.toFixed(1)} ${fromY.toFixed(1)} Q ${controlX.toFixed(1)} ${controlY.toFixed(1)} ${toX.toFixed(1)} ${toY.toFixed(1)}`;
     const style = {
       "--from-x": `${fromX}px`,
@@ -759,6 +836,11 @@ function BattleVfx({
       "--point-75-y": `${point75.y}px`,
       "--to-x": `${toX}px`,
       "--to-y": `${toY}px`,
+      "--angle-0": `${angle(0)}deg`,
+      "--angle-25": `${angle(0.25)}deg`,
+      "--angle-50": `${angle(0.5)}deg`,
+      "--angle-75": `${angle(0.75)}deg`,
+      "--angle-100": `${angle(1)}deg`,
     } as CSSProperties;
 
     setGeometry({
@@ -805,7 +887,10 @@ function BattleVfx({
           <path d={geometry.path} pathLength="1" />
         </svg>
       )}
-      <ArtSprite asset={projectile} className="battle-projectile" />
+      <ArtSprite
+        asset={projectile}
+        className={`battle-projectile ${projectileClass}`}
+      />
       <ArtSprite asset="vfx-impact" className="battle-impact" />
       {tier !== "ambient" && (
         <span className="vfx-particle particle-one" />
@@ -819,6 +904,38 @@ function BattleVfx({
       )}
     </div>
   );
+}
+
+function BattleVolleyVfx({
+  contributions,
+  playerBoard,
+  enemyBoard,
+  shotDurationMs,
+  shotStaggerMs,
+  tier,
+}: {
+  contributions: CombatContribution[];
+  playerBoard: Board;
+  enemyBoard: Board;
+  shotDurationMs: number;
+  shotStaggerMs: number;
+  tier: CombatBeatTier;
+}) {
+  return contributions.map((contribution, index) => (
+    <BattleVfx
+      key={contribution.id}
+      event={contribution.event}
+      source={findEventSource(
+        contribution.event,
+        playerBoard,
+        enemyBoard,
+      )}
+      duration={shotDurationMs}
+      tier={tier}
+      delayMs={index * shotStaggerMs}
+      layerIndex={index}
+    />
+  ));
 }
 
 export default function Game() {
@@ -967,17 +1084,33 @@ export default function Game() {
     let finished = false;
     let animationFrame = 0;
     let finishTimer = 0;
-    let impactTimer = 0;
+    let presentationTimers: number[] = [];
+
+    const clearPresentationTimers = () => {
+      for (const timer of presentationTimers) {
+        window.clearTimeout(timer);
+      }
+      presentationTimers = [];
+    };
+
+    const schedulePresentation = (
+      callback: () => void,
+      delay: number,
+    ) => {
+      const timer = window.setTimeout(callback, Math.max(0, delay));
+      presentationTimers.push(timer);
+    };
 
     const finishBattle = () => {
       if (finished) return;
       finished = true;
-      window.clearTimeout(impactTimer);
+      clearPresentationTimers();
       setBattleClock(combat.duration);
       setBattleView({
         beatId: "finished",
         time: combat.duration,
         eventDuration: 0,
+        shotStaggerMs: 0,
         playerHp: combat.finalPlayerHp,
         playerShield: combat.finalPlayerShield,
         enemyHp: combat.finalEnemyHp,
@@ -988,6 +1121,10 @@ export default function Game() {
         eventAmount: null,
         tier: null,
         contributions: [],
+        focusedContributionId: null,
+        landedContributionIds: [],
+        impactEvent: null,
+        impactContributionId: null,
         statuses: finalStatuses,
         impactLanded: true,
       });
@@ -1026,49 +1163,117 @@ export default function Game() {
         nextBeat.time <= targetTime &&
         now >= nextBeatAllowedAt
       ) {
-        const holdTime = getBeatHoldMs(nextBeat, speedRef.current);
-        const visibleDuration = getBeatVisibleMs(nextBeat, holdTime);
+        clearPresentationTimers();
+        const timing = getCombatBeatTiming(nextBeat, speedRef.current);
+        const firstContribution = nextBeat.contributions[0] ?? null;
         shownTime = nextBeat.time;
         beatIndex += 1;
         beatVisible = true;
-        beatHiddenAt = now + visibleDuration;
-        nextBeatAllowedAt = now + holdTime;
+        beatHiddenAt = now + timing.visibleMs;
+        nextBeatAllowedAt = now + timing.holdMs;
         setBattleView((current) => ({
           beatId: nextBeat.id,
           time: nextBeat.time,
-          eventDuration: visibleDuration,
+          eventDuration: timing.shotDurationMs,
+          shotStaggerMs: timing.shotStaggerMs,
           playerHp: current?.playerHp ?? combat.playerMaxHp,
           playerShield: current?.playerShield ?? 0,
           enemyHp: current?.enemyHp ?? combat.enemyMaxHp,
           enemyShield: current?.enemyShield ?? 0,
-          activeUids: nextBeat.activeUids,
+          activeUids: firstContribution
+            ? [firstContribution.sourceUid]
+            : [],
           event: nextBeat.event,
           eventLabel: nextBeat.label,
           eventAmount: nextBeat.amountLabel,
           tier: nextBeat.tier,
           contributions: nextBeat.contributions,
+          focusedContributionId: firstContribution?.id ?? null,
+          landedContributionIds: [],
+          impactEvent: null,
+          impactContributionId: null,
           statuses: current?.statuses ?? createEmptyCombatStatuses(),
           impactLanded: false,
         }));
-        window.clearTimeout(impactTimer);
-        const timing = getVfxTiming(visibleDuration, nextBeat.event);
-        impactTimer = window.setTimeout(() => {
-          setBattleView((current) =>
-            current?.beatId === nextBeat.id
-              ? {
-                  ...current,
-                  playerHp: nextBeat.snapshot.playerHp,
-                  playerShield: nextBeat.snapshot.playerShield,
-                  enemyHp: nextBeat.snapshot.enemyHp,
-                  enemyShield: nextBeat.snapshot.enemyShield,
-                  statuses: nextBeat.statuses,
-                  impactLanded: true,
-                }
-              : current,
+
+        nextBeat.contributions.forEach((contribution, index) => {
+          const shotDelay = index * timing.shotStaggerMs;
+          const shotTiming = getVfxTiming(
+            timing.shotDurationMs,
+            contribution.event,
           );
-        }, timing.impactAtMs);
+
+          if (index > 0) {
+            schedulePresentation(() => {
+              setBattleView((current) =>
+                current?.beatId === nextBeat.id
+                  ? {
+                      ...current,
+                      activeUids: [contribution.sourceUid],
+                      focusedContributionId: contribution.id,
+                    }
+                  : current,
+              );
+            }, shotDelay);
+          }
+
+          schedulePresentation(() => {
+            setBattleView((current) =>
+              current?.beatId === nextBeat.id &&
+              current.focusedContributionId === contribution.id
+                ? { ...current, activeUids: [] }
+                : current,
+            );
+          }, shotDelay + shotTiming.chargeMs);
+
+          schedulePresentation(() => {
+            setBattleView((current) => {
+              if (current?.beatId !== nextBeat.id) return current;
+              const landedContributionIds = [
+                ...current.landedContributionIds,
+                contribution.id,
+              ];
+              const volleyLanded =
+                landedContributionIds.length ===
+                nextBeat.contributions.length;
+
+              return {
+                ...current,
+                playerHp: contribution.snapshot.playerHp,
+                playerShield: contribution.snapshot.playerShield,
+                enemyHp: contribution.snapshot.enemyHp,
+                enemyShield: contribution.snapshot.enemyShield,
+                statuses: volleyLanded
+                  ? nextBeat.statuses
+                  : current.statuses,
+                landedContributionIds,
+                impactEvent: contribution.event,
+                impactContributionId: contribution.id,
+                impactLanded: volleyLanded,
+              };
+            });
+          }, shotDelay + shotTiming.impactAtMs);
+
+          const reactionDuration = Math.min(
+            300,
+            Math.max(160, timing.shotStaggerMs - 80),
+          );
+          schedulePresentation(() => {
+            setBattleView((current) =>
+              current?.beatId === nextBeat.id &&
+              current.impactContributionId === contribution.id
+                ? {
+                    ...current,
+                    impactEvent: null,
+                    impactContributionId: null,
+                  }
+                : current,
+            );
+          }, shotDelay + shotTiming.impactAtMs + reactionDuration);
+        });
       } else if (beatVisible && now >= beatHiddenAt) {
         beatVisible = false;
+        clearPresentationTimers();
         setBattleView((current) =>
           current
             ? {
@@ -1079,6 +1284,10 @@ export default function Game() {
                 eventAmount: null,
                 tier: null,
                 contributions: [],
+                focusedContributionId: null,
+                landedContributionIds: [],
+                impactEvent: null,
+                impactContributionId: null,
                 impactLanded: false,
               }
             : current,
@@ -1110,7 +1319,7 @@ export default function Game() {
     return () => {
       window.cancelAnimationFrame(animationFrame);
       window.clearTimeout(finishTimer);
-      window.clearTimeout(impactTimer);
+      clearPresentationTimers();
     };
   }, [combat, game.phase, opponent.name]);
 
@@ -1202,6 +1411,7 @@ export default function Game() {
       beatId: "opening",
       time: 0,
       eventDuration: 0,
+      shotStaggerMs: 0,
       playerHp: battle.playerMaxHp,
       playerShield: 0,
       enemyHp: battle.enemyMaxHp,
@@ -1212,6 +1422,10 @@ export default function Game() {
       eventAmount: null,
       tier: null,
       contributions: [],
+      focusedContributionId: null,
+      landedContributionIds: [],
+      impactEvent: null,
+      impactContributionId: null,
       statuses: createEmptyCombatStatuses(),
       impactLanded: true,
     });
@@ -1350,8 +1564,19 @@ export default function Game() {
   const activeUids = battleView?.activeUids ?? [];
   const combatStatuses =
     battleView?.statuses ?? createEmptyCombatStatuses();
+  const focusedContribution =
+    battleView?.contributions.find(
+      (contribution) =>
+        contribution.id === battleView.focusedContributionId,
+    ) ??
+    battleView?.contributions[0] ??
+    null;
+  const focusedContributionLanded = Boolean(
+    focusedContribution &&
+    battleView?.landedContributionIds.includes(focusedContribution.id),
+  );
   const eventSource = findEventSource(
-    battleView?.event ?? null,
+    focusedContribution?.event ?? battleView?.event ?? null,
     game.board,
     opponent.board,
   );
@@ -1675,11 +1900,13 @@ export default function Game() {
       <section className="arena" aria-label="Kampfarena">
         <BackdropImage backdrop="arena" className="arena-backdrop" />
         {battleView?.event && battleView.tier && (
-          <BattleVfx
+          <BattleVolleyVfx
             key={battleView.beatId}
-            event={battleView.event}
-            source={eventSource}
-            duration={battleView.eventDuration}
+            contributions={battleView.contributions}
+            playerBoard={game.board}
+            enemyBoard={opponent.board}
+            shotDurationMs={battleView.eventDuration}
+            shotStaggerMs={battleView.shotStaggerMs}
             tier={battleView.tier}
           />
         )}
@@ -1726,9 +1953,8 @@ export default function Game() {
             selectedSlot={null}
             activeUids={activeUids}
             hitKind={
-              battleView?.impactLanded &&
-              battleView.event?.target === "enemy"
-                ? battleView.event.kind
+              battleView?.impactEvent?.target === "enemy"
+                ? battleView.impactEvent.kind
                 : null
             }
             interactive={false}
@@ -1767,6 +1993,12 @@ export default function Game() {
                     contributions={battleView.contributions}
                     playerBoard={game.board}
                     enemyBoard={opponent.board}
+                    focusedContributionId={
+                      battleView.focusedContributionId
+                    }
+                    landedContributionIds={
+                      battleView.landedContributionIds
+                    }
                   />
                   <span className="volley-total">{battleView.eventAmount}</span>
                 </>
@@ -1780,7 +2012,14 @@ export default function Game() {
                       className="callout-icon"
                     />
                   )}
-                  <strong>{battleView.eventLabel}</strong>
+                  <strong>
+                    {battleView.eventLabel}
+                    {eventSource && (
+                      <small className="callout-timing">
+                        Angriff alle {formatCooldown(eventSource.cooldownMs)}
+                      </small>
+                    )}
+                  </strong>
                   <span>{battleView.eventAmount}</span>
                 </>
               )}
@@ -1876,9 +2115,8 @@ export default function Game() {
             selectedSlot={game.selectedSlot}
             activeUids={activeUids}
             hitKind={
-              battleView?.impactLanded &&
-              battleView.event?.target === "player"
-                ? battleView.event.kind
+              battleView?.impactEvent?.target === "player"
+                ? battleView.impactEvent.kind
                 : null
             }
             interactive={game.phase === "shop"}
@@ -2020,7 +2258,7 @@ export default function Game() {
               {decisionCountdown
                 ? `${remainingBattleSeconds} s bis zur Zeitentscheidung`
                 : speed === 1
-                  ? "Lesemodus · Aktionen werden gebündelt"
+                  ? "Lesemodus · Salven werden klar gestaffelt"
                   : `Beschleunigte Regie auf ${speed}×`}
             </small>
           </div>
@@ -2039,24 +2277,34 @@ export default function Game() {
           </div>
           <div
             className={`battle-event-panel ${
-              battleView?.event ? `event-${battleView.event.kind}` : ""
-            } ${battleView?.impactLanded ? "has-landed" : "is-pending"}`}
+              focusedContribution
+                ? `event-${focusedContribution.event.kind}`
+                : ""
+            } ${focusedContributionLanded ? "has-landed" : "is-pending"}`}
           >
             <UiIcon
-              asset={battleView?.event ? eventIcon(battleView.event.kind) : "speed"}
+              asset={
+                focusedContribution
+                  ? eventIcon(focusedContribution.event.kind)
+                  : "speed"
+              }
               className="battle-event-icon"
             />
             <span>
-              {battleView?.event
-                ? `${eventSource ? `Slot ${eventSource.slot + 1} · ` : ""}${battleView.eventLabel}`
+              {focusedContribution
+                ? `${
+                    eventSource
+                      ? `Slot ${eventSource.slot + 1} · ${eventSource.name} · ${formatCooldown(eventSource.cooldownMs)} · `
+                      : ""
+                  }${focusedContribution.label}`
                 : decisionCountdown
                   ? `Zeitentscheidung in ${remainingBattleSeconds}`
                   : "Kessel laden ihre Zauber"}
             </span>
             <strong>
-              {battleView?.event
-                ? battleView.impactLanded
-                  ? battleView.eventAmount
+              {focusedContribution
+                ? focusedContributionLanded
+                  ? focusedContribution.amountLabel
                   : "im Anflug …"
                 : "…"}
             </strong>

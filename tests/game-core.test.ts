@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createCombatBeats,
-  getBeatHoldMs,
-  getBeatVisibleMs,
+  getCombatBeatTiming,
+  isStatusTick,
 } from "../app/game/combatPresentation";
 import { CAMPAIGN_OPPONENTS, ITEM_BY_ID } from "../app/game/data";
 import { getItemCooldownMs, simulateBattle } from "../app/game/simulation";
@@ -270,7 +270,7 @@ test("combat presentation exposes persistent poison timing at the health bar", (
   assert.ok(poisoned.statuses.enemy.poison.nextTickAt > poisoned.time);
 });
 
-test("combat director keeps dense playback within a bounded visual budget", () => {
+test("combat director gives dense 1x playback a readable visual budget", () => {
   const board = [
     item("p1", "chili", 2),
     item("p2", "ember-core", 1),
@@ -284,11 +284,44 @@ test("combat director keeps dense playback within a bounded visual budget", () =
   let visibleTime = 0;
 
   for (const beat of beats) {
-    const hold = getBeatHoldMs(beat, 1);
-    playbackEnd = Math.max(playbackEnd, beat.time) + hold;
-    visibleTime += getBeatVisibleMs(beat, hold);
+    const timing = getCombatBeatTiming(beat, 1);
+    playbackEnd = Math.max(playbackEnd, beat.time) + timing.holdMs;
+    visibleTime += timing.visibleMs;
+    assert.ok(timing.recoveryMs >= 150);
+    if (beat.tier === "standard") {
+      assert.ok(timing.shotDurationMs >= 1_050);
+    }
+    if (beat.tier === "hero") {
+      assert.ok(timing.shotDurationMs >= 1_400);
+    }
   }
 
-  assert.ok(playbackEnd < 20_000);
-  assert.ok(visibleTime / playbackEnd < 0.65);
+  assert.ok(playbackEnd > battle.duration);
+  assert.ok(playbackEnd < 60_000);
+  assert.ok(visibleTime / playbackEnd < 0.9);
+});
+
+test("combat director keeps volleys causal and status ticks separate", () => {
+  const board = [
+    item("p1", "chili", 2),
+    item("p2", "ember-core", 2),
+    item("p3", "slime-shroom", 2),
+    item("p4", "nightwing", 2),
+    item("p5", "moon-salt", 2),
+  ];
+  const battle = simulateBattle(board, CAMPAIGN_OPPONENTS[4]);
+  const beats = createCombatBeats(battle.events);
+
+  for (const beat of beats) {
+    assert.ok(beat.contributions.length <= 5);
+    assert.deepEqual(
+      beat.contributions.flatMap((contribution) => contribution.events),
+      beat.events,
+    );
+    if (beat.tier === "ambient") {
+      assert.ok(beat.events.every(isStatusTick));
+    } else if (beat.tier === "standard") {
+      assert.ok(beat.events.every((event) => !isStatusTick(event)));
+    }
+  }
 });

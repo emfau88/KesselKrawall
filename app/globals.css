@@ -1020,10 +1020,17 @@ button.board-slot:active {
   --to-x: 50%;
   --to-y: 28%;
   --event-duration: 560ms;
+  --shot-delay: 0ms;
   --charge-duration: 78ms;
   --flight-duration: 325ms;
   --impact-delay: 403ms;
   --impact-duration: 157ms;
+  --angle-0: -90deg;
+  --angle-25: -90deg;
+  --angle-50: -90deg;
+  --angle-75: -90deg;
+  --angle-100: -90deg;
+  --projectile-angle-offset: 0deg;
   position: absolute;
   z-index: 7;
   inset: 0;
@@ -1067,7 +1074,7 @@ button.board-slot:active {
   animation:
     projectile-flight var(--flight-duration)
     cubic-bezier(0.2, 0.62, 0.3, 1)
-    var(--charge-duration) both;
+    calc(var(--shot-delay) + var(--charge-duration)) both;
 }
 
 .projectile-trail {
@@ -1090,7 +1097,30 @@ button.board-slot:active {
   opacity: 0;
   animation:
     projectile-trail var(--flight-duration) linear
-    var(--charge-duration) both;
+    calc(var(--shot-delay) + var(--charge-duration)) both;
+}
+
+.battle-projectile.projectile-fire,
+.battle-projectile.projectile-poison {
+  width: 82px;
+  height: 42px;
+  margin: -21px 0 0 -41px;
+  object-fit: contain;
+}
+
+.battle-projectile.projectile-ward {
+  width: 78px;
+  height: 78px;
+  margin: -39px 0 0 -39px;
+  object-fit: contain;
+}
+
+.battle-projectile.projectile-guard {
+  --projectile-angle-offset: 45deg;
+  width: 58px;
+  height: 58px;
+  margin: -29px 0 0 -29px;
+  object-fit: contain;
 }
 
 .tier-standard .projectile-trail path {
@@ -1105,6 +1135,10 @@ button.board-slot:active {
   animation:
     defensive-bloom var(--impact-duration) ease-out
     var(--impact-delay) both;
+}
+
+.is-self-effect .battle-impact {
+  display: none;
 }
 
 .is-status-tick .battle-projectile {
@@ -1127,6 +1161,19 @@ button.board-slot:active {
     drop-shadow(0 4px 5px rgba(0, 0, 0, 0.48));
 }
 
+.arena-vfx.vfx-poison .battle-impact,
+.arena-vfx.family-poison .battle-impact {
+  filter:
+    hue-rotate(52deg)
+    drop-shadow(0 0 9px var(--poison));
+}
+
+.arena-vfx.vfx-heal .battle-projectile.projectile-ward {
+  filter:
+    hue-rotate(-58deg)
+    drop-shadow(0 0 11px #bff191);
+}
+
 .arena-vfx.family-guard .battle-projectile {
   filter:
     drop-shadow(0 0 11px var(--guard))
@@ -1140,6 +1187,25 @@ button.board-slot:active {
   filter:
     drop-shadow(0 0 5px var(--vfx-color))
     drop-shadow(0 3px 3px rgba(0, 0, 0, 0.42));
+}
+
+.arena-vfx.tier-standard .battle-projectile.projectile-fire,
+.arena-vfx.tier-standard .battle-projectile.projectile-poison {
+  width: 68px;
+  height: 34px;
+  margin: -17px 0 0 -34px;
+}
+
+.arena-vfx.tier-standard .battle-projectile.projectile-ward {
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+}
+
+.arena-vfx.tier-standard .battle-projectile.projectile-guard {
+  width: 50px;
+  height: 50px;
+  margin: -25px 0 0 -25px;
 }
 
 .arena-vfx.tier-standard .battle-impact {
@@ -1287,6 +1353,15 @@ button.board-slot:active {
   white-space: nowrap;
 }
 
+.callout-timing {
+  margin-top: 2px;
+  display: block;
+  color: #b9aa8e;
+  font-size: 6px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
 .combat-callout > span:not(.contribution-strip) {
   color: var(--danger);
   font-size: 13px;
@@ -1296,14 +1371,12 @@ button.board-slot:active {
     transform 180ms cubic-bezier(0.18, 0.82, 0.24, 1.24);
 }
 
-.combat-callout.is-pending > span:not(.contribution-strip),
-.combat-callout.is-pending .contribution-chip b {
+.combat-callout.is-pending > span:not(.contribution-strip) {
   opacity: 0;
   transform: translateY(3px) scale(0.88);
 }
 
-.combat-callout.has-landed > span:not(.contribution-strip),
-.combat-callout.has-landed .contribution-chip b {
+.combat-callout.has-landed > span:not(.contribution-strip) {
   opacity: 1;
   transform: none;
 }
@@ -1375,6 +1448,16 @@ button.board-slot:active {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 9px;
   background: rgba(255, 255, 255, 0.045);
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.contribution-chip.is-focused {
+  border-color: rgba(255, 226, 149, 0.72);
+  background: rgba(245, 197, 91, 0.12);
+  transform: translateY(-1px);
 }
 
 .contribution-chip.from-player {
@@ -1413,9 +1496,16 @@ button.board-slot:active {
 .contribution-chip b {
   color: #fff1b8;
   font-size: 7px;
+  opacity: 0;
+  transform: translateY(3px) scale(0.88);
   transition:
     opacity 120ms ease,
     transform 180ms cubic-bezier(0.18, 0.82, 0.24, 1.24);
+}
+
+.contribution-chip.is-landed b {
+  opacity: 1;
+  transform: none;
 }
 
 .volley-total {
@@ -2639,7 +2729,9 @@ button.board-slot:active {
     top: var(--from-y);
     left: var(--from-x);
     opacity: 0;
-    transform: scale(0.45) rotate(18deg);
+    transform:
+      scale(0.45)
+      rotate(calc(var(--angle-0) + var(--projectile-angle-offset)));
   }
   9% {
     opacity: 1;
@@ -2647,17 +2739,23 @@ button.board-slot:active {
   25% {
     top: var(--point-25-y);
     left: var(--point-25-x);
-    transform: scale(0.82) rotate(7deg);
+    transform:
+      scale(0.82)
+      rotate(calc(var(--angle-25) + var(--projectile-angle-offset)));
   }
   50% {
     top: var(--point-50-y);
     left: var(--point-50-x);
-    transform: scale(0.94) rotate(-3deg);
+    transform:
+      scale(0.94)
+      rotate(calc(var(--angle-50) + var(--projectile-angle-offset)));
   }
   75% {
     top: var(--point-75-y);
     left: var(--point-75-x);
-    transform: scale(1.02) rotate(-10deg);
+    transform:
+      scale(1.02)
+      rotate(calc(var(--angle-75) + var(--projectile-angle-offset)));
   }
   88% {
     opacity: 1;
@@ -2666,7 +2764,9 @@ button.board-slot:active {
     top: var(--to-y);
     left: var(--to-x);
     opacity: 0;
-    transform: scale(1.08) rotate(-16deg);
+    transform:
+      scale(1.08)
+      rotate(calc(var(--angle-100) + var(--projectile-angle-offset)));
   }
 }
 
@@ -3004,11 +3104,15 @@ button.board-slot:active {
   }
 }
 
-@media (max-width: 390px) {
+@media (max-width: 430px) {
   .game-header {
     padding-right: 10px;
     padding-left: 10px;
     gap: 6px;
+  }
+
+  .game-header .brand-lockup {
+    max-width: 118px;
   }
 
   .header-hud {
@@ -3016,7 +3120,7 @@ button.board-slot:active {
   }
 
   .run-status > div {
-    min-width: 41px;
+    min-width: 39px;
   }
 
   .brand-kicker,
@@ -3024,8 +3128,12 @@ button.board-slot:active {
     display: none;
   }
 
+  .game-header .round-pips {
+    display: none;
+  }
+
   .brand-lockup strong {
-    font-size: 15px;
+    font-size: 14px;
   }
 }
 

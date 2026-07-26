@@ -26,8 +26,11 @@ export const ART_FILES = {
   "opponent-meisterin-mirea": "opponent-meisterin-mirea.png",
   "opponent-grosskessel": "opponent-grosskessel.png",
   "vfx-fire": "vfx-fire.png",
+  "vfx-fire-projectile": "vfx-fire-projectile.png",
   "vfx-poison": "vfx-poison.png",
+  "vfx-poison-projectile": "vfx-poison-projectile.png",
   "vfx-shield": "vfx-shield.png",
+  "vfx-ward-bloom": "vfx-ward-bloom.png",
   "vfx-impact": "vfx-impact.png",
 } as const;
 

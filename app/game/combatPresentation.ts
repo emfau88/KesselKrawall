@@ -21,9 +21,11 @@ export interface CombatStatusSnapshot {
 }
 
 export interface CombatContribution {
+  id: string;
   actor: Side;
   sourceUid: string;
   event: CombatEvent;
+  snapshot: CombatEvent;
   events: CombatEvent[];
   label: string;
   amountLabel: string;
@@ -53,10 +55,19 @@ interface AtomicCombatBeat extends CombatBeat {
   firstUse: boolean;
 }
 
+export interface CombatBeatTiming {
+  holdMs: number;
+  shotDurationMs: number;
+  shotStaggerMs: number;
+  visibleMs: number;
+  recoveryMs: number;
+}
+
 const POISON_INTERVAL_MS = 2_000;
 const BURN_INTERVAL_MS = 1_000;
-const COMPACT_WINDOW_MS = 900;
-const MAX_COMPACT_SOURCES = 3;
+const ATTACK_VOLLEY_WINDOW_MS = 1_300;
+const STATUS_BUNDLE_WINDOW_MS = 1_800;
+const MAX_VOLLEY_CONTRIBUTIONS = 5;
 
 function emptyTimedStatus(): TimedCombatStatus {
   return { stacks: 0, nextTickAt: 0, expiresAt: 0, interval: 0 };
@@ -137,13 +148,16 @@ function createContributions(events: CombatEvent[]): CombatContribution[] {
     else grouped.set(key, [event]);
   }
 
-  return [...grouped.values()].map((contributionEvents) => {
+  return [...grouped.values()].map((contributionEvents, index) => {
     const event = contributionEvents[0];
+    const snapshot = contributionEvents[contributionEvents.length - 1];
     const tick = isStatusTick(event);
     return {
+      id: `${event.time}:${event.actor}:${event.sourceUid}:${index}`,
       actor: event.actor,
       sourceUid: event.sourceUid,
       event,
+      snapshot,
       events: contributionEvents,
       label: tick
         ? event.kind === "poison"
@@ -350,20 +364,27 @@ function mergeCompactBeats(beats: AtomicCombatBeat[]): CombatBeat[] {
     }
 
     const group = [first];
-    const sources = new Set(first.activeUids);
+    let contributionCount = first.contributions.length;
+    const statusBundle = first.tier === "ambient";
     let cursor = index + 1;
 
     while (cursor < beats.length) {
       const candidate = beats[cursor];
       if (candidate.tier === "hero") break;
-      if (candidate.time - first.time > COMPACT_WINDOW_MS) break;
-      if (candidate.event.actor !== first.event.actor) break;
-
-      const nextSources = new Set([...sources, ...candidate.activeUids]);
-      if (nextSources.size > MAX_COMPACT_SOURCES) break;
+      if ((candidate.tier === "ambient") !== statusBundle) break;
+      const bundleWindow = statusBundle
+        ? STATUS_BUNDLE_WINDOW_MS
+        : ATTACK_VOLLEY_WINDOW_MS;
+      if (candidate.time - first.time > bundleWindow) break;
+      if (
+        contributionCount + candidate.contributions.length >
+        MAX_VOLLEY_CONTRIBUTIONS
+      ) {
+        break;
+      }
 
       group.push(candidate);
-      for (const uid of candidate.activeUids) sources.add(uid);
+      contributionCount += candidate.contributions.length;
       cursor += 1;
     }
 
@@ -374,12 +395,18 @@ function mergeCompactBeats(beats: AtomicCombatBeat[]): CombatBeat[] {
     }
 
     const groupedEvents = group.flatMap((beat) => beat.events);
-    const contributions = createContributions(groupedEvents);
+    const contributions = group.flatMap((beat) => beat.contributions);
     const last = group[group.length - 1];
     const event = primaryEvent(groupedEvents);
     const tier: CombatBeatTier = group.some((beat) => beat.tier === "standard")
       ? "standard"
       : "ambient";
+    const activeUids = [
+      ...new Set(contributions.map((contribution) => contribution.sourceUid)),
+    ];
+    const actors = new Set(
+      contributions.map((contribution) => contribution.actor),
+    );
 
     merged.push({
       id: `${first.id}:bundle:${last.id}`,
@@ -388,12 +415,18 @@ function mergeCompactBeats(beats: AtomicCombatBeat[]): CombatBeat[] {
       snapshot: last.snapshot,
       events: groupedEvents,
       contributions,
-      activeUids: [...sources],
+      activeUids,
       label:
-        contributions.length > 1
-          ? event.actor === "player"
-            ? "Deine Zutaten bündeln"
-            : "Gegnerische Zutaten bündeln"
+        statusBundle
+          ? contributions.length > 1
+            ? "Statuswirkungen ticken gebündelt"
+            : first.label
+          : contributions.length > 1
+            ? actors.size > 1
+              ? `${contributions.length}er-Schlagabtausch`
+              : event.actor === "player"
+                ? `Deine ${contributions.length}er-Salve`
+                : `Gegnerische ${contributions.length}er-Salve`
           : first.label,
       amountLabel: summarizeEventAmounts(groupedEvents),
       tier,
@@ -409,39 +442,33 @@ export function createCombatBeats(events: CombatEvent[]): CombatBeat[] {
   return mergeCompactBeats(createAtomicCombatBeats(events));
 }
 
-export function getBeatHoldMs(
+export function getCombatBeatTiming(
   beat: CombatBeat,
   speed: number,
-): number {
-  const base =
+): CombatBeatTiming {
+  const baseTiming =
     beat.event.kind === "boss"
-      ? 1_180
+      ? { holdMs: 2_400, shotDurationMs: 1_900, staggerMs: 460 }
       : beat.tier === "hero"
-        ? 820
+        ? { holdMs: 1_750, shotDurationMs: 1_400, staggerMs: 420 }
         : beat.tier === "standard"
-          ? 540
-          : 360;
-  const speedFactor = speed <= 1 ? 1 : speed <= 2 ? 0.68 : 0.46;
-  const minimum =
-    beat.tier === "hero"
-      ? speed <= 1
-        ? 660
-        : 360
-      : beat.tier === "standard"
-        ? speed <= 1
-          ? 440
-          : 260
-        : speed <= 1
-          ? 280
-          : 180;
-  return Math.round(Math.max(minimum, base * speedFactor));
-}
+          ? { holdMs: 1_300, shotDurationMs: 1_050, staggerMs: 360 }
+          : { holdMs: 650, shotDurationMs: 500, staggerMs: 180 };
+  const speedFactor = speed <= 1 ? 1 : speed <= 2 ? 0.62 : 0.4;
+  const shotCount = Math.max(1, beat.contributions.length);
+  const shotStaggerMs = Math.round(baseTiming.staggerMs * speedFactor);
+  const shotDurationMs = Math.round(
+    baseTiming.shotDurationMs * speedFactor,
+  );
+  const volleySpanMs = shotStaggerMs * (shotCount - 1);
+  const visibleMs = shotDurationMs + volleySpanMs;
+  const holdMs = Math.round(baseTiming.holdMs * speedFactor) + volleySpanMs;
 
-export function getBeatVisibleMs(
-  beat: CombatBeat,
-  holdMs: number,
-): number {
-  const ratio =
-    beat.tier === "hero" ? 0.76 : beat.tier === "standard" ? 0.66 : 0.46;
-  return Math.max(150, Math.round(holdMs * ratio));
+  return {
+    holdMs,
+    shotDurationMs,
+    shotStaggerMs,
+    visibleMs,
+    recoveryMs: Math.max(0, holdMs - visibleMs),
+  };
 }
