@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import {
   ArtSprite,
   BackdropImage,
@@ -11,7 +17,7 @@ import {
   type UiAsset,
 } from "./ArtSprite";
 import { FAMILY_META, ITEM_BY_ID } from "./data";
-import { simulateBattle } from "./simulation";
+import { getItemCooldownMs, simulateBattle } from "./simulation";
 import {
   advanceAfterBattle,
   beginBattle,
@@ -39,11 +45,15 @@ import type {
   Family,
   GameState,
   ItemCombatStats,
+  ItemDefinition,
+  ItemLevel,
+  Side,
 } from "./types";
 
 const ROMAN_LEVEL = ["", "I", "II", "III"] as const;
 
 interface BattleView {
+  time: number;
   playerHp: number;
   playerShield: number;
   enemyHp: number;
@@ -55,6 +65,27 @@ interface BattleView {
 interface MergeNotice {
   label: string;
   art: ArtAsset;
+  family: Family;
+  fromLevel: ItemLevel;
+  toLevel: ItemLevel;
+  valueLabel: string;
+  oldValue: number;
+  newValue: number;
+  oldCooldown: number;
+  newCooldown: number;
+  powerBefore: number;
+  powerAfter: number;
+  bonus: string | null;
+  step: number;
+  total: number;
+}
+
+interface EventSource {
+  name: string;
+  art: ArtAsset;
+  family: Family;
+  slot: number;
+  side: Side;
 }
 
 type WebkitFullscreenDocument = Document & {
@@ -99,6 +130,79 @@ function eventIcon(kind: CombatEventKind): UiAsset {
   }
 }
 
+function eventAmountLabel(event: CombatEvent): string {
+  switch (event.kind) {
+    case "heal":
+      return `+${event.amount} LP`;
+    case "shield":
+    case "synergy":
+      return `+${event.amount} Schild`;
+    case "cleanse":
+      return `−${event.amount} Gift`;
+    case "poison":
+      return event.label.includes("tickt")
+        ? `−${event.amount} LP`
+        : `+${event.amount} Gift`;
+    case "burn":
+      return event.label.includes("tickt")
+        ? `−${event.amount} LP`
+        : `+${event.amount} Brand`;
+    case "boss":
+      return `+${event.amount}%`;
+    default:
+      return `−${event.amount} LP`;
+  }
+}
+
+function mergeValueLabel(definition: ItemDefinition): string {
+  switch (definition.effect) {
+    case "poison":
+      return "Giftstapel";
+    case "shield":
+    case "shieldDamage":
+      return "Schild";
+    case "heal":
+    case "hybrid":
+      return "Heilung";
+    default:
+      return "Schaden";
+  }
+}
+
+function mergeBonusLabel(definition: ItemDefinition, level: ItemLevel): string | null {
+  if (level !== 3) return null;
+  switch (definition.levelThreeBonus) {
+    case "burn":
+      return "NEU: Verursacht Brand";
+    case "cleansePoison":
+      return "NEU: Entfernt Gift";
+    case "overhealShield":
+      return "NEU: Überheilung wird Schild";
+    default:
+      return "MAXIMALSTUFE ERREICHT";
+  }
+}
+
+function findEventSource(
+  event: CombatEvent | null,
+  playerBoard: Board,
+  enemyBoard: Board,
+): EventSource | null {
+  if (!event) return null;
+  const board = event.actor === "player" ? playerBoard : enemyBoard;
+  const slot = board.findIndex((instance) => instance?.uid === event.sourceUid);
+  const instance = slot >= 0 ? board[slot] : null;
+  if (!instance) return null;
+  const definition = ITEM_BY_ID[instance.itemId];
+  return {
+    name: definition.name,
+    art: ITEM_ART[definition.id],
+    family: definition.family,
+    slot,
+    side: event.actor,
+  };
+}
+
 function HealthBar({
   hp,
   maxHp,
@@ -141,6 +245,8 @@ function CauldronBoard({
   interactive,
   onSlot,
   compact = false,
+  combatActive = false,
+  combatSpeed = 1,
 }: {
   board: Board;
   side: "player" | "enemy";
@@ -151,6 +257,8 @@ function CauldronBoard({
   interactive: boolean;
   onSlot?: (slot: number) => void;
   compact?: boolean;
+  combatActive?: boolean;
+  combatSpeed?: number;
 }) {
   return (
     <div
@@ -196,10 +304,21 @@ function CauldronBoard({
           const className = [
             "board-slot",
             instance ? "is-filled" : "is-empty",
+            combatActive && instance ? "is-cooling" : "",
             selectedSlot === slot ? "is-selected" : "",
             activeUid === instance?.uid ? "is-active" : "",
             definition ? familyClass(definition.family) : "",
           ].join(" ");
+          const slotStyle =
+            definition && combatActive
+              ? ({
+                  "--cooldown-duration": `${Math.max(
+                    650,
+                    getItemCooldownMs(board, slot) / combatSpeed,
+                  )}ms`,
+                  "--cooldown-color": FAMILY_META[definition.family].color,
+                } as CSSProperties)
+              : undefined;
 
           return interactive ? (
             <button
@@ -210,8 +329,12 @@ function CauldronBoard({
               onClick={() => onSlot?.(slot)}
               aria-label={slotLabel}
               aria-pressed={selectedSlot === slot}
+              style={slotStyle}
             >
               {content}
+              {definition && combatActive && (
+                <span className="cooldown-ring" aria-hidden="true" />
+              )}
             </button>
           ) : (
             <div
@@ -219,8 +342,12 @@ function CauldronBoard({
               className={className}
               data-slot={slot}
               aria-label={slotLabel}
+              style={slotStyle}
             >
               {content}
+              {definition && combatActive && (
+                <span className="cooldown-ring" aria-hidden="true" />
+              )}
             </div>
           );
         })}
@@ -292,7 +419,15 @@ function StatsList({ stats }: { stats: ItemCombatStats[] }) {
   );
 }
 
-function BattleVfx({ event }: { event: CombatEvent }) {
+function BattleVfx({
+  event,
+  source,
+  speed,
+}: {
+  event: CombatEvent;
+  source: EventSource | null;
+  speed: number;
+}) {
   const projectile: ArtAsset =
     event.kind === "poison"
       ? "vfx-poison"
@@ -303,6 +438,12 @@ function BattleVfx({ event }: { event: CombatEvent }) {
         ? "vfx-shield"
         : "vfx-fire";
   const isSelfEffect = event.actor === event.target;
+  const sourceY = event.actor === "player" ? 75 : 25;
+  const effectStyle = {
+    "--source-y": `${sourceY}%`,
+    "--event-duration": `${Math.max(220, 560 / speed)}ms`,
+    "--impact-delay": `${Math.max(100, 280 / speed)}ms`,
+  } as CSSProperties;
 
   return (
     <div
@@ -311,10 +452,21 @@ function BattleVfx({ event }: { event: CombatEvent }) {
         `vfx-${event.kind}`,
         `from-${event.actor}`,
         `to-${event.target}`,
+        source ? familyClass(source.family) : "",
+        source ? `source-slot-${source.slot}` : "",
         isSelfEffect ? "is-self-effect" : "is-projectile",
       ].join(" ")}
+      style={effectStyle}
       aria-hidden="true"
     >
+      {source && (
+        <div className="projectile-source">
+          <span className="source-item-frame">
+            <ArtSprite asset={source.art} className="source-item-art" />
+          </span>
+          <strong>{source.name}</strong>
+        </div>
+      )}
       <ArtSprite asset={projectile} className="battle-projectile" />
       <ArtSprite asset="vfx-impact" className="battle-impact" />
       <span className="vfx-particle particle-one" />
@@ -329,15 +481,18 @@ export default function Game() {
   const [game, setGame] = useState<GameState>(() => createInitialState());
   const [hydrated, setHydrated] = useState(false);
   const [feedback, setFeedback] = useState("Bereite deinen Kessel vor.");
-  const [mergeNotice, setMergeNotice] = useState<MergeNotice | null>(null);
+  const [mergeNotices, setMergeNotices] = useState<MergeNotice[]>([]);
   const [busy, setBusy] = useState(false);
   const [combat, setCombat] = useState<CombatResult | null>(null);
   const [battleView, setBattleView] = useState<BattleView | null>(null);
-  const [speed, setSpeed] = useState(2);
+  const [battleClock, setBattleClock] = useState(0);
+  const [battleEnding, setBattleEnding] = useState<CombatResult["reason"] | null>(null);
+  const [speed, setSpeed] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const speedRef = useRef(speed);
   const shellRef = useRef<HTMLElement>(null);
+  const mergeNotice = mergeNotices[0] ?? null;
 
   const opponent = useMemo(() => getCurrentOpponent(game), [game]);
   const selectedItem =
@@ -368,6 +523,19 @@ export default function Game() {
   useEffect(() => {
     speedRef.current = speed;
   }, [speed]);
+
+  useEffect(() => {
+    if (!mergeNotice) return;
+    navigator.vibrate?.(mergeNotice.toLevel === 3 ? [35, 35, 70] : 45);
+    const timer = window.setTimeout(() => {
+      setMergeNotices((current) => {
+        const remaining = current.slice(1);
+        if (remaining.length === 0) setBusy(false);
+        return remaining;
+      });
+    }, 1_400);
+    return () => window.clearTimeout(timer);
+  }, [mergeNotice]);
 
   useEffect(() => {
     const fullscreenDocument = document as WebkitFullscreenDocument;
@@ -416,55 +584,118 @@ export default function Game() {
   useEffect(() => {
     if (game.phase !== "battle" || !combat) return;
     let eventIndex = 0;
-    let simulatedTime = 0;
+    let targetTime = 0;
+    let shownTime = 0;
     let lastRealTime = performance.now();
+    let nextEventAllowedAt = lastRealTime;
+    let lastClockPaint = lastRealTime;
+    let eventVisible = false;
     let finished = false;
+    let animationFrame = 0;
+    let finishTimer = 0;
 
-    const timer = window.setInterval(() => {
-      const now = performance.now();
-      simulatedTime += (now - lastRealTime) * speedRef.current;
+    const finishBattle = () => {
+      if (finished) return;
+      finished = true;
+      setBattleClock(combat.duration);
+      setBattleView({
+        time: combat.duration,
+        playerHp: combat.finalPlayerHp,
+        playerShield: combat.finalPlayerShield,
+        enemyHp: combat.finalEnemyHp,
+        enemyShield: combat.finalEnemyShield,
+        activeUid: null,
+        event: null,
+      });
+      setBattleEnding(combat.reason);
+      navigator.vibrate?.(
+        combat.reason === "knockout"
+          ? combat.winner === "player"
+            ? [45, 35, 90]
+            : [80, 45, 80]
+          : 55,
+      );
+      finishTimer = window.setTimeout(
+        () => {
+          setGame((current) => showBattleResult(current));
+          setFeedback(
+            combat.winner === "player"
+              ? "Dein Kessel gewinnt den Schlagabtausch!"
+              : `${opponent.name} behält die Oberhand.`,
+          );
+        },
+        combat.reason === "timeout" ? 1_250 : 850,
+      );
+    };
+
+    const animate = (now: number) => {
+      const realDelta = Math.min(100, now - lastRealTime);
+      targetTime = Math.min(
+        combat.duration,
+        targetTime + realDelta * speedRef.current,
+      );
       lastRealTime = now;
 
-      let latest: CombatEvent | null = null;
-      while (
-        eventIndex < combat.events.length &&
-        combat.events[eventIndex].time <= simulatedTime
+      const nextEvent = combat.events[eventIndex];
+      if (
+        nextEvent &&
+        nextEvent.time <= targetTime &&
+        now >= nextEventAllowedAt
       ) {
-        latest = combat.events[eventIndex];
+        const holdTime =
+          speedRef.current <= 1 ? 560 : speedRef.current <= 2 ? 360 : 220;
+        shownTime = nextEvent.time;
         eventIndex += 1;
-      }
-      if (latest) {
+        eventVisible = true;
+        nextEventAllowedAt = now + holdTime;
         setBattleView({
-          playerHp: latest.playerHp,
-          playerShield: latest.playerShield,
-          enemyHp: latest.enemyHp,
-          enemyShield: latest.enemyShield,
-          activeUid: latest.sourceUid,
-          event: latest,
+          time: nextEvent.time,
+          playerHp: nextEvent.playerHp,
+          playerShield: nextEvent.playerShield,
+          enemyHp: nextEvent.enemyHp,
+          enemyShield: nextEvent.enemyShield,
+          activeUid: nextEvent.sourceUid,
+          event: nextEvent,
         });
-      }
-
-      if (!finished && simulatedTime >= combat.duration + 450) {
-        finished = true;
-        window.clearInterval(timer);
-        setBattleView({
-          playerHp: combat.finalPlayerHp,
-          playerShield: combat.finalPlayerShield,
-          enemyHp: combat.finalEnemyHp,
-          enemyShield: combat.finalEnemyShield,
-          activeUid: null,
-          event: null,
-        });
-        setGame((current) => showBattleResult(current));
-        setFeedback(
-          combat.winner === "player"
-            ? "Dein Kessel gewinnt den Schlagabtausch!"
-            : `${opponent.name} behält die Oberhand.`,
+      } else if (eventVisible && now >= nextEventAllowedAt) {
+        eventVisible = false;
+        setBattleView((current) =>
+          current
+            ? {
+                ...current,
+                activeUid: null,
+                event: null,
+              }
+            : current,
         );
       }
-    }, 40);
 
-    return () => window.clearInterval(timer);
+      const waitingEvent = combat.events[eventIndex];
+      const hasBacklog = Boolean(
+        waitingEvent && waitingEvent.time <= targetTime,
+      );
+      const visibleTime = hasBacklog ? shownTime : targetTime;
+      if (now - lastClockPaint >= 100) {
+        lastClockPaint = now;
+        setBattleClock(Math.min(combat.duration, visibleTime));
+      }
+
+      if (
+        eventIndex >= combat.events.length &&
+        targetTime >= combat.duration &&
+        now >= nextEventAllowedAt
+      ) {
+        finishBattle();
+        return;
+      }
+      animationFrame = window.requestAnimationFrame(animate);
+    };
+
+    animationFrame = window.requestAnimationFrame(animate);
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      window.clearTimeout(finishTimer);
+    };
   }, [combat, game.phase, opponent.name]);
 
   function announce(message: string) {
@@ -480,20 +711,36 @@ export default function Game() {
     }
     setGame(result.state);
     if (result.merges?.length) {
-      const merge = result.merges[result.merges.length - 1];
-      const definition = ITEM_BY_ID[merge.itemId];
-      setMergeNotice({
-        label: `${definition.name} ${ROMAN_LEVEL[merge.toLevel]}`,
-        art: ITEM_ART[definition.id],
+      const powerBefore = getPowerValue(game.board);
+      const powerAfter = getPowerValue(result.state.board);
+      const total = result.merges.length;
+      const notices = result.merges.map((merge, index): MergeNotice => {
+        const definition = ITEM_BY_ID[merge.itemId];
+        return {
+          label: `${definition.name} ${ROMAN_LEVEL[merge.toLevel]}`,
+          art: ITEM_ART[definition.id],
+          family: definition.family,
+          fromLevel: merge.fromLevel,
+          toLevel: merge.toLevel,
+          valueLabel: mergeValueLabel(definition),
+          oldValue: definition.values[merge.fromLevel - 1],
+          newValue: definition.values[merge.toLevel - 1],
+          oldCooldown: definition.cooldown[merge.fromLevel - 1],
+          newCooldown: definition.cooldown[merge.toLevel - 1],
+          powerBefore,
+          powerAfter,
+          bonus: mergeBonusLabel(definition, merge.toLevel),
+          step: index + 1,
+          total,
+        };
       });
+      setMergeNotices(notices);
       announce(
-        `${definition.name} ist zu Level ${ROMAN_LEVEL[merge.toLevel]} verschmolzen.`,
+        total > 1
+          ? `${total}-stufige Merge-Kaskade!`
+          : `${notices[0].label} ist verschmolzen.`,
       );
       setBusy(true);
-      window.setTimeout(() => {
-        setMergeNotice(null);
-        setBusy(false);
-      }, 850);
     } else {
       announce("Zutat gekauft.");
     }
@@ -533,7 +780,10 @@ export default function Game() {
     if (result.error) return announce(result.error);
     const battle = simulateBattle(game.board, opponent);
     setCombat(battle);
+    setBattleClock(0);
+    setBattleEnding(null);
     setBattleView({
+      time: 0,
       playerHp: battle.playerMaxHp,
       playerShield: 0,
       enemyHp: battle.enemyMaxHp,
@@ -551,6 +801,8 @@ export default function Game() {
     setGame((current) => advanceAfterBattle(current, won));
     setCombat(null);
     setBattleView(null);
+    setBattleClock(0);
+    setBattleEnding(null);
     if (game.round >= MAX_ROUNDS) {
       announce(
         won
@@ -567,7 +819,10 @@ export default function Game() {
     setGame(next);
     setCombat(null);
     setBattleView(null);
-    setMergeNotice(null);
+    setBattleClock(0);
+    setBattleEnding(null);
+    setMergeNotices([]);
+    setBusy(false);
     announce("Ein neuer Kessel betritt den Wettstreit.");
   }
 
@@ -623,6 +878,26 @@ export default function Game() {
   const enemyShield = battleView?.enemyShield ?? 0;
   const isCombatPhase = game.phase === "battle" || game.phase === "result";
   const activeUid = battleView?.activeUid ?? null;
+  const eventSource = findEventSource(
+    battleView?.event ?? null,
+    game.board,
+    opponent.board,
+  );
+  const remainingBattleSeconds = Math.max(
+    0,
+    Math.ceil(((combat?.duration ?? 0) - battleClock) / 1000),
+  );
+  const decisionCountdown =
+    game.phase === "battle" &&
+    combat?.reason === "timeout" &&
+    remainingBattleSeconds <= 5 &&
+    !battleEnding;
+  const playerHpPercent = combat
+    ? Math.round((combat.finalPlayerHp / combat.playerMaxHp) * 100)
+    : 100;
+  const enemyHpPercent = combat
+    ? Math.round((combat.finalEnemyHp / combat.enemyMaxHp) * 100)
+    : 100;
   const fullscreenActive = isFullscreen || isStandalone;
   const fullscreenLabel = isStandalone
     ? "App läuft bereits im Vollbild"
@@ -706,6 +981,8 @@ export default function Game() {
           <BattleVfx
             key={`${battleView.event.time}-${battleView.event.sourceUid}-${battleView.event.kind}`}
             event={battleView.event}
+            source={eventSource}
+            speed={speed}
           />
         )}
         <article className="combatant enemy-combatant">
@@ -749,24 +1026,38 @@ export default function Game() {
             }
             interactive={false}
             compact={!isCombatPhase}
+            combatActive={game.phase === "battle"}
+            combatSpeed={speed}
           />
         </article>
 
         <div className={`effect-lane ${battleView?.event ? `event-${battleView.event.kind}` : ""}`}>
-          {battleView?.event ? (
+          {battleEnding ? (
+            <div className={`resolution-banner is-${battleEnding}`} role="status">
+              <UiIcon
+                asset={battleEnding === "timeout" ? "speed" : "battle"}
+                className="resolution-icon"
+              />
+              <span>{battleEnding === "timeout" ? "ZEITENTSCHEIDUNG" : "K. O."}</span>
+              <strong>
+                {battleEnding === "timeout"
+                  ? `${playerHpPercent}% : ${enemyHpPercent}%`
+                  : combat?.winner === "player"
+                    ? "DEIN KESSEL SIEGT"
+                    : `${opponent.name.toUpperCase()} SIEGT`}
+              </strong>
+            </div>
+          ) : battleView?.event ? (
             <div className="combat-callout" key={`${battleView.event.time}-${battleView.event.sourceUid}`}>
               <UiIcon asset={eventIcon(battleView.event.kind)} className="callout-icon" />
               <strong>{battleView.event.label}</strong>
-              <span>
-                {battleView.event.kind === "heal"
-                  ? "+"
-                  : battleView.event.kind === "shield"
-                    ? "◆ "
-                    : battleView.event.kind === "boss"
-                      ? "▲ "
-                      : "−"}
-                {battleView.event.amount}
-              </span>
+              <span>{eventAmountLabel(battleView.event)}</span>
+            </div>
+          ) : decisionCountdown ? (
+            <div className="decision-countdown" role="timer">
+              <UiIcon asset="speed" className="countdown-icon" />
+              <span>ZEITENTSCHEIDUNG IN</span>
+              <strong>{remainingBattleSeconds}</strong>
             </div>
           ) : (
             isCombatPhase ? (
@@ -805,6 +1096,8 @@ export default function Game() {
             }
             interactive={game.phase === "shop"}
             onSlot={handleSlot}
+            combatActive={game.phase === "battle"}
+            combatSpeed={speed}
           />
         </article>
       </section>
@@ -920,13 +1213,20 @@ export default function Game() {
       )}
 
       {game.phase === "battle" && (
-        <section className="battle-controls" aria-label="Kampfsteuerung">
+        <section
+          className={`battle-controls ${decisionCountdown ? "is-decision-window" : ""}`}
+          aria-label="Kampfsteuerung"
+        >
           <BackdropImage backdrop="arena" className="panel-backdrop battle-backdrop" />
           <div className="battle-status">
             <UiIcon asset="battle" className="battle-title-icon" />
             <span className="live-dot" aria-hidden="true" />
             <strong>Kampf läuft</strong>
-            <small>{Math.ceil((combat?.duration ?? 0) / 1000)} s Simulation</small>
+            <small>
+              {decisionCountdown
+                ? `${remainingBattleSeconds} s bis zur Zeitentscheidung`
+                : "Aktionen werden einzeln ausgespielt"}
+            </small>
           </div>
           <div className="battle-score-grid">
             <div>
@@ -946,10 +1246,16 @@ export default function Game() {
               asset={battleView?.event ? eventIcon(battleView.event.kind) : "speed"}
               className="battle-event-icon"
             />
-            <span>{battleView?.event?.label ?? "Kessel laden ihre Zauber"}</span>
+            <span>
+              {battleView?.event
+                ? `${eventSource ? `Slot ${eventSource.slot + 1} · ` : ""}${battleView.event.label}`
+                : decisionCountdown
+                  ? `Zeitentscheidung in ${remainingBattleSeconds}`
+                  : "Kessel laden ihre Zauber"}
+            </span>
             <strong>
               {battleView?.event
-                ? `${["heal", "shield", "cleanse", "synergy"].includes(battleView.event.kind) ? "+" : "−"}${battleView.event.amount}`
+                ? eventAmountLabel(battleView.event)
                 : "…"}
             </strong>
           </div>
@@ -994,6 +1300,13 @@ export default function Game() {
                     ? `${opponent.name} verteidigt den Turniertitel.`
                     : `${opponent.name} war diesmal stärker. Der Run geht weiter.`}
               </p>
+              {combat.reason === "timeout" && (
+                <div className="decision-result" aria-label="Relative Lebensenergie bei Zeitablauf">
+                  <span>Dein Kessel <b>{playerHpPercent}%</b></span>
+                  <i aria-hidden="true">gegen</i>
+                  <span>{opponent.name} <b>{enemyHpPercent}%</b></span>
+                </div>
+              )}
             </div>
           </div>
           <StatsList stats={combat.playerStats} />
@@ -1051,14 +1364,61 @@ export default function Game() {
       )}
 
       {mergeNotice && (
-        <div className="merge-overlay" role="status">
-          <div className="merge-burst" aria-hidden="true">
-            <ArtSprite asset="merge-sigil" className="merge-sigil" />
-            <ArtSprite asset={mergeNotice.art} className="merge-item-art" />
+        <div
+          className={`merge-overlay ${familyClass(mergeNotice.family)} ${mergeNotice.toLevel === 3 ? "is-max-level" : ""}`}
+          role="status"
+          aria-live="assertive"
+          key={`${mergeNotice.label}-${mergeNotice.step}`}
+        >
+          <div className="merge-progress">
+            <span>MERGE</span>
+            {mergeNotice.total > 1 && (
+              <b>KASKADE {mergeNotice.step}/{mergeNotice.total}</b>
+            )}
           </div>
-          <span>VERSCHMOLZEN</span>
-          <strong>{mergeNotice.label}</strong>
-          <small>Neue Stufe · stärkere Wirkung</small>
+          <div className="merge-stage" aria-hidden="true">
+            <div className="merge-input merge-input-left">
+              <ArtSprite asset={mergeNotice.art} className="merge-input-art" />
+              <b>{ROMAN_LEVEL[mergeNotice.fromLevel]}</b>
+            </div>
+            <span className="merge-plus">+</span>
+            <div className="merge-input merge-input-right">
+              <ArtSprite asset={mergeNotice.art} className="merge-input-art" />
+              <b>{ROMAN_LEVEL[mergeNotice.fromLevel]}</b>
+            </div>
+            <div className="merge-output">
+              <ArtSprite asset="merge-sigil" className="merge-sigil" />
+              <ArtSprite asset={mergeNotice.art} className="merge-item-art" />
+              <b>{ROMAN_LEVEL[mergeNotice.toLevel]}</b>
+            </div>
+          </div>
+          <span className="merge-kicker">VERSCHMOLZEN</span>
+          <strong className="merge-title">{mergeNotice.label}</strong>
+          <div className="merge-comparison">
+            <span>{mergeNotice.valueLabel}</span>
+            <b>{mergeNotice.oldValue}</b>
+            <i aria-hidden="true">→</i>
+            <strong>{mergeNotice.newValue}</strong>
+          </div>
+          <div className="merge-comparison is-cooldown">
+            <span>Abklingzeit</span>
+            <b>{mergeNotice.oldCooldown.toFixed(1).replace(".", ",")} s</b>
+            <i aria-hidden="true">→</i>
+            <strong>{mergeNotice.newCooldown.toFixed(1).replace(".", ",")} s</strong>
+          </div>
+          {mergeNotice.bonus && (
+            <div className="merge-bonus">{mergeNotice.bonus}</div>
+          )}
+          {mergeNotice.step === mergeNotice.total && (
+            <div className="merge-power">
+              <UiIcon asset="power" className="merge-power-icon" />
+              <span>MACHT</span>
+              <b>{mergeNotice.powerBefore}</b>
+              <i aria-hidden="true">→</i>
+              <strong>{mergeNotice.powerAfter}</strong>
+              <em>+{mergeNotice.powerAfter - mergeNotice.powerBefore}</em>
+            </div>
+          )}
         </div>
       )}
 

@@ -150,7 +150,9 @@ function applyHeal(
   const overheal = amount - healed;
   actor.hp += healed;
   statFor(actor, sourceUid).healing += healed;
-  pushEvent(world, "heal", actor.side, actor.side, sourceUid, label, healed);
+  if (healed > 0) {
+    pushEvent(world, "heal", actor.side, actor.side, sourceUid, label, healed);
+  }
   if (overhealToShield && overheal > 0) {
     applyShield(world, actor, sourceUid, overheal, "Überheilung");
   }
@@ -210,6 +212,17 @@ function cooldownMultiplier(
   return Math.max(0.45, multiplier);
 }
 
+export function getItemCooldownMs(board: Board, slot: number): number {
+  const instance = board[slot];
+  if (!instance) return 0;
+  const definition = ITEM_BY_ID[instance.itemId];
+  return (
+    definition.cooldown[instance.level - 1] *
+    cooldownMultiplier(board, slot, definition) *
+    1000
+  );
+}
+
 function createCombatant(
   side: Side,
   board: Board,
@@ -229,11 +242,7 @@ function createCombatant(
       shield: 0,
       poisonApplied: 0,
     });
-    const definition = ITEM_BY_ID[instance.itemId];
-    const cooldown =
-      definition.cooldown[instance.level - 1] *
-      cooldownMultiplier(board, slot, definition) *
-      1000;
+    const cooldown = getItemCooldownMs(board, slot);
     runtimes.push({
       instance,
       slot,

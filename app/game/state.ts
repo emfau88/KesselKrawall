@@ -175,6 +175,7 @@ function mergeBoard(board: Board): { board: Board; merges: MergeStep[] } {
         fromLevel,
         toLevel,
         slot: left,
+        consumedSlot: right,
       });
       merged = true;
       break;
@@ -222,6 +223,7 @@ export function buyOffer(state: GameState, offerUid: string): ActionResult {
       fromLevel: 1,
       toLevel: 2,
       slot: immediateMatch,
+      consumedSlot: null,
     });
   }
 

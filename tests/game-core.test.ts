@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { CAMPAIGN_OPPONENTS, ITEM_BY_ID } from "../app/game/data";
-import { simulateBattle } from "../app/game/simulation";
+import { getItemCooldownMs, simulateBattle } from "../app/game/simulation";
 import {
   advanceAfterBattle,
   buyOffer,
@@ -46,6 +46,10 @@ test("full board purchase performs an immediate merge and cascade", () => {
   const result = buyOffer(state, "offer-chili");
   assert.equal(result.error, undefined);
   assert.equal(result.merges?.length, 2);
+  assert.deepEqual(
+    result.merges?.map((merge) => merge.consumedSlot),
+    [null, 1],
+  );
   assert.equal(result.state.board[0]?.itemId, "chili");
   assert.equal(result.state.board[0]?.level, 3);
   assert.equal(result.state.board[1], null);
@@ -85,8 +89,47 @@ test("battle simulation is deterministic and produces item statistics", () => {
   const second = simulateBattle(board, CAMPAIGN_OPPONENTS[0]);
   assert.deepEqual(first, second);
   assert.ok(first.events.length > 0);
+  assert.ok(first.events.every((event) => event.amount > 0));
   assert.ok(first.duration <= 25_000);
   assert.ok(first.playerStats.some((entry) => entry.triggers > 0));
+});
+
+test("combat cooldown exposes the effective slot timing for the UI", () => {
+  const board = [
+    item("p1", "chili", 2),
+    item("p2", "ember-core", 1),
+    null,
+    null,
+    null,
+  ];
+  assert.equal(getItemCooldownMs(board, 0), 2640);
+  assert.equal(getItemCooldownMs(board, 2), 0);
+});
+
+test("a knockout ends with the defeated health bar at zero", () => {
+  const board = [
+    item("f1", "chili", 3),
+    item("f2", "dragon-tooth", 3),
+    item("f3", "ember-core", 3),
+    item("f4", "cinder-berry", 3),
+    item("p1", "nightwing", 3),
+  ];
+  const battle = simulateBattle(board, CAMPAIGN_OPPONENTS[0]);
+  assert.equal(battle.reason, "knockout");
+  assert.equal(battle.winner, "player");
+  assert.equal(battle.finalEnemyHp, 0);
+  assert.equal(battle.events.at(-1)?.enemyHp, 0);
+});
+
+test("a timeout keeps both health bars and resolves by relative health", () => {
+  const board = [item("p1", "chili"), null, null, null, null];
+  const battle = simulateBattle(board, CAMPAIGN_OPPONENTS[0]);
+  assert.equal(battle.reason, "timeout");
+  assert.ok(battle.finalPlayerHp > 0);
+  assert.ok(battle.finalEnemyHp > 0);
+  const playerRatio = battle.finalPlayerHp / battle.playerMaxHp;
+  const enemyRatio = battle.finalEnemyHp / battle.enemyMaxHp;
+  assert.equal(battle.winner, playerRatio > enemyRatio ? "player" : "enemy");
 });
 
 test("a defeat consumes one run seal but advances the round", () => {

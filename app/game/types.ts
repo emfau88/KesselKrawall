@@ -80,6 +80,7 @@ export interface MergeStep {
   fromLevel: ItemLevel;
   toLevel: ItemLevel;
   slot: number;
+  consumedSlot: number | null;
 }
 
 export interface GameState {
