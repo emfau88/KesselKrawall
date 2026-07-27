@@ -1,10 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./menu.css";
 
-const isGitHubPages = process.env.GITHUB_PAGES === "true";
-const publicUrl = isGitHubPages
-  ? "https://emfau88.github.io/KesselKrawall/"
-  : "https://kessel-krawall.maddeanhotmail.chatgpt.site/";
+const publicUrl = "https://emfau88.github.io/KesselKrawall/";
 
 export const metadata: Metadata = {
   metadataBase: new URL(publicUrl),

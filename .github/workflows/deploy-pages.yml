@@ -37,6 +37,12 @@ jobs:
       - name: Typen prüfen
         run: npm run typecheck
 
+      - name: Codequalität prüfen
+        run: npm run lint
+
+      - name: Automatisierte Tests ausführen
+        run: npm test
+
       - name: Statische Spielversion bauen
         run: npm run build:pages
         env:

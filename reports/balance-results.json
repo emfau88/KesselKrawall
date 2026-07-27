@@ -1,0 +1,306 @@
+{
+  "schemaVersion": 1,
+  "reproducibility": {
+    "baseSeed": 1263206400,
+    "seedStride": 2654435769,
+    "seedFormula": "(baseSeed + Math.imul(index, seedStride)) >>> 0",
+    "seedCount": 64,
+    "combatLimitMs": 25000,
+    "command": "npm run balance:analysis -- --seeds=64"
+  },
+  "strategy": {
+    "description": "Pro Shop wird wiederholt das bezahlbare Angebot mit dem höchsten Zuwachs der groben Buildstärke pro Gold gekauft. Danach wird genau der kostenlose Reroll genutzt und erneut gekauft; bezahlte Rerolls werden nicht verwendet.",
+    "paidRerolls": false,
+    "initialGold": 7,
+    "roundGoldBudgets": [
+      {
+        "round": 1,
+        "averageAvailable": 7,
+        "averageSpent": 6,
+        "averageRemaining": 1
+      },
+      {
+        "round": 2,
+        "averageAvailable": 6.671875,
+        "averageSpent": 6.109375,
+        "averageRemaining": 0.5625
+      },
+      {
+        "round": 3,
+        "averageAvailable": 7.5625,
+        "averageSpent": 6.28125,
+        "averageRemaining": 1.28125
+      },
+      {
+        "round": 4,
+        "averageAvailable": 8.15625,
+        "averageSpent": 6.59375,
+        "averageRemaining": 1.5625
+      },
+      {
+        "round": 5,
+        "averageAvailable": 9.5625,
+        "averageSpent": 5.015625,
+        "averageRemaining": 4.546875
+      },
+      {
+        "round": 6,
+        "averageAvailable": 12.546875,
+        "averageSpent": 3.25,
+        "averageRemaining": 9.296875
+      },
+      {
+        "round": 7,
+        "averageAvailable": 18.21875,
+        "averageSpent": 2.0625,
+        "averageRemaining": 16.15625
+      },
+      {
+        "round": 8,
+        "averageAvailable": 26.546875,
+        "averageSpent": 1.59375,
+        "averageRemaining": 24.953125
+      }
+    ]
+  },
+  "timeoutRate": 0.48828125,
+  "timeoutPercent": 48.83,
+  "roundResults": [
+    {
+      "round": 1,
+      "battles": 64,
+      "winRate": 0.671875,
+      "winPercent": 67.19,
+      "lossRate": 0.328125,
+      "lossPercent": 32.81,
+      "drawRate": 0,
+      "drawPercent": 0,
+      "timeoutRate": 1,
+      "timeoutPercent": 100
+    },
+    {
+      "round": 2,
+      "battles": 64,
+      "winRate": 1,
+      "winPercent": 100,
+      "lossRate": 0,
+      "lossPercent": 0,
+      "drawRate": 0,
+      "drawPercent": 0,
+      "timeoutRate": 0.828125,
+      "timeoutPercent": 82.81
+    },
+    {
+      "round": 3,
+      "battles": 64,
+      "winRate": 0.875,
+      "winPercent": 87.5,
+      "lossRate": 0,
+      "lossPercent": 0,
+      "drawRate": 0.125,
+      "drawPercent": 12.5,
+      "timeoutRate": 0.875,
+      "timeoutPercent": 87.5
+    },
+    {
+      "round": 4,
+      "battles": 64,
+      "winRate": 1,
+      "winPercent": 100,
+      "lossRate": 0,
+      "lossPercent": 0,
+      "drawRate": 0,
+      "drawPercent": 0,
+      "timeoutRate": 0.171875,
+      "timeoutPercent": 17.19
+    },
+    {
+      "round": 5,
+      "battles": 64,
+      "winRate": 1,
+      "winPercent": 100,
+      "lossRate": 0,
+      "lossPercent": 0,
+      "drawRate": 0,
+      "drawPercent": 0,
+      "timeoutRate": 0.078125,
+      "timeoutPercent": 7.81
+    },
+    {
+      "round": 6,
+      "battles": 64,
+      "winRate": 0.921875,
+      "winPercent": 92.19,
+      "lossRate": 0,
+      "lossPercent": 0,
+      "drawRate": 0.078125,
+      "drawPercent": 7.81,
+      "timeoutRate": 0.546875,
+      "timeoutPercent": 54.69
+    },
+    {
+      "round": 7,
+      "battles": 64,
+      "winRate": 0.796875,
+      "winPercent": 79.69,
+      "lossRate": 0.203125,
+      "lossPercent": 20.31,
+      "drawRate": 0,
+      "drawPercent": 0,
+      "timeoutRate": 0.046875,
+      "timeoutPercent": 4.69
+    },
+    {
+      "round": 8,
+      "battles": 64,
+      "winRate": 0.625,
+      "winPercent": 62.5,
+      "lossRate": 0.375,
+      "lossPercent": 37.5,
+      "drawRate": 0,
+      "drawPercent": 0,
+      "timeoutRate": 0.359375,
+      "timeoutPercent": 35.94
+    }
+  ],
+  "positionInfluence": {
+    "sampledBoards": 512,
+    "allUniqueArrangements": 49880,
+    "boardsWithAnyOutcomeChange": 6,
+    "boardsWithAnyOutcomeChangeRate": 0.01171875,
+    "boardsWithAnyOutcomeChangePercent": 1.17,
+    "winnerFlipMatchups": 5,
+    "winnerFlipRate": 0.009765625,
+    "winnerFlipPercent": 0.98
+  },
+  "itemFrequency": [
+    {
+      "itemId": "chili",
+      "name": "Chilischote",
+      "winningBoardsContainingRate": 1,
+      "winningBoardsContainingPercent": 100,
+      "losingBoardsContainingRate": 1,
+      "losingBoardsContainingPercent": 100,
+      "winningRepresentedCopies": 1043,
+      "losingRepresentedCopies": 97
+    },
+    {
+      "itemId": "dragon-tooth",
+      "name": "Drachenzahn",
+      "winningBoardsContainingRate": 0.23356009070294784,
+      "winningBoardsContainingPercent": 23.36,
+      "losingBoardsContainingRate": 0.1206896551724138,
+      "losingBoardsContainingPercent": 12.07,
+      "winningRepresentedCopies": 189,
+      "losingRepresentedCopies": 12
+    },
+    {
+      "itemId": "ember-core",
+      "name": "Glutkern",
+      "winningBoardsContainingRate": 0.1473922902494331,
+      "winningBoardsContainingPercent": 14.74,
+      "losingBoardsContainingRate": 0.06896551724137931,
+      "losingBoardsContainingPercent": 6.9,
+      "winningRepresentedCopies": 108,
+      "losingRepresentedCopies": 8
+    },
+    {
+      "itemId": "cinder-berry",
+      "name": "Rußbeere",
+      "winningBoardsContainingRate": 0.30839002267573695,
+      "winningBoardsContainingPercent": 30.84,
+      "losingBoardsContainingRate": 0.39655172413793105,
+      "losingBoardsContainingPercent": 39.66,
+      "winningRepresentedCopies": 221,
+      "losingRepresentedCopies": 44
+    },
+    {
+      "itemId": "slime-shroom",
+      "name": "Schleimpilz",
+      "winningBoardsContainingRate": 0.09977324263038549,
+      "winningBoardsContainingPercent": 9.98,
+      "losingBoardsContainingRate": 0.1206896551724138,
+      "losingBoardsContainingPercent": 12.07,
+      "winningRepresentedCopies": 78,
+      "losingRepresentedCopies": 16
+    },
+    {
+      "itemId": "nightwing",
+      "name": "Nachtflügel",
+      "winningBoardsContainingRate": 0.009070294784580499,
+      "winningBoardsContainingPercent": 0.91,
+      "losingBoardsContainingRate": 0.017241379310344827,
+      "losingBoardsContainingPercent": 1.72,
+      "winningRepresentedCopies": 5,
+      "losingRepresentedCopies": 1
+    },
+    {
+      "itemId": "witch-eye",
+      "name": "Hexenauge",
+      "winningBoardsContainingRate": 0.18140589569160998,
+      "winningBoardsContainingPercent": 18.14,
+      "losingBoardsContainingRate": 0.22413793103448276,
+      "losingBoardsContainingPercent": 22.41,
+      "winningRepresentedCopies": 140,
+      "losingRepresentedCopies": 30
+    },
+    {
+      "itemId": "venom-bulb",
+      "name": "Vipernknolle",
+      "winningBoardsContainingRate": 0.049886621315192746,
+      "winningBoardsContainingPercent": 4.99,
+      "losingBoardsContainingRate": 0,
+      "losingBoardsContainingPercent": 0,
+      "winningRepresentedCopies": 37,
+      "losingRepresentedCopies": 0
+    },
+    {
+      "itemId": "egg-shell",
+      "name": "Eierschale",
+      "winningBoardsContainingRate": 1,
+      "winningBoardsContainingPercent": 100,
+      "losingBoardsContainingRate": 1,
+      "losingBoardsContainingPercent": 100,
+      "winningRepresentedCopies": 1144,
+      "losingRepresentedCopies": 126
+    },
+    {
+      "itemId": "healing-tuber",
+      "name": "Heilknolle",
+      "winningBoardsContainingRate": 0.2494331065759637,
+      "winningBoardsContainingPercent": 24.94,
+      "losingBoardsContainingRate": 0.41379310344827586,
+      "losingBoardsContainingPercent": 41.38,
+      "winningRepresentedCopies": 200,
+      "losingRepresentedCopies": 57
+    },
+    {
+      "itemId": "gold-spoon",
+      "name": "Goldlöffel",
+      "winningBoardsContainingRate": 0.16099773242630386,
+      "winningBoardsContainingPercent": 16.1,
+      "losingBoardsContainingRate": 0.034482758620689655,
+      "losingBoardsContainingPercent": 3.45,
+      "winningRepresentedCopies": 125,
+      "losingRepresentedCopies": 4
+    },
+    {
+      "itemId": "moon-salt",
+      "name": "Mondsalz",
+      "winningBoardsContainingRate": 0.3242630385487528,
+      "winningBoardsContainingPercent": 32.43,
+      "losingBoardsContainingRate": 0.3620689655172414,
+      "losingBoardsContainingPercent": 36.21,
+      "winningRepresentedCopies": 249,
+      "losingRepresentedCopies": 45
+    }
+  ],
+  "powerEstimate": {
+    "sampleCount": 512,
+    "pearsonCorrelation": 0.5369243514754544,
+    "decisiveSampleCount": 499,
+    "predictionErrorRate": 0.07414829659318638,
+    "predictionErrorPercent": 7.41,
+    "note": "Die Korrelation vergleicht die Differenz der groben Buildstärke mit der Differenz der verbleibenden relativen LP. Die Fehlerrate vergleicht nur entscheidende Kämpfe."
+  }
+}

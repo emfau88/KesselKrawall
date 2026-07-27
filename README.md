@@ -23,7 +23,7 @@ setzen.
 
 ## Kernfantasie
 
-Aus zunächst unscheinbaren Zutaten entsteht im Verlauf eines kurzen Runs ein
+Aus zunächst unscheinbaren Zutaten entsteht im Verlauf einer kurzen Kampagne ein
 absurder, hochskalierender Zauberkessel. Der Spieler soll sich auf jeden Merge
 freuen, aktive Synergien im Kampf erkennen und nach einer Niederlage verstehen,
 welche Entscheidung oder Schwäche entscheidend war.
@@ -40,7 +40,7 @@ welche Entscheidung oder Schwäche entscheidend war.
   und getrennte Kauf- und Kampflayouts.
 - **Macht muss fühlbar sein:** Merges und Synergien erzeugen erkennbare Sprünge
   statt kaum sichtbarer Prozentsteigerungen.
-- **Kleine Runs, echte Varianz:** Acht Gegner führen in wenigen Minuten vom
+- **Kurze Kampagnen, echte Varianz:** Acht Gegner führen in wenigen Minuten vom
   ersten Einkauf bis zum Boss.
 
 ## Spielbarer Stand
@@ -50,12 +50,12 @@ Die Neubauphasen 1–5 sind umgesetzt:
 - vollständige Kampagne mit sieben Gegnern und einem Boss
 - Bossregel „Kesselzorn“ und Elite-Belohnung
 - zwölf datengetriebene Zutaten in drei Familien
-- Shop, Verkauf, Rerolls und lokale Run-Speicherung
+- Shop, Verkauf, neue Angebote und lokale Spielstand-Speicherung
 - fünf per Tap umsortierbare Zutatenplätze
 - automatische Merge-Kaskaden bis Level III
 - Feuer-, Gift- und Schutz-Synergien
 - deterministische Kampfsimulation und Itemstatistiken
-- drei Run-Siegel, Kampagnenfortschritt sowie Sieg- und Niederlagenende
+- drei Schutzsiegel, Kampagnenfortschritt sowie Sieg- und Niederlagenende
 - konsequente Hochformat-Oberfläche mit getrennten Kauf-, Kampf- und
   Ergebnisansichten
 - Fullscreen-Toggle mit iPhone-Hinweis, Safe Areas und responsiven Touchzielen
@@ -63,7 +63,6 @@ Die Neubauphasen 1–5 sind umgesetzt:
 ## Spielen
 
 - [Öffentliche Version auf GitHub Pages](https://emfau88.github.io/KesselKrawall/)
-- [Private Entwicklungsveröffentlichung](https://kessel-krawall.maddeanhotmail.chatgpt.site/)
 
 ## Lokale Entwicklung
 
@@ -91,7 +90,7 @@ Die verbindlichen Produkt- und Spielregeln stehen in
 1. finale mobile Komposition und produzierte Kesselassets
 2. stärkere Merge-Inszenierung, Audio und haptisches Feedback
 3. systematische Balance-Simulationen und Playtests
-4. kurzes First-Run-Onboarding
+4. kurzes Onboarding für die erste Kampagne
 5. zusätzliche Gegnerpools und kleine Meta-Progression
 
 Kessel-Krawall bleibt bewusst fokussiert: Keine Figuren, kein Pathfinding,

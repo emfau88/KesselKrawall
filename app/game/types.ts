@@ -7,6 +7,7 @@ export type GamePhase =
   | "victory"
   | "gameover";
 export type Side = "player" | "enemy";
+export type BattleOutcome = Side | "draw";
 export type OpponentRank = "regular" | "elite" | "boss";
 export type BossRule = "rageAtHalf";
 
@@ -45,6 +46,10 @@ export interface ItemDefinition {
   passive?: PassiveDefinition;
   levelThreeBonus?: "burn" | "cleansePoison" | "overhealShield";
   scalesWithFamily?: Family;
+  trigger?:
+    | { type: "ramp"; growthPerActivation: number }
+    | { type: "onHpDamage" }
+    | { type: "emergency"; threshold: number; multiplier: number };
 }
 
 export interface ItemInstance {
@@ -71,6 +76,7 @@ export interface OpponentDefinition {
   rank: OpponentRank;
   baseHp: number;
   board: Board;
+  boardVariants?: readonly Board[];
   rewardBonus?: number;
   bossRule?: BossRule;
 }
@@ -84,7 +90,7 @@ export interface MergeStep {
 }
 
 export interface GameState {
-  version: 2;
+  version: 3;
   phase: GamePhase;
   round: number;
   gold: number;
@@ -96,6 +102,8 @@ export interface GameState {
   selectedSlot: number | null;
   rngState: number;
   idCounter: number;
+  opponentVariant: number;
+  pendingBattle: CombatResult | null;
 }
 
 export interface ItemCombatStats {
@@ -103,7 +111,9 @@ export interface ItemCombatStats {
   itemId: string;
   level: ItemLevel;
   triggers: number;
-  damage: number;
+  hpDamage: number;
+  shieldDamage: number;
+  totalDamage: number;
   healing: number;
   shield: number;
   poisonApplied: number;
@@ -134,7 +144,7 @@ export interface CombatEvent {
 }
 
 export interface CombatResult {
-  winner: Side;
+  winner: BattleOutcome;
   reason: "knockout" | "timeout";
   duration: number;
   events: CombatEvent[];

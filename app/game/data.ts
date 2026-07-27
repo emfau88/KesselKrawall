@@ -57,11 +57,12 @@ export const ITEMS: readonly ItemDefinition[] = [
     values: [7, 15, 29],
     effect: "damage",
     descriptions: [
-      "Schwerer Treffer; wächst mit Feuer.",
-      "Starker Treffer; wächst mit Feuer.",
-      "Gewaltiger Treffer; wächst mit Feuer.",
+      "Treffer; jede Aktivierung macht ihn 18 % stärker.",
+      "Starker Treffer; wächst im Kampf weiter.",
+      "Gewaltiger Treffer; wächst im Kampf weiter.",
     ],
     scalesWithFamily: "fire",
+    trigger: { type: "ramp", growthPerActivation: 0.18 },
   },
   {
     id: "ember-core",
@@ -80,7 +81,7 @@ export const ITEMS: readonly ItemDefinition[] = [
     passive: {
       type: "hasteAdjacent",
       family: "fire",
-      values: [0.12, 0.2, 0.3],
+      values: [0.18, 0.28, 0.38],
     },
   },
   {
@@ -109,9 +110,9 @@ export const ITEMS: readonly ItemDefinition[] = [
     values: [3, 6, 10],
     effect: "poison",
     descriptions: [
-      "Legt 3 Giftstapel auf.",
-      "Legt 6 Giftstapel auf.",
-      "Legt 10 Giftstapel auf.",
+      "Legt 3 gemeinsames Gift auf (maximal 12).",
+      "Legt 6 gemeinsames Gift auf (maximal 12).",
+      "Legt 10 gemeinsames Gift auf (maximal 12).",
     ],
   },
   {
@@ -130,7 +131,7 @@ export const ITEMS: readonly ItemDefinition[] = [
     ],
     passive: {
       type: "hasteAdjacent",
-      values: [0.1, 0.17, 0.25],
+      values: [0.16, 0.25, 0.35],
     },
   },
   {
@@ -196,11 +197,12 @@ export const ITEMS: readonly ItemDefinition[] = [
     values: [6, 13, 23],
     effect: "heal",
     descriptions: [
-      "Heilt 6 Leben.",
-      "Heilt 13 Leben.",
-      "23 Heilung; Überheilung wird Schild.",
+      "Heilt einmal unter 35 % Leben stark.",
+      "Heilt einmal unter 35 % Leben stark.",
+      "Notfallheilung; Überheilung wird Schild.",
     ],
     levelThreeBonus: "overhealShield",
+    trigger: { type: "emergency", threshold: 0.35, multiplier: 2 },
   },
   {
     id: "gold-spoon",
@@ -220,7 +222,7 @@ export const ITEMS: readonly ItemDefinition[] = [
     passive: {
       type: "powerAdjacent",
       family: "guard",
-      values: [0.1, 0.16, 0.24],
+      values: [0.16, 0.24, 0.34],
     },
   },
   {
@@ -234,10 +236,11 @@ export const ITEMS: readonly ItemDefinition[] = [
     secondaryValues: [2, 5, 10],
     effect: "shieldDamage",
     descriptions: [
-      "Erzeugt Schild und schleudert Splitter.",
-      "Mehr Schild und Splitterschaden.",
-      "Massiver Schild und Gegentreffer.",
+      "Kontert nach echtem LP-Schaden mit Schild und Splitter.",
+      "Stärkerer Konter nach echtem LP-Schaden.",
+      "Massiver Konter nach echtem LP-Schaden.",
     ],
+    trigger: { type: "onHpDamage" },
   },
 ] as const;
 
@@ -263,13 +266,29 @@ export const CAMPAIGN_OPPONENTS: readonly OpponentDefinition[] = [
     quote: "Das wird gleich angenehm ungemütlich.",
     threat: "Klare Feuerangriffe, aber keinerlei Schutz",
     rank: "regular",
-    baseHp: 82,
+    baseHp: 70,
     board: [
       enemyItem("zischbert", 0, "chili", 1),
       enemyItem("zischbert", 1, "dragon-tooth", 1),
       null,
       null,
       null,
+    ],
+    boardVariants: [
+      [
+        enemyItem("zischbert-a", 0, "chili", 1),
+        enemyItem("zischbert-a", 1, "ember-core", 1),
+        null,
+        null,
+        null,
+      ],
+      [
+        enemyItem("zischbert-b", 0, "dragon-tooth", 1),
+        enemyItem("zischbert-b", 1, "nightwing", 1),
+        null,
+        null,
+        null,
+      ],
     ],
   },
   {
@@ -288,6 +307,22 @@ export const CAMPAIGN_OPPONENTS: readonly OpponentDefinition[] = [
       null,
       null,
     ],
+    boardVariants: [
+      [
+        enemyItem("martha-a", 0, "slime-shroom", 1),
+        enemyItem("martha-a", 1, "witch-eye", 1),
+        null,
+        null,
+        null,
+      ],
+      [
+        enemyItem("martha-b", 0, "venom-bulb", 1),
+        enemyItem("martha-b", 1, "nightwing", 1),
+        null,
+        null,
+        null,
+      ],
+    ],
   },
   {
     id: "schild-siggi",
@@ -304,6 +339,22 @@ export const CAMPAIGN_OPPONENTS: readonly OpponentDefinition[] = [
       enemyItem("siggi", 2, "moon-salt", 1),
       null,
       null,
+    ],
+    boardVariants: [
+      [
+        enemyItem("siggi-a", 0, "egg-shell", 1),
+        enemyItem("siggi-a", 1, "healing-tuber", 1),
+        enemyItem("siggi-a", 2, "moon-salt", 1),
+        null,
+        null,
+      ],
+      [
+        enemyItem("siggi-b", 0, "gold-spoon", 1),
+        enemyItem("siggi-b", 1, "healing-tuber", 1),
+        enemyItem("siggi-b", 2, "chili", 1),
+        null,
+        null,
+      ],
     ],
   },
   {
@@ -322,6 +373,22 @@ export const CAMPAIGN_OPPONENTS: readonly OpponentDefinition[] = [
       enemyItem("klara", 3, "chili", 1),
       null,
     ],
+    boardVariants: [
+      [
+        enemyItem("klara-a", 0, "venom-bulb", 1),
+        enemyItem("klara-a", 1, "cinder-berry", 1),
+        enemyItem("klara-a", 2, "chili", 1),
+        enemyItem("klara-a", 3, "nightwing", 1),
+        null,
+      ],
+      [
+        enemyItem("klara-b", 0, "slime-shroom", 1),
+        enemyItem("klara-b", 1, "witch-eye", 1),
+        enemyItem("klara-b", 2, "ember-core", 1),
+        enemyItem("klara-b", 3, "cinder-berry", 1),
+        null,
+      ],
+    ],
   },
   {
     id: "tox-toni",
@@ -339,6 +406,22 @@ export const CAMPAIGN_OPPONENTS: readonly OpponentDefinition[] = [
       enemyItem("toni", 3, "venom-bulb", 1),
       null,
     ],
+    boardVariants: [
+      [
+        enemyItem("toni-a", 0, "venom-bulb", 2),
+        enemyItem("toni-a", 1, "nightwing", 1),
+        enemyItem("toni-a", 2, "slime-shroom", 1),
+        enemyItem("toni-a", 3, "witch-eye", 1),
+        null,
+      ],
+      [
+        enemyItem("toni-b", 0, "nightwing", 1),
+        enemyItem("toni-b", 1, "slime-shroom", 2),
+        enemyItem("toni-b", 2, "cinder-berry", 1),
+        enemyItem("toni-b", 3, "venom-bulb", 1),
+        null,
+      ],
+    ],
   },
   {
     id: "broesel-berta",
@@ -355,6 +438,22 @@ export const CAMPAIGN_OPPONENTS: readonly OpponentDefinition[] = [
       enemyItem("berta", 2, "chili", 2),
       enemyItem("berta", 3, "moon-salt", 1),
       null,
+    ],
+    boardVariants: [
+      [
+        enemyItem("berta-a", 0, "healing-tuber", 2),
+        enemyItem("berta-a", 1, "gold-spoon", 1),
+        enemyItem("berta-a", 2, "dragon-tooth", 1),
+        enemyItem("berta-a", 3, "egg-shell", 1),
+        null,
+      ],
+      [
+        enemyItem("berta-b", 0, "moon-salt", 2),
+        enemyItem("berta-b", 1, "egg-shell", 1),
+        enemyItem("berta-b", 2, "chili", 2),
+        enemyItem("berta-b", 3, "gold-spoon", 1),
+        null,
+      ],
     ],
   },
   {
@@ -374,6 +473,22 @@ export const CAMPAIGN_OPPONENTS: readonly OpponentDefinition[] = [
       enemyItem("mirea", 3, "cinder-berry", 1),
       enemyItem("mirea", 4, "nightwing", 1),
     ],
+    boardVariants: [
+      [
+        enemyItem("mirea-a", 0, "ember-core", 2),
+        enemyItem("mirea-a", 1, "dragon-tooth", 2),
+        enemyItem("mirea-a", 2, "chili", 1),
+        enemyItem("mirea-a", 3, "nightwing", 1),
+        enemyItem("mirea-a", 4, "cinder-berry", 1),
+      ],
+      [
+        enemyItem("mirea-b", 0, "nightwing", 1),
+        enemyItem("mirea-b", 1, "chili", 2),
+        enemyItem("mirea-b", 2, "ember-core", 2),
+        enemyItem("mirea-b", 3, "dragon-tooth", 1),
+        enemyItem("mirea-b", 4, "witch-eye", 1),
+      ],
+    ],
   },
   {
     id: "grosskessel",
@@ -391,6 +506,22 @@ export const CAMPAIGN_OPPONENTS: readonly OpponentDefinition[] = [
       enemyItem("boss", 2, "slime-shroom", 2),
       enemyItem("boss", 3, "gold-spoon", 2),
       enemyItem("boss", 4, "egg-shell", 1),
+    ],
+    boardVariants: [
+      [
+        enemyItem("boss-a", 0, "ember-core", 2),
+        enemyItem("boss-a", 1, "dragon-tooth", 2),
+        enemyItem("boss-a", 2, "venom-bulb", 2),
+        enemyItem("boss-a", 3, "healing-tuber", 2),
+        enemyItem("boss-a", 4, "moon-salt", 1),
+      ],
+      [
+        enemyItem("boss-b", 0, "nightwing", 2),
+        enemyItem("boss-b", 1, "slime-shroom", 2),
+        enemyItem("boss-b", 2, "cinder-berry", 2),
+        enemyItem("boss-b", 3, "gold-spoon", 2),
+        enemyItem("boss-b", 4, "egg-shell", 1),
+      ],
     ],
   },
 ] as const;

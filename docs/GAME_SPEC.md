@@ -21,7 +21,7 @@ Online-Systeme.
 - maximal fünf belegte Kesselplätze
 - drei Merge-Stufen
 - eine Synergieschwelle bei drei Familienpunkten
-- drei Run-Siegel; eine Niederlage verbraucht ein Siegel
+- drei Schutzsiegel; ab Runde 2 verbraucht eine Niederlage ein Siegel
 - Hochformat ist vollständig unterstützt; mobiles Querformat fordert zum
   Drehen auf, Desktop-Querformat bleibt funktional
 - keine Meta-Progression, vierte Familie oder Online-Funktion
@@ -47,7 +47,7 @@ angekündigt.
 
 ## Economy
 
-- Ein neuer Run beginnt mit 7 Gold und 3 Run-Siegeln.
+- Eine neue Kampagne beginnt mit 7 Gold und 3 Schutzsiegeln.
 - Der Shop zeigt drei Angebote.
 - Ein gekauftes Angebot bleibt bis zum nächsten Reroll als gekauft markiert.
 - Der erste Reroll jeder Runde ist kostenlos, weitere kosten je 1 Gold.
@@ -59,9 +59,10 @@ angekündigt.
 - Ein Kauf bei vollem Board ist erlaubt, wenn das neue Level-I-Item sofort mit
   einer vorhandenen Level-I-Kopie verschmilzt.
 
-Die ersten Angebote decken alle drei Familien ab. In den ersten Runden enthält
+Die ersten Angebote sind verlässlich Chilischote, Schleimpilz und Eierschale
+und decken damit alle drei Familien ab. In den ersten Runden enthält
 der erste Reroll beziehungsweise Folgeshop bevorzugt eine vorhandene Zutat,
-damit ein schlechter Zufallsstart den Run nicht entscheidet.
+damit ein schlechter Zufallsstart die Kampagne nicht entscheidet.
 
 ## Board, Platzierung und Merge
 
@@ -71,7 +72,8 @@ damit ein schlechter Zufallsstart den Run nicht entscheidet.
   zweiten Slot kostenlos getauscht.
 - Im Kampf ist die Anordnung gesperrt.
 - Zwei gleiche Items derselben Stufe verschmelzen automatisch.
-- Bei einer Kaskade bleibt der Slot mit dem kleineren Index belegt.
+- Bei einer Kauf-Kaskade bleibt immer die bereits vorhandene, durch den Kauf
+  aufgewertete Zutat an ihrem Slot. Das Merge-Ziel wird vor dem Kauf angezeigt.
 - Level III ist die Maximalstufe.
 - Familiengewicht: Level I = 1, Level II = 2, Level III = 4.
 - Ein Level-III-Item kann daher allein die 3er-Synergie aktivieren. Das ist
@@ -87,14 +89,21 @@ damit ein schlechter Zufallsstart den Run nicht entscheidet.
 - Aktionen mit identischem Zeitstempel dürfen noch auslösen, wenn ihr Besitzer
   zu Beginn dieses Zeitstempels lebte.
 - Schild absorbiert Schaden vor Lebenspunkten.
+- Schild ist auf 50 % der maximalen Lebenspunkte begrenzt.
 - Heilung ist auf die maximalen Lebenspunkte begrenzt; nur ausdrücklich
-  bezeichnete Items verwandeln Überheilung in Schild.
-- Gift tickt alle 2 Sekunden. Jede Quelle verursacht Schaden in Höhe ihrer
-  verbleibenden Stapel und verliert danach einen Stapel.
-- Brand tickt jede Sekunde nach demselben Prinzip.
+  bezeichnete Items verwandeln Überheilung in Schild. Ein Kessel mit null
+  Lebenspunkten kann nicht mehr geheilt werden.
+- Gift ist ein gemeinsamer Status mit maximal 12 Stapeln. Es tickt alle
+  2 Sekunden, verursacht die aufgerundete Hälfte der aktuellen Stapel als
+  Schaden und verliert danach zwei Stapel.
+- Brand tickt jede Sekunde pro Quelle in Höhe der verbleibenden Brandstapel
+  und verliert danach einen Stapel.
 - Nach 25 Sekunden gewinnt die höhere relative Lebensenergie. Bei Gleichstand
-  entscheidet der höhere Schildwert; bleibt auch dieser gleich, gewinnt der
-  verteidigende Gegner.
+  entscheidet der tatsächlich verursachte LP-Schaden. Danach ist der Kampf
+  unentschieden; Schild ist kein Siegkriterium.
+- Gleichzeitiger K. O. ist ein Unentschieden.
+- Drachenzahn wächst mit jeder eigenen Aktivierung, Mondsalz kontert nach
+  tatsächlichem LP-Schaden und Heilknolle heilt einmalig unter 35 % LP.
 
 ## Synergien
 
@@ -105,19 +114,21 @@ damit ein schlechter Zufallsstart den Run nicht entscheidet.
 
 ## Niederlage und Fortschritt
 
-- Eine Niederlage verbraucht ein Run-Siegel.
+- Ab Runde 2 verbraucht eine Niederlage ein Schutzsiegel.
 - Die nächste Runde beginnt trotzdem; es gibt keine Wiederholung desselben
   Gegners.
-- Bei null Siegeln endet der Run.
+- Bei null Siegeln endet die Kampagne.
+- Ein Unentschieden kostet kein Siegel und gewährt keinen Siegbonus.
 - Nach dem Bosskampf endet der Vertical Slice mit Sieg oder Niederlage.
-- Kampf-Lebenspunkte und Run-Siegel sind getrennte Ressourcen.
+- Kampf-Lebenspunkte und Schutzsiegel sind getrennte Ressourcen.
 
 ## Technische Leitplanken
 
 - React/TypeScript mit datengetriebenen Item- und Gegnerdefinitionen
 - reine Funktionen für Shop, Merges, Synergien und Kampfsimulation
 - Simulation erzeugt Ereignisse; die UI spielt diese lediglich ab
-- lokaler Speicher für stabilen Runzustand und Einstellungen
+- lokaler Speicher für stabilen Kampagnenzustand und Einstellungen; ein
+  laufender oder abgeschlossener Kampf wird atomar mitgespeichert
 - keine globale Sonderfalllogik pro Item; Sonderwirkungen werden über
   deklarative Effekttypen und zentrale Handler abgebildet
 - Touchziele mindestens 44 CSS-Pixel
@@ -140,8 +151,8 @@ damit ein schlechter Zufallsstart den Run nicht entscheidet.
 - Ergebnis-, Weiter- und Neustartzustand
 - sieben individuelle Gegner und ein finaler Boss
 - Elite-Belohnung und sichtbare Bossregel
-- Kampagnenfortschritt, Run-Sieg und endgültige Niederlage
-- Runzustand wird lokal gespeichert
+- Kampagnenfortschritt, Gesamtsieg und endgültige Niederlage
+- Kampagnenzustand wird lokal gespeichert
 - eigenständige Kauf-, Kampf- und Ergebnisdarstellung im Hochformat
 - keine abgeschnittenen oder überlagerten Bedienelemente ab 320 × 568 Pixeln
 - Fullscreen kann aktiviert und wieder verlassen werden

@@ -31,8 +31,8 @@ test("server-renders the Kessel-Krawall main menu before the game", async () => 
   assert.match(html, /<title>Kessel-Krawall<\/title>/i);
   assert.match(html, /Kessel/);
   assert.match(html, /Krawall/);
-  assert.match(html, /NEUEN RUN STARTEN/);
-  assert.match(html, /Was ist ein Run/);
+  assert.match(html, /NEUE KAMPAGNE STARTEN/);
+  assert.match(html, /Was ist die Kampagne/);
   assert.match(html, /Siegel &amp; Niederlagen/);
   assert.match(html, /DEMNÄCHST/);
   assert.doesNotMatch(html, /HEXENMARKT|KAMPF STARTEN/);

@@ -6,7 +6,12 @@ import {
   isStatusTick,
 } from "../app/game/combatPresentation";
 import { CAMPAIGN_OPPONENTS, ITEM_BY_ID } from "../app/game/data";
-import { getItemCooldownMs, simulateBattle } from "../app/game/simulation";
+import {
+  getItemCooldownMs,
+  POISON_CAP,
+  SHIELD_CAP_RATIO,
+  simulateBattle,
+} from "../app/game/simulation";
 import {
   advanceAfterBattle,
   buyOffer,
@@ -14,10 +19,18 @@ import {
   getFamilyWeights,
   getPowerBreakdown,
   getPowerValue,
+  getPurchaseMergePreview,
+  getCurrentOpponent,
   getSellValue,
   isSynergyActive,
+  sanitizeStoredState,
 } from "../app/game/state";
-import type { GameState, ItemInstance } from "../app/game/types";
+import { loadStoredGame, persistGame } from "../app/game/storage";
+import type {
+  GameState,
+  ItemInstance,
+  OpponentDefinition,
+} from "../app/game/types";
 
 function item(
   uid: string,
@@ -25,6 +38,23 @@ function item(
   level: 1 | 2 | 3 = 1,
 ): ItemInstance {
   return { uid, itemId, level };
+}
+
+function opponent(
+  board: OpponentDefinition["board"],
+  baseHp = 100,
+): OpponentDefinition {
+  return {
+    id: "test-opponent",
+    name: "Testkessel",
+    title: "Prüfkessel",
+    icon: "T",
+    quote: "Test",
+    threat: "Test",
+    rank: "regular",
+    baseHp,
+    board,
+  };
 }
 
 test("opening shop contains one offer from every family", () => {
@@ -61,6 +91,35 @@ test("full board purchase performs an immediate merge and cascade", () => {
   assert.equal(result.state.board[0]?.level, 3);
   assert.equal(result.state.board[1], null);
   assert.equal(result.state.gold, 17);
+});
+
+test("purchase merge keeps the existing target slot through a cascade", () => {
+  const base = createInitialState(11);
+  const state: GameState = {
+    ...base,
+    gold: 20,
+    board: [
+      null,
+      item("chili-two", "chili", 2),
+      item("guard-a", "egg-shell"),
+      item("guard-b", "gold-spoon"),
+      item("chili-one", "chili"),
+    ],
+    offers: [{ uid: "offer-chili", itemId: "chili", bought: false }],
+  };
+
+  const preview = getPurchaseMergePreview(state.board, "chili");
+  assert.deepEqual(preview, {
+    targetSlot: 4,
+    resultLevel: 3,
+    mergeCount: 2,
+  });
+
+  const result = buyOffer(state, "offer-chili");
+  assert.equal(result.state.board[4]?.uid, "chili-one");
+  assert.equal(result.state.board[4]?.level, 3);
+  assert.equal(result.state.board[1], null);
+  assert.ok(result.merges?.every((merge) => merge.slot === 4));
 });
 
 test("family weight preserves invested copies through merges", () => {
@@ -122,7 +181,7 @@ test("combat cooldown exposes the effective slot timing for the UI", () => {
     null,
     null,
   ];
-  assert.equal(getItemCooldownMs(board, 0), 2640);
+  assert.equal(getItemCooldownMs(board, 0), 2460);
   assert.equal(getItemCooldownMs(board, 2), 0);
 });
 
@@ -152,12 +211,277 @@ test("a timeout keeps both health bars and resolves by relative health", () => {
   assert.equal(battle.winner, playerRatio > enemyRatio ? "player" : "enemy");
 });
 
-test("a defeat consumes one run seal but advances the round", () => {
-  const state = createInitialState(42);
-  const next = advanceAfterBattle(state, false);
-  assert.equal(next.seals, 2);
+test("shared poison is capped, ticks once, and decays by two stacks", () => {
+  const single = simulateBattle(
+    [item("slime", "slime-shroom"), null, null, null, null],
+    opponent([null, null, null, null, null]),
+  );
+  assert.deepEqual(
+    single.events
+      .filter(
+        (event) =>
+          event.kind === "poison" &&
+          event.label === "Gift tickt" &&
+          event.time < 7_200,
+      )
+      .map((event) => event.amount),
+    [2, 1],
+  );
+
+  const multiple = simulateBattle(
+    [
+      item("slime-a", "slime-shroom", 3),
+      item("slime-b", "slime-shroom", 3),
+      null,
+      null,
+      null,
+    ],
+    opponent([null, null, null, null, null]),
+  );
+  const firstApplicationTime = multiple.events.find(
+    (event) => event.kind === "poison" && event.label !== "Gift tickt",
+  )?.time;
+  const firstApplications = multiple.events.filter(
+    (event) =>
+      event.kind === "poison" &&
+      event.label !== "Gift tickt" &&
+      event.time === firstApplicationTime,
+  );
+  assert.equal(
+    firstApplications.reduce((sum, event) => sum + event.amount, 0),
+    POISON_CAP,
+  );
+  assert.equal(
+    multiple.events.find(
+      (event) => event.kind === "poison" && event.label === "Gift tickt",
+    )?.amount,
+    6,
+  );
+});
+
+test("a poison knockout stops the defeated cauldron before it can act", () => {
+  const battle = simulateBattle(
+    [item("slime", "slime-shroom"), null, null, null, null],
+    opponent(
+      [item("enemy-tooth", "dragon-tooth"), null, null, null, null],
+      3,
+    ),
+  );
+  assert.equal(battle.winner, "player");
+  assert.equal(battle.finalEnemyHp, 0);
+  const knockoutTime = battle.events.at(-1)?.time;
+  assert.equal(knockoutTime, 6_000);
+  assert.equal(
+    battle.events.some(
+      (event) => event.time === knockoutTime && event.actor === "enemy",
+    ),
+    false,
+  );
+});
+
+test("a burn knockout stops the defeated cauldron before it can act", () => {
+  const battle = simulateBattle(
+    [item("chili", "chili", 3), null, null, null, null],
+    opponent(
+      [item("enemy-tooth", "dragon-tooth"), null, null, null, null],
+      25,
+    ),
+  );
+  assert.equal(battle.winner, "player");
+  assert.equal(battle.finalEnemyHp, 0);
+  const knockoutTime = battle.events.at(-1)?.time;
+  assert.equal(knockoutTime, 3_000);
+  assert.equal(
+    battle.events.some(
+      (event) => event.time === knockoutTime && event.actor === "enemy",
+    ),
+    false,
+  );
+});
+
+test("shield is capped and never decides an otherwise tied timeout", () => {
+  const battle = simulateBattle(
+    [item("shell", "egg-shell", 3), null, null, null, null],
+    opponent([null, null, null, null, null]),
+  );
+  assert.equal(battle.finalPlayerShield, 100 * SHIELD_CAP_RATIO);
+  assert.equal(battle.winner, "draw");
+  assert.equal(battle.reason, "timeout");
+});
+
+test("simultaneous knockout is a real draw", () => {
+  const board = Array.from({ length: 5 }, (_, index) =>
+    item(`player-${index}`, "dragon-tooth", 3),
+  );
+  const enemyBoard = Array.from({ length: 5 }, (_, index) =>
+    item(`enemy-${index}`, "dragon-tooth", 3),
+  );
+  const battle = simulateBattle(board, opponent(enemyBoard));
+  assert.equal(battle.finalPlayerHp, 0);
+  assert.equal(battle.finalEnemyHp, 0);
+  assert.equal(battle.winner, "draw");
+});
+
+test("combat statistics separate hp, shield, and total damage", () => {
+  const battle = simulateBattle(
+    [item("chili", "chili", 3), null, null, null, null],
+    opponent([item("shell", "egg-shell", 3), null, null, null, null]),
+  );
+  const stats = battle.playerStats.find((entry) => entry.uid === "chili");
+  assert.ok(stats);
+  assert.equal(stats.totalDamage, stats.hpDamage + stats.shieldDamage);
+  assert.ok(stats.hpDamage > 0);
+  assert.ok(stats.shieldDamage > 0);
+});
+
+test("three trigger items create distinct combat rhythms", () => {
+  const rampBattle = simulateBattle(
+    [item("tooth", "dragon-tooth"), null, null, null, null],
+    opponent([null, null, null, null, null], 1_000),
+  );
+  const rampDamage = rampBattle.events
+    .filter((event) => event.sourceUid === "tooth" && event.kind === "damage")
+    .map((event) => event.amount);
+  assert.ok(rampDamage.length >= 3);
+  assert.ok(rampDamage[1] > rampDamage[0]);
+  assert.ok(rampDamage[2] > rampDamage[1]);
+
+  const counterBattle = simulateBattle(
+    [item("salt", "moon-salt"), null, null, null, null],
+    opponent([item("enemy-chili", "chili"), null, null, null, null]),
+  );
+  const counterStats = counterBattle.playerStats.find(
+    (entry) => entry.uid === "salt",
+  );
+  assert.ok(counterStats);
+  assert.ok(counterStats.triggers > 0);
+  assert.equal(
+    counterBattle.events.some(
+      (event) => event.sourceUid === "salt" && event.time < 3_200,
+    ),
+    false,
+  );
+
+  const emergencyBattle = simulateBattle(
+    [item("heal", "healing-tuber", 3), null, null, null, null],
+    opponent([
+      item("enemy-1", "chili", 3),
+      item("enemy-2", "chili", 3),
+      item("enemy-3", "chili", 3),
+      null,
+      null,
+    ]),
+  );
+  assert.equal(
+    emergencyBattle.playerStats.find((entry) => entry.uid === "heal")
+      ?.triggers,
+    1,
+  );
+  assert.equal(
+    emergencyBattle.events.filter(
+      (event) => event.sourceUid === "heal" && event.kind === "heal",
+    ).length,
+    1,
+  );
+});
+
+test("emergency healing never revives a knocked-out cauldron", () => {
+  const battle = simulateBattle(
+    [item("heal", "healing-tuber", 3), null, null, null, null],
+    opponent(
+      Array.from({ length: 5 }, (_, index) =>
+        item(`enemy-tooth-${index}`, "dragon-tooth", 3),
+      ),
+    ),
+  );
+  assert.equal(battle.finalPlayerHp, 0);
+  assert.equal(
+    battle.events.some(
+      (event) => event.sourceUid === "heal" && event.kind === "heal",
+    ),
+    false,
+  );
+});
+
+test("a draw advances without seal loss or victory reward", () => {
+  const state = createInitialState(45);
+  const next = advanceAfterBattle(state, "draw");
+  assert.equal(next.seals, state.seals);
+  assert.equal(next.victories, state.victories);
   assert.equal(next.round, 2);
-  assert.equal(next.phase, "shop");
+});
+
+test("stored runs validate ids, levels, counters, and pending battles deeply", () => {
+  const base = createInitialState(46);
+  const battle = simulateBattle(
+    [item("chili", "chili"), null, null, null, null],
+    CAMPAIGN_OPPONENTS[0],
+  );
+  const valid = {
+    ...base,
+    phase: "battle",
+    board: [item("chili", "chili"), null, null, null, null],
+    pendingBattle: battle,
+  };
+  assert.ok(sanitizeStoredState(JSON.parse(JSON.stringify(valid))));
+
+  assert.equal(
+    sanitizeStoredState({
+      ...valid,
+      board: [item("bad", "does-not-exist"), null, null, null, null],
+    }),
+    null,
+  );
+  assert.equal(sanitizeStoredState({ ...valid, rngState: 1.5 }), null);
+  assert.equal(
+    sanitizeStoredState({
+      ...valid,
+      pendingBattle: {
+        ...battle,
+        playerStats: [{ ...battle.playerStats[0], totalDamage: -1 }],
+      },
+    }),
+    null,
+  );
+});
+
+test("an active battle round-trips through the atomic save record", () => {
+  const records = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => records.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      records.set(key, value);
+    },
+    removeItem: (key: string) => {
+      records.delete(key);
+    },
+  } as Storage;
+  const base = createInitialState(47);
+  const board = [item("chili", "chili"), null, null, null, null];
+  const battle = simulateBattle(board, getCurrentOpponent(base));
+  const active: GameState = {
+    ...base,
+    phase: "battle",
+    board,
+    pendingBattle: battle,
+  };
+
+  assert.equal(persistGame(storage, active), true);
+  const restored = loadStoredGame(storage);
+  assert.equal(restored?.phase, "battle");
+  assert.deepEqual(restored?.pendingBattle, battle);
+});
+
+test("the first defeat is protected, later defeats consume one seal", () => {
+  const state = createInitialState(42);
+  const protectedNext = advanceAfterBattle(state, "enemy");
+  assert.equal(protectedNext.seals, 3);
+  assert.equal(protectedNext.round, 2);
+  assert.equal(protectedNext.phase, "shop");
+
+  const next = advanceAfterBattle(protectedNext, "enemy");
+  assert.equal(next.seals, 2);
+  assert.equal(next.round, 3);
 });
 
 test("campaign contains seven opponents and one final boss", () => {
@@ -168,6 +492,11 @@ test("campaign contains seven opponents and one final boss", () => {
   );
   assert.equal(CAMPAIGN_OPPONENTS[7].rank, "boss");
   assert.equal(CAMPAIGN_OPPONENTS[7].bossRule, "rageAtHalf");
+  assert.ok(
+    CAMPAIGN_OPPONENTS.every(
+      (opponent) => opponent.boardVariants?.length === 2,
+    ),
+  );
 });
 
 test("winning the eighth fight completes the campaign", () => {
@@ -176,7 +505,7 @@ test("winning the eighth fight completes the campaign", () => {
     round: 8,
     victories: 7,
   };
-  const completed = advanceAfterBattle(state, true);
+  const completed = advanceAfterBattle(state, "player");
   assert.equal(completed.phase, "victory");
   assert.equal(completed.victories, 8);
   assert.equal(completed.round, 8);
@@ -189,7 +518,7 @@ test("losing to the boss ends the run even with seals remaining", () => {
     seals: 3,
     victories: 6,
   };
-  const completed = advanceAfterBattle(state, false);
+  const completed = advanceAfterBattle(state, "enemy");
   assert.equal(completed.phase, "gameover");
   assert.equal(completed.seals, 2);
   assert.equal(completed.round, 8);

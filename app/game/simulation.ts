@@ -2,6 +2,7 @@ import { FAMILY_META, ITEM_BY_ID } from "./data";
 import { getFamilyWeights, isSynergyActive } from "./state";
 import type {
   Board,
+  BattleOutcome,
   CombatEvent,
   CombatEventKind,
   CombatResult,
@@ -15,12 +16,17 @@ import type {
 const PLAYER_MAX_HP = 100;
 const COMBAT_LIMIT_MS = 25_000;
 const STEP_MS = 100;
+export const POISON_CAP = 12;
+export const POISON_DECAY_PER_TICK = 2;
+export const SHIELD_CAP_RATIO = 0.5;
 
 interface RuntimeItem {
   instance: ItemInstance;
   slot: number;
   nextAt: number;
   cooldown: number;
+  activations: number;
+  emergencyUsed: boolean;
 }
 
 interface Combatant {
@@ -29,11 +35,13 @@ interface Combatant {
   maxHp: number;
   shield: number;
   board: Board;
-  poison: Map<string, number>;
+  poison: number;
+  poisonSourceUid: string | null;
   burn: Map<string, number>;
   stats: Map<string, ItemCombatStats>;
   runtimes: RuntimeItem[];
   powerMultiplier: number;
+  hpDamageDealt: number;
 }
 
 interface World {
@@ -49,12 +57,6 @@ function roundAmount(value: number): number {
   return Math.max(0, Math.round(value));
 }
 
-function totalStatus(status: Map<string, number>): number {
-  let total = 0;
-  for (const amount of status.values()) total += amount;
-  return total;
-}
-
 function opponentOf(world: World, side: Side): Combatant {
   return side === "player" ? world.enemy : world.player;
 }
@@ -68,7 +70,9 @@ function statFor(combatant: Combatant, uid: string): ItemCombatStats {
     itemId: instance?.itemId ?? "status",
     level: instance?.level ?? 1,
     triggers: 0,
-    damage: 0,
+    hpDamage: 0,
+    shieldDamage: 0,
+    totalDamage: 0,
     healing: 0,
     shield: 0,
     poisonApplied: 0,
@@ -117,8 +121,16 @@ function applyDamage(
   const hpDamage = Math.min(target.hp, amount - absorbed);
   target.hp -= hpDamage;
   const applied = absorbed + hpDamage;
-  statFor(actor, sourceUid).damage += applied;
+  if (applied <= 0) return 0;
+  const stats = statFor(actor, sourceUid);
+  stats.hpDamage += hpDamage;
+  stats.shieldDamage += absorbed;
+  stats.totalDamage += applied;
+  actor.hpDamageDealt += hpDamage;
   pushEvent(world, kind, actor.side, target.side, sourceUid, label, applied);
+  if (hpDamage > 0 && target.hp > 0) {
+    triggerHpDamageReactions(world, target, actor);
+  }
   return applied;
 }
 
@@ -130,10 +142,14 @@ function applyShield(
   label: string,
 ): number {
   const amount = roundAmount(rawAmount);
-  actor.shield += amount;
-  statFor(actor, sourceUid).shield += amount;
-  pushEvent(world, "shield", actor.side, actor.side, sourceUid, label, amount);
-  return amount;
+  if (amount <= 0 || actor.hp <= 0) return 0;
+  const shieldCap = Math.round(actor.maxHp * SHIELD_CAP_RATIO);
+  const gained = Math.min(amount, Math.max(0, shieldCap - actor.shield));
+  if (gained <= 0) return 0;
+  actor.shield += gained;
+  statFor(actor, sourceUid).shield += gained;
+  pushEvent(world, "shield", actor.side, actor.side, sourceUid, label, gained);
+  return gained;
 }
 
 function applyHeal(
@@ -144,7 +160,9 @@ function applyHeal(
   label: string,
   overhealToShield: boolean,
 ): void {
+  if (actor.hp <= 0) return;
   const amount = roundAmount(rawAmount);
+  if (amount <= 0) return;
   const missing = actor.maxHp - actor.hp;
   const healed = Math.min(missing, amount);
   const overheal = amount - healed;
@@ -237,17 +255,27 @@ function createCombatant(
       itemId: instance.itemId,
       level: instance.level,
       triggers: 0,
-      damage: 0,
+      hpDamage: 0,
+      shieldDamage: 0,
+      totalDamage: 0,
       healing: 0,
       shield: 0,
       poisonApplied: 0,
     });
     const cooldown = getItemCooldownMs(board, slot);
+    const trigger = ITEM_BY_ID[instance.itemId].trigger;
     runtimes.push({
       instance,
       slot,
       cooldown,
-      nextAt: Math.round(cooldown / STEP_MS) * STEP_MS,
+      nextAt:
+        trigger?.type === "onHpDamage"
+          ? 0
+          : trigger?.type === "emergency"
+          ? Number.POSITIVE_INFINITY
+          : Math.round(cooldown / STEP_MS) * STEP_MS,
+      activations: 0,
+      emergencyUsed: false,
     });
   });
   return {
@@ -256,11 +284,13 @@ function createCombatant(
     maxHp,
     shield: 0,
     board,
-    poison: new Map(),
+    poison: 0,
+    poisonSourceUid: null,
     burn: new Map(),
     stats,
     runtimes,
     powerMultiplier: 1,
+    hpDamageDealt: 0,
   };
 }
 
@@ -273,9 +303,10 @@ function guardMultiplier(combatant: Combatant): number {
 }
 
 function clearPoison(world: World, actor: Combatant, sourceUid: string): void {
-  const cleared = totalStatus(actor.poison);
+  const cleared = actor.poison;
   if (cleared <= 0) return;
-  actor.poison.clear();
+  actor.poison = 0;
+  actor.poisonSourceUid = null;
   pushEvent(
     world,
     "cleanse",
@@ -295,9 +326,13 @@ function addPoison(
   rawStacks: number,
   label: string,
 ): void {
+  if (target.hp <= 0) return;
   const synergyBonus = isSynergyActive(actor.board, "poison") ? 1 : 0;
-  const stacks = roundAmount(rawStacks + synergyBonus);
-  target.poison.set(sourceUid, (target.poison.get(sourceUid) ?? 0) + stacks);
+  const requestedStacks = roundAmount(rawStacks + synergyBonus);
+  const stacks = Math.min(requestedStacks, POISON_CAP - target.poison);
+  if (stacks <= 0) return;
+  target.poison += stacks;
+  target.poisonSourceUid = sourceUid;
   statFor(actor, sourceUid).poisonApplied += stacks;
   pushEvent(
     world,
@@ -317,6 +352,7 @@ function addBurn(
   sourceUid: string,
   stacks: number,
 ): void {
+  if (target.hp <= 0) return;
   target.burn.set(sourceUid, (target.burn.get(sourceUid) ?? 0) + stacks);
   pushEvent(
     world,
@@ -334,18 +370,32 @@ function activateItem(
   actor: Combatant,
   target: Combatant,
   runtime: RuntimeItem,
+  effectMultiplier = 1,
 ): void {
   const { instance, slot } = runtime;
   const definition = ITEM_BY_ID[instance.itemId];
   const index = instance.level - 1;
   const stats = statFor(actor, instance.uid);
   stats.triggers += 1;
+  const activationIndex = runtime.activations;
+  runtime.activations += 1;
   const placementPower = familyPowerMultiplier(actor, slot, definition);
   const directMultiplier = directDamageMultiplier(actor) * placementPower;
   const defensiveMultiplier = guardMultiplier(actor) * placementPower;
-  let primary = definition.values[index] * actor.powerMultiplier;
+  const rampMultiplier =
+    definition.trigger?.type === "ramp"
+      ? 1 + activationIndex * definition.trigger.growthPerActivation
+      : 1;
+  let primary =
+    definition.values[index] *
+    actor.powerMultiplier *
+    effectMultiplier *
+    rampMultiplier;
   const secondary =
-    (definition.secondaryValues?.[index] ?? 0) * actor.powerMultiplier;
+    (definition.secondaryValues?.[index] ?? 0) *
+    actor.powerMultiplier *
+    effectMultiplier *
+    rampMultiplier;
 
   if (definition.scalesWithFamily) {
     const weight = getFamilyWeights(actor.board)[definition.scalesWithFamily];
@@ -410,7 +460,7 @@ function activateItem(
       );
       break;
     case "conditionalDamage": {
-      const poisoned = totalStatus(target.poison) > 0;
+      const poisoned = target.poison > 0;
       applyDamage(
         world,
         actor,
@@ -466,6 +516,34 @@ function activateItem(
   }
 }
 
+function triggerHpDamageReactions(
+  world: World,
+  actor: Combatant,
+  target: Combatant,
+): void {
+  for (const runtime of actor.runtimes) {
+    const definition = ITEM_BY_ID[runtime.instance.itemId];
+    const trigger = definition.trigger;
+    if (!trigger || actor.hp <= 0) continue;
+
+    if (
+      trigger.type === "emergency" &&
+      !runtime.emergencyUsed &&
+      actor.hp / actor.maxHp <= trigger.threshold
+    ) {
+      runtime.emergencyUsed = true;
+      activateItem(world, actor, target, runtime, trigger.multiplier);
+      continue;
+    }
+
+    if (trigger.type === "onHpDamage" && runtime.nextAt <= world.time) {
+      runtime.nextAt =
+        world.time + Math.round(runtime.cooldown / STEP_MS) * STEP_MS;
+      activateItem(world, actor, target, runtime);
+    }
+  }
+}
+
 function tickStatus(
   world: World,
   afflicted: Combatant,
@@ -493,9 +571,33 @@ function tickStatus(
   }
 }
 
+function tickPoison(world: World, afflicted: Combatant): void {
+  if (afflicted.poison <= 0) return;
+  const attacker = opponentOf(world, afflicted.side);
+  const sourceUid =
+    afflicted.poisonSourceUid ?? `${attacker.side}-shared-poison`;
+  const damage = Math.ceil(afflicted.poison / 2);
+  applyDamage(
+    world,
+    attacker,
+    afflicted,
+    sourceUid,
+    damage,
+    "Gift tickt",
+    "poison",
+  );
+  afflicted.poison = Math.max(
+    0,
+    afflicted.poison - POISON_DECAY_PER_TICK,
+  );
+  if (afflicted.poison === 0) afflicted.poisonSourceUid = null;
+}
+
 function addStartingSynergyShield(world: World, combatant: Combatant): void {
   if (!isSynergyActive(combatant.board, "guard")) return;
-  combatant.shield += 12;
+  const shieldCap = Math.round(combatant.maxHp * SHIELD_CAP_RATIO);
+  const gained = Math.min(12, shieldCap);
+  combatant.shield = gained;
   pushEvent(
     world,
     "synergy",
@@ -503,20 +605,21 @@ function addStartingSynergyShield(world: World, combatant: Combatant): void {
     combatant.side,
     `${combatant.side}-guard-synergy`,
     `${FAMILY_META.guard.name}-Synergie`,
-    12,
+    gained,
   );
 }
 
-function finalWinner(world: World): Side {
+function finalWinner(world: World): BattleOutcome {
   if (world.player.hp <= 0 && world.enemy.hp > 0) return "enemy";
   if (world.enemy.hp <= 0 && world.player.hp > 0) return "player";
-  if (world.player.hp <= 0 && world.enemy.hp <= 0) return "enemy";
+  if (world.player.hp <= 0 && world.enemy.hp <= 0) return "draw";
   const playerRatio = world.player.hp / world.player.maxHp;
   const enemyRatio = world.enemy.hp / world.enemy.maxHp;
   if (playerRatio > enemyRatio) return "player";
   if (enemyRatio > playerRatio) return "enemy";
-  if (world.player.shield > world.enemy.shield) return "player";
-  return "enemy";
+  if (world.player.hpDamageDealt > world.enemy.hpDamageDealt) return "player";
+  if (world.enemy.hpDamageDealt > world.player.hpDamageDealt) return "enemy";
+  return "draw";
 }
 
 export function simulateBattle(
@@ -547,11 +650,16 @@ export function simulateBattle(
     }
     if (time % 2000 === 0) {
       if (playerAliveAtStart) {
-        tickStatus(world, world.player, world.player.poison, "poison");
+        tickPoison(world, world.player);
       }
       if (enemyAliveAtStart) {
-        tickStatus(world, world.enemy, world.enemy.poison, "poison");
+        tickPoison(world, world.enemy);
       }
+    }
+
+    if (world.player.hp <= 0 || world.enemy.hp <= 0) {
+      reason = "knockout";
+      break;
     }
 
     if (
@@ -576,7 +684,12 @@ export function simulateBattle(
     const actions: Array<{ actor: Combatant; target: Combatant; item: RuntimeItem }> = [];
     if (playerAliveAtStart) {
       for (const item of world.player.runtimes) {
-        if (item.nextAt <= time) {
+        const trigger = ITEM_BY_ID[item.instance.itemId].trigger;
+        if (
+          trigger?.type !== "onHpDamage" &&
+          trigger?.type !== "emergency" &&
+          item.nextAt <= time
+        ) {
           actions.push({ actor: world.player, target: world.enemy, item });
           item.nextAt += Math.round(item.cooldown / STEP_MS) * STEP_MS;
         }
@@ -584,7 +697,12 @@ export function simulateBattle(
     }
     if (enemyAliveAtStart) {
       for (const item of world.enemy.runtimes) {
-        if (item.nextAt <= time) {
+        const trigger = ITEM_BY_ID[item.instance.itemId].trigger;
+        if (
+          trigger?.type !== "onHpDamage" &&
+          trigger?.type !== "emergency" &&
+          item.nextAt <= time
+        ) {
           actions.push({ actor: world.enemy, target: world.player, item });
           item.nextAt += Math.round(item.cooldown / STEP_MS) * STEP_MS;
         }

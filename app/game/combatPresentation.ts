@@ -1,4 +1,8 @@
 import type { CombatEvent, Side } from "./types";
+import {
+  POISON_CAP,
+  POISON_DECAY_PER_TICK,
+} from "./simulation";
 
 export type CombatBeatTier = "hero" | "standard" | "ambient";
 
@@ -46,7 +50,7 @@ export interface CombatBeat {
 }
 
 interface MutableSideStatus {
-  poison: Map<string, number>;
+  poison: number;
   burn: Map<string, number>;
   rage: boolean;
 }
@@ -176,19 +180,23 @@ function applyStatusEvent(
   const targetStatus = statuses[event.target];
 
   if (isStatusTick(event)) {
-    const status = event.kind === "poison"
-      ? targetStatus.poison
-      : targetStatus.burn;
-    const current = status.get(event.sourceUid) ?? 0;
-    if (current <= 1) status.delete(event.sourceUid);
-    else status.set(event.sourceUid, current - 1);
+    if (event.kind === "poison") {
+      targetStatus.poison = Math.max(
+        0,
+        targetStatus.poison - POISON_DECAY_PER_TICK,
+      );
+      return;
+    }
+    const current = targetStatus.burn.get(event.sourceUid) ?? 0;
+    if (current <= 1) targetStatus.burn.delete(event.sourceUid);
+    else targetStatus.burn.set(event.sourceUid, current - 1);
     return;
   }
 
   if (event.kind === "poison") {
-    targetStatus.poison.set(
-      event.sourceUid,
-      (targetStatus.poison.get(event.sourceUid) ?? 0) + event.amount,
+    targetStatus.poison = Math.min(
+      POISON_CAP,
+      targetStatus.poison + event.amount,
     );
   } else if (event.kind === "burn") {
     targetStatus.burn.set(
@@ -196,10 +204,27 @@ function applyStatusEvent(
       (targetStatus.burn.get(event.sourceUid) ?? 0) + event.amount,
     );
   } else if (event.kind === "cleanse") {
-    targetStatus.poison.clear();
+    targetStatus.poison = 0;
   } else if (event.kind === "boss") {
     statuses[event.actor].rage = true;
   }
+}
+
+function timedPoisonAt(
+  stacks: number,
+  time: number,
+): TimedCombatStatus {
+  if (stacks <= 0) return emptyTimedStatus();
+  const nextTickAt =
+    Math.floor(time / POISON_INTERVAL_MS) * POISON_INTERVAL_MS +
+    POISON_INTERVAL_MS;
+  const remainingTicks = Math.ceil(stacks / POISON_DECAY_PER_TICK);
+  return {
+    stacks,
+    nextTickAt,
+    expiresAt: nextTickAt + (remainingTicks - 1) * POISON_INTERVAL_MS,
+    interval: POISON_INTERVAL_MS,
+  };
 }
 
 function timedStatusAt(
@@ -227,11 +252,7 @@ function snapshotStatuses(
   time: number,
 ): CombatStatusSnapshot {
   const snapshotSide = (side: Side): CombatSideStatus => ({
-    poison: timedStatusAt(
-      statuses[side].poison,
-      time,
-      POISON_INTERVAL_MS,
-    ),
+    poison: timedPoisonAt(statuses[side].poison, time),
     burn: timedStatusAt(statuses[side].burn, time, BURN_INTERVAL_MS),
     rage: statuses[side].rage,
   });
@@ -278,8 +299,8 @@ function createAtomicCombatBeats(events: CombatEvent[]): AtomicCombatBeat[] {
   const beats: AtomicCombatBeat[] = [];
   const seenItemSources = new Set<string>();
   const statuses: Record<Side, MutableSideStatus> = {
-    player: { poison: new Map(), burn: new Map(), rage: false },
-    enemy: { poison: new Map(), burn: new Map(), rage: false },
+    player: { poison: 0, burn: new Map(), rage: false },
+    enemy: { poison: 0, burn: new Map(), rage: false },
   };
 
   for (let index = 0; index < events.length; ) {

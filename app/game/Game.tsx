@@ -28,6 +28,7 @@ import {
   type CombatStatusSnapshot,
   type TimedCombatStatus,
 } from "./combatPresentation";
+import { playGameSound, type GameSound } from "./audio";
 import { FAMILY_META, ITEM_BY_ID } from "./data";
 import { getItemCooldownMs, simulateBattle } from "./simulation";
 import {
@@ -39,17 +40,17 @@ import {
   getFamilyWeights,
   getPowerBreakdown,
   getPowerValue,
+  getPurchaseMergePreview,
   getRoundReward,
   getSellValue,
   MAX_ROUNDS,
   rerollShop,
   resetRun,
-  sanitizeStoredState,
   selectOrSwapSlot,
   sellSlot,
   showBattleResult,
-  STORAGE_KEY,
 } from "./state";
+import { loadStoredGame, persistGame } from "./storage";
 import type {
   Board,
   CombatEvent,
@@ -113,7 +114,7 @@ interface EventSource {
   family: Family;
   slot: number;
   side: Side;
-  cooldownMs: number;
+  cadenceLabel: string;
 }
 
 interface VfxTiming {
@@ -172,6 +173,23 @@ function eventIcon(kind: CombatEventKind): UiAsset {
   }
 }
 
+function combatSound(
+  event: CombatEvent,
+  source: EventSource | null,
+): GameSound {
+  if (event.kind === "poison") return "poison";
+  if (event.kind === "heal") return "heal";
+  if (
+    event.kind === "shield" ||
+    event.kind === "synergy" ||
+    event.kind === "cleanse"
+  ) {
+    return "shield";
+  }
+  if (event.kind === "burn" || source?.family === "fire") return "fire";
+  return "hit";
+}
+
 function mergeValueLabel(definition: ItemDefinition): string {
   switch (definition.effect) {
     case "poison":
@@ -218,7 +236,14 @@ function findEventSource(
     family: definition.family,
     slot,
     side: event.actor,
-    cooldownMs: getItemCooldownMs(board, slot),
+    cadenceLabel:
+      definition.trigger?.type === "onHpDamage"
+        ? `Konter nach LP-Schaden · ${formatCooldown(getItemCooldownMs(board, slot))} Sperre`
+        : definition.trigger?.type === "emergency"
+          ? `einmal unter ${Math.round(definition.trigger.threshold * 100)} % LP`
+          : definition.trigger?.type === "ramp"
+            ? `alle ${formatCooldown(getItemCooldownMs(board, slot))} · wird stärker`
+            : `alle ${formatCooldown(getItemCooldownMs(board, slot))}`,
   };
 }
 
@@ -252,8 +277,12 @@ function TimedStatusBadge({
     ? Math.max(0, Math.min(1, 1 - untilTick / status.interval))
     : 0;
   const description =
-    `${label}: ${status.stacks} Stapel, noch etwa ${formatEffectDuration(remaining)}, ` +
-    `nächster Tick in ${formatEffectDuration(untilTick)}`;
+    label === "Gift"
+      ? `Gift: ${status.stacks} gemeinsame Stapel von maximal 12. ` +
+        `Nächster Tick verursacht ${Math.ceil(status.stacks / 2)} Schaden, ` +
+        `danach verfallen 2 Stapel. Tick in ${formatEffectDuration(untilTick)}`
+      : `${label}: ${status.stacks} Stapel, noch etwa ${formatEffectDuration(remaining)}, ` +
+        `nächster Tick in ${formatEffectDuration(untilTick)}`;
   const style = {
     "--status-progress": `${progress * 360}deg`,
   } as CSSProperties;
@@ -288,8 +317,8 @@ function CombatStatusRow({
       {shield > 0 && (
         <span
           className="combat-status status-shield"
-          title={`Schild: ${shield}. Bleibt, bis er durch Schaden verbraucht wird.`}
-          aria-label={`Schild ${shield}, bleibt bis zum Verbrauch`}
+          title={`Schild: ${shield}. Maximal 50 % der maximalen Lebenspunkte.`}
+          aria-label={`Schild ${shield}, begrenzt auf 50 Prozent der maximalen Lebenspunkte`}
         >
           <span className="status-ring">
             <UiIcon asset="shield" className="status-icon" />
@@ -542,7 +571,7 @@ function StatsList({ stats }: { stats: ItemCombatStats[] }) {
   const meaningful = stats.filter(
     (stat) =>
       stat.triggers > 0 ||
-      stat.damage > 0 ||
+      stat.totalDamage > 0 ||
       stat.healing > 0 ||
       stat.shield > 0,
   );
@@ -566,7 +595,19 @@ function StatsList({ stats }: { stats: ItemCombatStats[] }) {
               <small>{stat.triggers}× ausgelöst</small>
             </span>
             <span className="stat-values">
-              {stat.damage > 0 && <b className="damage-stat">{stat.damage} Schaden</b>}
+              {stat.hpDamage > 0 && (
+                <b className="damage-stat">{stat.hpDamage} LP-Schaden</b>
+              )}
+              {stat.shieldDamage > 0 && (
+                <b className="shield-damage-stat">
+                  {stat.shieldDamage} Schildschaden
+                </b>
+              )}
+              {stat.totalDamage > 0 && (
+                <b className="total-damage-stat">
+                  {stat.totalDamage} gesamt
+                </b>
+              )}
               {stat.healing > 0 && <b className="heal-stat">{stat.healing} Heilung</b>}
               {stat.shield > 0 && <b className="shield-stat">{stat.shield} Schild</b>}
               {stat.poisonApplied > 0 && <b className="poison-stat">{stat.poisonApplied} Gift</b>}
@@ -603,7 +644,7 @@ function CombatContributionStrip({
         const focused = focusedContributionId === contribution.id;
         const accessibleLabel =
           `${source?.name ?? contribution.label}: ${contribution.amountLabel}` +
-          `${source ? `, Angriff alle ${formatCooldown(source.cooldownMs)}` : ""}`;
+          `${source ? `, ${source.cadenceLabel}` : ""}`;
 
         return (
           <span
@@ -628,7 +669,7 @@ function CombatContributionStrip({
             <span>
               <small>
                 {source?.name ?? contribution.label}
-                {source ? ` · ${formatCooldown(source.cooldownMs)}` : ""}
+                {source ? ` · ${source.cadenceLabel}` : ""}
               </small>
               <b>{contribution.amountLabel}</b>
             </span>
@@ -938,6 +979,34 @@ function BattleVolleyVfx({
   ));
 }
 
+function createBattleViewState(
+  combat: CombatResult,
+  final = false,
+): BattleView {
+  return {
+    beatId: final ? "finished" : "opening",
+    time: final ? combat.duration : 0,
+    eventDuration: 0,
+    shotStaggerMs: 0,
+    playerHp: final ? combat.finalPlayerHp : combat.playerMaxHp,
+    playerShield: final ? combat.finalPlayerShield : 0,
+    enemyHp: final ? combat.finalEnemyHp : combat.enemyMaxHp,
+    enemyShield: final ? combat.finalEnemyShield : 0,
+    activeUids: [],
+    event: null,
+    eventLabel: null,
+    eventAmount: null,
+    tier: null,
+    contributions: [],
+    focusedContributionId: null,
+    landedContributionIds: [],
+    impactEvent: null,
+    impactContributionId: null,
+    statuses: createEmptyCombatStatuses(),
+    impactLanded: true,
+  };
+}
+
 export default function Game() {
   const [game, setGame] = useState<GameState>(() => createInitialState());
   const [screen, setScreen] = useState<AppScreen>("menu");
@@ -973,12 +1042,21 @@ export default function Game() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
-        const saved = window.localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          const parsed = sanitizeStoredState(JSON.parse(saved));
-          if (parsed) {
-            setGame(parsed);
-            setHasStoredRun(true);
+        const parsed = loadStoredGame(window.localStorage);
+        if (parsed) {
+          setGame(parsed);
+          setHasStoredRun(true);
+          if (parsed.pendingBattle) {
+            setCombat(parsed.pendingBattle);
+            setBattleView(
+              createBattleViewState(
+                parsed.pendingBattle,
+                parsed.phase === "result",
+              ),
+            );
+            setBattleClock(
+              parsed.phase === "result" ? parsed.pendingBattle.duration : 0,
+            );
           }
         }
       } catch {
@@ -997,6 +1075,7 @@ export default function Game() {
   useEffect(() => {
     if (!mergeNotice) return;
     navigator.vibrate?.(mergeNotice.toLevel === 3 ? [35, 35, 70] : 45);
+    playGameSound(mergeNotice.toLevel === 3 ? "merge3" : "merge2");
     const timer = window.setTimeout(() => {
       setMergeNotices((current) => {
         const remaining = current.slice(1);
@@ -1043,19 +1122,10 @@ export default function Game() {
   }, []);
 
   useEffect(() => {
-    if (
-      !hydrated ||
-      screen !== "game" ||
-      game.phase === "battle" ||
-      game.phase === "result"
-    ) {
+    if (!hydrated || screen !== "game") {
       return;
     }
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(game));
-    } catch {
-      // Device storage is optional; the active session remains playable.
-    }
+    persistGame(window.localStorage, game);
   }, [game, hydrated, screen]);
 
   useEffect(() => {
@@ -1069,7 +1139,7 @@ export default function Game() {
   }, [confirmNewRun]);
 
   useEffect(() => {
-    if (game.phase !== "battle" || !combat) return;
+    if (screen !== "game" || game.phase !== "battle" || !combat) return;
     const combatBeats = createCombatBeats(combat.events);
     const finalStatuses =
       combatBeats.at(-1)?.statuses ?? createEmptyCombatStatuses();
@@ -1129,6 +1199,13 @@ export default function Game() {
         impactLanded: true,
       });
       setBattleEnding(combat.reason);
+      playGameSound(
+        combat.winner === "player"
+          ? "victory"
+          : combat.winner === "enemy"
+            ? "defeat"
+            : "shield",
+      );
       navigator.vibrate?.(
         combat.reason === "knockout"
           ? combat.winner === "player"
@@ -1138,11 +1215,17 @@ export default function Game() {
       );
       finishTimer = window.setTimeout(
         () => {
-          setGame((current) => showBattleResult(current));
+          setGame((current) => {
+            const next = showBattleResult(current);
+            persistGame(window.localStorage, next);
+            return next;
+          });
           setFeedback(
             combat.winner === "player"
               ? "Dein Kessel gewinnt den Schlagabtausch!"
-              : `${opponent.name} behält die Oberhand.`,
+              : combat.winner === "enemy"
+                ? `${opponent.name} behält die Oberhand.`
+                : "Beide Kessel sind gleichauf – unentschieden.",
           );
         },
         combat.reason === "timeout" ? 1_250 : 850,
@@ -1227,6 +1310,16 @@ export default function Game() {
           }, shotDelay + shotTiming.chargeMs);
 
           schedulePresentation(() => {
+            playGameSound(
+              combatSound(
+                contribution.event,
+                findEventSource(
+                  contribution.event,
+                  game.board,
+                  opponent.board,
+                ),
+              ),
+            );
             setBattleView((current) => {
               if (current?.beatId !== nextBeat.id) return current;
               const landedContributionIds = [
@@ -1321,7 +1414,14 @@ export default function Game() {
       window.clearTimeout(finishTimer);
       clearPresentationTimers();
     };
-  }, [combat, game.phase, opponent.name]);
+  }, [
+    combat,
+    game.board,
+    game.phase,
+    opponent.board,
+    opponent.name,
+    screen,
+  ]);
 
   function announce(message: string) {
     setFeedback(message);
@@ -1335,6 +1435,7 @@ export default function Game() {
       return;
     }
     setGame(result.state);
+    playGameSound("purchase");
     if (result.merges?.length) {
       const powerBefore = getPowerValue(game.board);
       const powerAfter = getPowerValue(result.state.board);
@@ -1376,6 +1477,7 @@ export default function Game() {
     const result = rerollShop(game);
     if (result.error) return announce(result.error);
     setGame(result.state);
+    playGameSound("reroll");
     announce(game.rerollsUsed === 0 ? "Kostenlos neu gewürfelt." : "Shop neu gewürfelt.");
   }
 
@@ -1404,51 +1506,40 @@ export default function Game() {
     const result = beginBattle(game);
     if (result.error) return announce(result.error);
     const battle = simulateBattle(game.board, opponent);
+    const battleState = { ...result.state, pendingBattle: battle };
+    persistGame(window.localStorage, battleState);
     setCombat(battle);
     setBattleClock(0);
     setBattleEnding(null);
-    setBattleView({
-      beatId: "opening",
-      time: 0,
-      eventDuration: 0,
-      shotStaggerMs: 0,
-      playerHp: battle.playerMaxHp,
-      playerShield: 0,
-      enemyHp: battle.enemyMaxHp,
-      enemyShield: 0,
-      activeUids: [],
-      event: null,
-      eventLabel: null,
-      eventAmount: null,
-      tier: null,
-      contributions: [],
-      focusedContributionId: null,
-      landedContributionIds: [],
-      impactEvent: null,
-      impactContributionId: null,
-      statuses: createEmptyCombatStatuses(),
-      impactLanded: true,
-    });
-    setGame(result.state);
+    setBattleView(createBattleViewState(battle));
+    setGame(battleState);
     announce("Der Kessel-Krawall beginnt!");
   }
 
   function handleContinue() {
     if (!combat) return;
-    const won = combat.winner === "player";
-    setGame((current) => advanceAfterBattle(current, won));
+    const outcome = combat.winner;
+    setGame((current) => advanceAfterBattle(current, outcome));
     setCombat(null);
     setBattleView(null);
     setBattleClock(0);
     setBattleEnding(null);
     if (game.round >= MAX_ROUNDS) {
       announce(
-        won
+        outcome === "player"
           ? "Der Großkessel fällt. Du gewinnst das Kesselturnier!"
-          : "Der Großkessel verteidigt seinen Titel.",
+          : outcome === "draw"
+            ? "Unentschieden – der Großkessel wartet auf die Revanche."
+            : "Der Großkessel verteidigt seinen Titel.",
       );
     } else {
-      announce(won ? "Siegbonus erhalten. Nächster Gegner!" : "Ein Siegel ist gebrochen.");
+      announce(
+        outcome === "player"
+          ? "Siegbonus erhalten. Nächster Gegner!"
+          : outcome === "draw"
+            ? "Unentschieden: kein Siegelverlust, kein Siegbonus."
+            : "Ein Siegel ist gebrochen.",
+      );
     }
   }
 
@@ -1486,15 +1577,12 @@ export default function Game() {
   }
 
   function handleReturnToMenu() {
-    setGame((current) =>
-      current.phase === "battle" || current.phase === "result"
-        ? { ...current, phase: "shop" }
-        : current,
-    );
-    setCombat(null);
-    setBattleView(null);
-    setBattleClock(0);
-    setBattleEnding(null);
+    persistGame(window.localStorage, game);
+    if (game.phase === "battle" && combat) {
+      setBattleView(createBattleViewState(combat));
+      setBattleClock(0);
+      setBattleEnding(null);
+    }
     setMergeNotices([]);
     setBusy(false);
     setShowPowerHelp(false);
@@ -1595,6 +1683,10 @@ export default function Game() {
   const enemyHpPercent = combat
     ? Math.round((combat.finalEnemyHp / combat.enemyMaxHp) * 100)
     : 100;
+  const playerHpDamageTotal =
+    combat?.playerStats.reduce((sum, stat) => sum + stat.hpDamage, 0) ?? 0;
+  const enemyHpDamageTotal =
+    combat?.enemyStats.reduce((sum, stat) => sum + stat.hpDamage, 0) ?? 0;
   const fullscreenActive = isFullscreen || isStandalone;
   const fullscreenLabel = isStandalone
     ? "App läuft bereits im Vollbild"
@@ -1608,8 +1700,12 @@ export default function Game() {
       game.phase === "victory"
         ? "Turnier gewonnen"
         : game.phase === "gameover"
-          ? "Run beendet"
-          : `Runde ${game.round} von ${MAX_ROUNDS}`;
+          ? "Kampagne beendet"
+          : game.phase === "battle"
+            ? `Kampf läuft · Runde ${game.round}`
+            : game.phase === "result"
+              ? `Ergebnis bereit · Runde ${game.round}`
+              : `Runde ${game.round} von ${MAX_ROUNDS}`;
 
     return (
       <main
@@ -1686,7 +1782,7 @@ export default function Game() {
                 >
                   <span>
                     <UiIcon asset="battle" className="menu-button-icon" />
-                    RUN FORTSETZEN
+                    KAMPAGNE FORTSETZEN
                   </span>
                   <small>
                     {runStateLabel}
@@ -1704,11 +1800,11 @@ export default function Game() {
               >
                 <span>
                   <UiIcon asset="power" className="menu-button-icon" />
-                  NEUEN RUN STARTEN
+                  NEUE KAMPAGNE STARTEN
                 </span>
                 <small>
                   {hasStoredRun
-                    ? "Ersetzt den gespeicherten Run nach Bestätigung"
+                    ? "Ersetzt den gespeicherten Spielstand nach Bestätigung"
                     : hydrated
                       ? "7 Gold · 3 Siegel · 8 Gegner"
                       : "Spielstand wird geprüft …"}
@@ -1722,7 +1818,7 @@ export default function Game() {
                   <UiIcon asset="battle" className="menu-card-icon" />
                 </span>
                 <div>
-                  <h2>Was ist ein Run?</h2>
+                  <h2>Was ist die Kampagne?</h2>
                   <p>
                     Eine Reise durch acht Kämpfe. Du kaufst Zutaten, mergst sie
                     und baust Synergien. Dein Kessel kämpft danach automatisch.
@@ -1736,8 +1832,9 @@ export default function Game() {
                 <div>
                   <h2>Siegel &amp; Niederlagen</h2>
                   <p>
-                    Drei Siegel schützen deinen Run. Eine Niederlage bricht ein
-                    Siegel, aber du ziehst weiter. Ohne Siegel endet der Run.
+                    Drei Siegel schützen deine Kampagne. Runde 1 ist geschützt;
+                    danach bricht eine Niederlage ein Siegel. Ohne Siegel endet
+                    die Kampagne.
                   </p>
                 </div>
               </article>
@@ -1762,7 +1859,7 @@ export default function Game() {
                 </article>
                 <article>
                   <UiIcon asset="elite" className="coming-soon-icon" />
-                  <div><strong>Belohnungen</strong><small>Trophäen für starke Runs</small></div>
+                  <div><strong>Belohnungen</strong><small>Trophäen für starke Kampagnen</small></div>
                 </article>
               </div>
             </section>
@@ -1788,10 +1885,10 @@ export default function Game() {
                 <UiIcon asset="run-seal" className="dialog-seal-icon" />
               </span>
               <span className="eyebrow">SPIELSTAND ERSETZEN</span>
-              <h2 id="new-run-dialog-title">Wirklich einen neuen Run beginnen?</h2>
+              <h2 id="new-run-dialog-title">Wirklich eine neue Kampagne beginnen?</h2>
               <p id="new-run-dialog-description">
                 Dein gespeicherter Stand ({runStateLabel}) wird durch einen
-                frischen Run mit 7 Gold und 3 Siegeln ersetzt.
+                frischen Spielstand mit 7 Gold und 3 Siegeln ersetzt.
               </p>
               <div className="dialog-actions">
                 <button
@@ -1807,7 +1904,7 @@ export default function Game() {
                   onClick={startNewRunFromMenu}
                   ref={confirmNewRunRef}
                 >
-                  NEUEN RUN STARTEN
+                  NEUE KAMPAGNE STARTEN
                 </button>
               </div>
             </section>
@@ -1857,7 +1954,7 @@ export default function Game() {
             </div>
             <div>
               <small>SIEGEL</small>
-              <b aria-label={`${game.seals} Run-Siegel`}>
+              <b aria-label={`${game.seals} Schutzsiegel`}>
                 {Array.from({ length: 3 }, (_, index) => (
                   <span
                     className={index < game.seals ? "seal-on" : "seal-off"}
@@ -1928,7 +2025,8 @@ export default function Game() {
                   : opponent.rank === "elite"
                     ? "ELITE · "
                     : ""}
-                {opponent.title}
+                {opponent.title} · Variante {game.opponentVariant + 1}/
+                {1 + (opponent.boardVariants?.length ?? 0)}
               </span>
               <h2>{opponent.name}</h2>
               <p>{opponent.threat}</p>
@@ -1977,7 +2075,9 @@ export default function Game() {
                   ? `${playerHpPercent}% : ${enemyHpPercent}%`
                   : combat?.winner === "player"
                     ? "DEIN KESSEL SIEGT"
-                    : `${opponent.name.toUpperCase()} SIEGT`}
+                    : combat?.winner === "draw"
+                      ? "UNENTSCHIEDEN"
+                      : `${opponent.name.toUpperCase()} SIEGT`}
               </strong>
             </div>
           ) : battleView?.event ? (
@@ -2016,7 +2116,7 @@ export default function Game() {
                     {battleView.eventLabel}
                     {eventSource && (
                       <small className="callout-timing">
-                        Angriff alle {formatCooldown(eventSource.cooldownMs)}
+                        {eventSource.cadenceLabel}
                       </small>
                     )}
                   </strong>
@@ -2054,13 +2154,13 @@ export default function Game() {
                   aria-expanded={showPowerHelp}
                   aria-controls="power-explainer"
                 >
-                  Macht {playerPower}
+                  Buildstärke ≈ {playerPower}
                   <i aria-hidden="true">i</i>
                 </button>
               </h2>
               {showPowerHelp && (
                 <div className="power-explainer" id="power-explainer">
-                  <strong>Macht ist dein Buildwert</strong>
+                  <strong>Buildstärke ist eine grobe Schätzung</strong>
                   <p>
                     Eine grobe Stärkeeinschätzung zum Vergleichen – kein eigener
                     Kampfbonus.
@@ -2080,7 +2180,7 @@ export default function Game() {
                       <dd>+{playerPowerBreakdown.synergyBonus}</dd>
                     </div>
                     <div>
-                      <dt>Gesamte Macht</dt>
+                      <dt>Grobe Buildstärke</dt>
                       <dd>{playerPower}</dd>
                     </div>
                   </dl>
@@ -2091,7 +2191,7 @@ export default function Game() {
               type="button"
               className="power-compare"
               onClick={() => setShowPowerHelp((current) => !current)}
-              aria-label={`Gegnerische Macht ungefähr ${enemyPower}. Erklärung öffnen`}
+              aria-label={`Gegnerische grobe Buildstärke ungefähr ${enemyPower}. Erklärung öffnen`}
               aria-expanded={showPowerHelp}
               aria-controls="power-explainer"
             >
@@ -2165,6 +2265,10 @@ export default function Game() {
             <div className="offer-grid">
               {game.offers.map((offer) => {
                 const definition = ITEM_BY_ID[offer.itemId];
+                const mergePreview = getPurchaseMergePreview(
+                  game.board,
+                  offer.itemId,
+                );
                 const disabled =
                   offer.bought ||
                   game.gold < definition.cost ||
@@ -2196,6 +2300,13 @@ export default function Game() {
                     <span className="offer-synergy">
                       {offerSynergyLabel(game.board, definition.family)}
                     </span>
+                    {mergePreview && (
+                      <span className="offer-merge-target">
+                        Merge bleibt auf Slot {mergePreview.targetSlot + 1}
+                        {" · "}
+                        {ROMAN_LEVEL[mergePreview.resultLevel]}
+                      </span>
+                    )}
                     <span className="offer-price">
                       {offer.bought ? (
                         "GEKAUFT"
@@ -2294,7 +2405,7 @@ export default function Game() {
               {focusedContribution
                 ? `${
                     eventSource
-                      ? `Slot ${eventSource.slot + 1} · ${eventSource.name} · ${formatCooldown(eventSource.cooldownMs)} · `
+                      ? `Slot ${eventSource.slot + 1} · ${eventSource.name} · ${eventSource.cadenceLabel} · `
                       : ""
                   }${focusedContribution.label}`
                 : decisionCountdown
@@ -2328,7 +2439,15 @@ export default function Game() {
       )}
 
       {game.phase === "result" && combat && (
-        <section className={`result-sheet ${combat.winner === "player" ? "is-victory" : "is-defeat"}`}>
+        <section
+          className={`result-sheet ${
+            combat.winner === "player"
+              ? "is-victory"
+              : combat.winner === "draw"
+                ? "is-draw"
+                : "is-defeat"
+          }`}
+        >
           <div className="result-heading">
             <ArtSprite
               asset={
@@ -2340,21 +2459,36 @@ export default function Game() {
             />
             <div>
               <span className="eyebrow">{combat.reason === "knockout" ? "K.O." : "ZEITENTSCHEIDUNG"}</span>
-              <h2>{combat.winner === "player" ? "Kessel-Sieg!" : "Siegelbruch"}</h2>
+              <h2>
+                {combat.winner === "player"
+                  ? "Kessel-Sieg!"
+                  : combat.winner === "draw"
+                    ? "Unentschieden"
+                    : "Siegelbruch"}
+              </h2>
               <p>
                 {combat.winner === "player"
                   ? game.round >= MAX_ROUNDS
                     ? "Der Titel des Kesselturniers gehört dir."
                     : `+${getRoundReward(game, true)} Gold in der nächsten Runde`
-                  : game.round >= MAX_ROUNDS
-                    ? `${opponent.name} verteidigt den Turniertitel.`
-                    : `${opponent.name} war diesmal stärker. Der Run geht weiter.`}
+                  : combat.winner === "draw"
+                    ? game.round >= MAX_ROUNDS
+                      ? "Kein Siegelverlust. Fordere den Großkessel erneut."
+                      : "Kein Siegelverlust und kein Siegbonus."
+                    : game.round >= MAX_ROUNDS
+                      ? `${opponent.name} verteidigt den Turniertitel.`
+                      : `${opponent.name} war diesmal stärker. Deine Kampagne geht weiter.`}
               </p>
               {combat.reason === "timeout" && (
                 <div className="decision-result" aria-label="Relative Lebensenergie bei Zeitablauf">
                   <span>Dein Kessel <b>{playerHpPercent}%</b></span>
                   <i aria-hidden="true">gegen</i>
                   <span>{opponent.name} <b>{enemyHpPercent}%</b></span>
+                  {playerHpPercent === enemyHpPercent && (
+                    <small>
+                      LP-Schaden: {playerHpDamageTotal} zu {enemyHpDamageTotal}
+                    </small>
+                  )}
                 </div>
               )}
             </div>
@@ -2362,13 +2496,19 @@ export default function Game() {
           <StatsList stats={combat.playerStats} />
           <button type="button" className="continue-button" onClick={handleContinue}>
             {game.round >= MAX_ROUNDS
-              ? "TURNIER ABSCHLIESSEN"
+              ? combat.winner === "draw"
+                ? "REVANCHE VORBEREITEN"
+                : "TURNIER ABSCHLIESSEN"
               : combat.winner === "player"
                 ? "BELOHNUNG NEHMEN"
-                : "WEITERKÄMPFEN"}
+                : combat.winner === "draw"
+                  ? "OHNE VERLUST WEITER"
+                  : "WEITERKÄMPFEN"}
             <span>
               {game.round >= MAX_ROUNDS
-                ? "Ergebnis des Runs ansehen →"
+                ? combat.winner === "draw"
+                  ? "Bossrunde erneut vorbereiten →"
+                  : "Kampagnenergebnis ansehen →"
                 : `Runde ${game.round + 1} vorbereiten →`}
             </span>
           </button>
@@ -2384,14 +2524,14 @@ export default function Game() {
           <h2>
             {game.round >= MAX_ROUNDS
               ? "Der Großkessel verteidigt seinen Titel."
-              : `Der Run endet in Runde ${game.round}.`}
+              : `Die Kampagne endet in Runde ${game.round}.`}
           </h2>
           <p>
-            {game.victories} Siege · Macht {playerPower}. Deine Zutaten warten
+            {game.victories} Siege · grobe Buildstärke {playerPower}. Deine Zutaten warten
             schon auf den nächsten Versuch.
           </p>
           <button type="button" className="continue-button" onClick={handleReset}>
-            NEUEN RUN STARTEN
+            NEUE KAMPAGNE STARTEN
             <span>7 Gold · 3 Siegel · frischer Shop</span>
           </button>
         </section>
@@ -2403,11 +2543,11 @@ export default function Game() {
           <span className="eyebrow">KESSELMEISTER!</span>
           <h2>Du gewinnst den großen Kessel-Wettstreit.</h2>
           <p>
-            {game.victories} Siege · {game.seals} Siegel übrig · finale Macht{" "}
+            {game.victories} Siege · {game.seals} Siegel übrig · finale Buildstärke{" "}
             {playerPower}
           </p>
           <button type="button" className="continue-button" onClick={handleReset}>
-            NOCH EINEN RUN STARTEN
+            NOCH EINE KAMPAGNE STARTEN
             <span>Neue Angebote · neue Buildrichtung</span>
           </button>
         </section>
