@@ -28,9 +28,6 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: GitHub Pages vorbereiten
-        uses: actions/configure-pages@v5
-
       - name: Abhängigkeiten installieren
         run: npm ci
 
@@ -42,6 +39,9 @@ jobs:
 
       - name: Automatisierte Tests ausführen
         run: npm test
+
+      - name: GitHub Pages vorbereiten
+        uses: actions/configure-pages@v5
 
       - name: Statische Spielversion bauen
         run: npm run build:pages
