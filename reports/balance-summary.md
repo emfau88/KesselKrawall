@@ -9,32 +9,32 @@ Pro Shop wird wiederholt das bezahlbare Angebot mit dem höchsten Zuwachs der gr
 | Runde | Ø verfügbar | Ø ausgegeben | Ø übrig |
 | ---: | ---: | ---: | ---: |
 | 1 | 7.00 | 6.00 | 1.00 |
-| 2 | 6.67 | 6.11 | 0.56 |
-| 3 | 7.56 | 6.28 | 1.28 |
-| 4 | 8.16 | 6.59 | 1.56 |
-| 5 | 9.56 | 5.02 | 4.55 |
-| 6 | 12.55 | 3.25 | 9.30 |
-| 7 | 18.22 | 2.06 | 16.16 |
-| 8 | 26.55 | 1.59 | 24.95 |
+| 2 | 7.00 | 6.17 | 0.83 |
+| 3 | 7.83 | 6.31 | 1.52 |
+| 4 | 8.38 | 6.80 | 1.58 |
+| 5 | 9.58 | 4.73 | 4.84 |
+| 6 | 12.84 | 3.27 | 9.58 |
+| 7 | 18.50 | 2.09 | 16.41 |
+| 8 | 26.80 | 1.67 | 25.13 |
 
 ## Kampfergebnisse
 
-Timeoutquote gesamt: **48.83 %**.
+Timeoutquote gesamt: **48.44 %**.
 
 | Runde | Sieg | Niederlage | Unentschieden | Timeout |
 | ---: | ---: | ---: | ---: | ---: |
-| 1 | 67.19 % | 32.81 % | 0.00 % | 100.00 % |
+| 1 | 100.00 % | 0.00 % | 0.00 % | 100.00 % |
 | 2 | 100.00 % | 0.00 % | 0.00 % | 82.81 % |
-| 3 | 87.50 % | 0.00 % | 12.50 % | 87.50 % |
+| 3 | 85.94 % | 0.00 % | 14.06 % | 85.94 % |
 | 4 | 100.00 % | 0.00 % | 0.00 % | 17.19 % |
 | 5 | 100.00 % | 0.00 % | 0.00 % | 7.81 % |
-| 6 | 92.19 % | 0.00 % | 7.81 % | 54.69 % |
+| 6 | 92.19 % | 0.00 % | 7.81 % | 53.13 % |
 | 7 | 79.69 % | 20.31 % | 0.00 % | 4.69 % |
-| 8 | 62.50 % | 37.50 % | 0.00 % | 35.94 % |
+| 8 | 60.94 % | 39.06 % | 0.00 % | 35.94 % |
 
 ## Positionseinfluss
 
-Für 512 Boards wurden alle 49880 eindeutigen zulässigen Anordnungen simuliert.
+Für 512 Boards wurden alle 49940 eindeutigen zulässigen Anordnungen simuliert.
 
 - Irgendeine Ergebnisänderung durch Umordnung: **1.17 %**
 - Direkter Siegerwechsel Spieler ↔ Gegner: **0.98 %**
@@ -43,23 +43,23 @@ Für 512 Boards wurden alle 49880 eindeutigen zulässigen Anordnungen simuliert.
 
 | Zutat | in Siegerboards | in Verliererboards | Kopien Sieger | Kopien Verlierer |
 | --- | ---: | ---: | ---: | ---: |
-| Chilischote | 100.00 % | 100.00 % | 1043 | 97 |
-| Drachenzahn | 23.36 % | 12.07 % | 189 | 12 |
-| Glutkern | 14.74 % | 6.90 % | 108 | 8 |
-| Rußbeere | 30.84 % | 39.66 % | 221 | 44 |
-| Schleimpilz | 9.98 % | 12.07 % | 78 | 16 |
-| Nachtflügel | 0.91 % | 1.72 % | 5 | 1 |
-| Hexenauge | 18.14 % | 22.41 % | 140 | 30 |
-| Vipernknolle | 4.99 % | 0.00 % | 37 | 0 |
-| Eierschale | 100.00 % | 100.00 % | 1144 | 126 |
-| Heilknolle | 24.94 % | 41.38 % | 200 | 57 |
-| Goldlöffel | 16.10 % | 3.45 % | 125 | 4 |
-| Mondsalz | 32.43 % | 36.21 % | 249 | 45 |
+| Chilischote | 100.00 % | 100.00 % | 1047 | 79 |
+| Drachenzahn | 25.43 % | 18.42 % | 219 | 13 |
+| Glutkern | 11.74 % | 2.63 % | 88 | 2 |
+| Rußbeere | 29.57 % | 63.16 % | 226 | 47 |
+| Schleimpilz | 8.91 % | 15.79 % | 72 | 14 |
+| Nachtflügel | 0.87 % | 2.63 % | 5 | 1 |
+| Hexenauge | 18.48 % | 36.84 % | 148 | 31 |
+| Vipernknolle | 4.35 % | 5.26 % | 33 | 4 |
+| Eierschale | 100.00 % | 100.00 % | 1159 | 105 |
+| Heilknolle | 23.91 % | 63.16 % | 200 | 57 |
+| Goldlöffel | 17.39 % | 15.79 % | 136 | 12 |
+| Mondsalz | 28.70 % | 52.63 % | 232 | 41 |
 
 ## Grobe Buildstärke
 
-- Pearson-Korrelation mit dem relativen LP-Ergebnis: **0.537**
-- Vorhersage-Fehlerrate bei entscheidenden Kämpfen: **7.41 %**
+- Pearson-Korrelation mit dem relativen LP-Ergebnis: **0.492**
+- Vorhersage-Fehlerrate bei entscheidenden Kämpfen: **11.85 %**
 
 Die Korrelation vergleicht die Differenz der groben Buildstärke mit der Differenz der verbleibenden relativen LP. Die Fehlerrate vergleicht nur entscheidende Kämpfe.
 

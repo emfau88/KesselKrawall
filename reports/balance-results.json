@@ -21,58 +21,58 @@
       },
       {
         "round": 2,
-        "averageAvailable": 6.671875,
-        "averageSpent": 6.109375,
-        "averageRemaining": 0.5625
+        "averageAvailable": 7,
+        "averageSpent": 6.171875,
+        "averageRemaining": 0.828125
       },
       {
         "round": 3,
-        "averageAvailable": 7.5625,
-        "averageSpent": 6.28125,
-        "averageRemaining": 1.28125
+        "averageAvailable": 7.828125,
+        "averageSpent": 6.3125,
+        "averageRemaining": 1.515625
       },
       {
         "round": 4,
-        "averageAvailable": 8.15625,
-        "averageSpent": 6.59375,
-        "averageRemaining": 1.5625
+        "averageAvailable": 8.375,
+        "averageSpent": 6.796875,
+        "averageRemaining": 1.578125
       },
       {
         "round": 5,
-        "averageAvailable": 9.5625,
-        "averageSpent": 5.015625,
-        "averageRemaining": 4.546875
+        "averageAvailable": 9.578125,
+        "averageSpent": 4.734375,
+        "averageRemaining": 4.84375
       },
       {
         "round": 6,
-        "averageAvailable": 12.546875,
-        "averageSpent": 3.25,
-        "averageRemaining": 9.296875
+        "averageAvailable": 12.84375,
+        "averageSpent": 3.265625,
+        "averageRemaining": 9.578125
       },
       {
         "round": 7,
-        "averageAvailable": 18.21875,
-        "averageSpent": 2.0625,
-        "averageRemaining": 16.15625
+        "averageAvailable": 18.5,
+        "averageSpent": 2.09375,
+        "averageRemaining": 16.40625
       },
       {
         "round": 8,
-        "averageAvailable": 26.546875,
-        "averageSpent": 1.59375,
-        "averageRemaining": 24.953125
+        "averageAvailable": 26.796875,
+        "averageSpent": 1.671875,
+        "averageRemaining": 25.125
       }
     ]
   },
-  "timeoutRate": 0.48828125,
-  "timeoutPercent": 48.83,
+  "timeoutRate": 0.484375,
+  "timeoutPercent": 48.44,
   "roundResults": [
     {
       "round": 1,
       "battles": 64,
-      "winRate": 0.671875,
-      "winPercent": 67.19,
-      "lossRate": 0.328125,
-      "lossPercent": 32.81,
+      "winRate": 1,
+      "winPercent": 100,
+      "lossRate": 0,
+      "lossPercent": 0,
       "drawRate": 0,
       "drawPercent": 0,
       "timeoutRate": 1,
@@ -93,14 +93,14 @@
     {
       "round": 3,
       "battles": 64,
-      "winRate": 0.875,
-      "winPercent": 87.5,
+      "winRate": 0.859375,
+      "winPercent": 85.94,
       "lossRate": 0,
       "lossPercent": 0,
-      "drawRate": 0.125,
-      "drawPercent": 12.5,
-      "timeoutRate": 0.875,
-      "timeoutPercent": 87.5
+      "drawRate": 0.140625,
+      "drawPercent": 14.06,
+      "timeoutRate": 0.859375,
+      "timeoutPercent": 85.94
     },
     {
       "round": 4,
@@ -135,8 +135,8 @@
       "lossPercent": 0,
       "drawRate": 0.078125,
       "drawPercent": 7.81,
-      "timeoutRate": 0.546875,
-      "timeoutPercent": 54.69
+      "timeoutRate": 0.53125,
+      "timeoutPercent": 53.13
     },
     {
       "round": 7,
@@ -153,10 +153,10 @@
     {
       "round": 8,
       "battles": 64,
-      "winRate": 0.625,
-      "winPercent": 62.5,
-      "lossRate": 0.375,
-      "lossPercent": 37.5,
+      "winRate": 0.609375,
+      "winPercent": 60.94,
+      "lossRate": 0.390625,
+      "lossPercent": 39.06,
       "drawRate": 0,
       "drawPercent": 0,
       "timeoutRate": 0.359375,
@@ -165,7 +165,7 @@
   ],
   "positionInfluence": {
     "sampledBoards": 512,
-    "allUniqueArrangements": 49880,
+    "allUniqueArrangements": 49940,
     "boardsWithAnyOutcomeChange": 6,
     "boardsWithAnyOutcomeChangeRate": 0.01171875,
     "boardsWithAnyOutcomeChangePercent": 1.17,
@@ -181,78 +181,78 @@
       "winningBoardsContainingPercent": 100,
       "losingBoardsContainingRate": 1,
       "losingBoardsContainingPercent": 100,
-      "winningRepresentedCopies": 1043,
-      "losingRepresentedCopies": 97
+      "winningRepresentedCopies": 1047,
+      "losingRepresentedCopies": 79
     },
     {
       "itemId": "dragon-tooth",
       "name": "Drachenzahn",
-      "winningBoardsContainingRate": 0.23356009070294784,
-      "winningBoardsContainingPercent": 23.36,
-      "losingBoardsContainingRate": 0.1206896551724138,
-      "losingBoardsContainingPercent": 12.07,
-      "winningRepresentedCopies": 189,
-      "losingRepresentedCopies": 12
+      "winningBoardsContainingRate": 0.2543478260869565,
+      "winningBoardsContainingPercent": 25.43,
+      "losingBoardsContainingRate": 0.18421052631578946,
+      "losingBoardsContainingPercent": 18.42,
+      "winningRepresentedCopies": 219,
+      "losingRepresentedCopies": 13
     },
     {
       "itemId": "ember-core",
       "name": "Glutkern",
-      "winningBoardsContainingRate": 0.1473922902494331,
-      "winningBoardsContainingPercent": 14.74,
-      "losingBoardsContainingRate": 0.06896551724137931,
-      "losingBoardsContainingPercent": 6.9,
-      "winningRepresentedCopies": 108,
-      "losingRepresentedCopies": 8
+      "winningBoardsContainingRate": 0.11739130434782609,
+      "winningBoardsContainingPercent": 11.74,
+      "losingBoardsContainingRate": 0.02631578947368421,
+      "losingBoardsContainingPercent": 2.63,
+      "winningRepresentedCopies": 88,
+      "losingRepresentedCopies": 2
     },
     {
       "itemId": "cinder-berry",
       "name": "Rußbeere",
-      "winningBoardsContainingRate": 0.30839002267573695,
-      "winningBoardsContainingPercent": 30.84,
-      "losingBoardsContainingRate": 0.39655172413793105,
-      "losingBoardsContainingPercent": 39.66,
-      "winningRepresentedCopies": 221,
-      "losingRepresentedCopies": 44
+      "winningBoardsContainingRate": 0.2956521739130435,
+      "winningBoardsContainingPercent": 29.57,
+      "losingBoardsContainingRate": 0.631578947368421,
+      "losingBoardsContainingPercent": 63.16,
+      "winningRepresentedCopies": 226,
+      "losingRepresentedCopies": 47
     },
     {
       "itemId": "slime-shroom",
       "name": "Schleimpilz",
-      "winningBoardsContainingRate": 0.09977324263038549,
-      "winningBoardsContainingPercent": 9.98,
-      "losingBoardsContainingRate": 0.1206896551724138,
-      "losingBoardsContainingPercent": 12.07,
-      "winningRepresentedCopies": 78,
-      "losingRepresentedCopies": 16
+      "winningBoardsContainingRate": 0.0891304347826087,
+      "winningBoardsContainingPercent": 8.91,
+      "losingBoardsContainingRate": 0.15789473684210525,
+      "losingBoardsContainingPercent": 15.79,
+      "winningRepresentedCopies": 72,
+      "losingRepresentedCopies": 14
     },
     {
       "itemId": "nightwing",
       "name": "Nachtflügel",
-      "winningBoardsContainingRate": 0.009070294784580499,
-      "winningBoardsContainingPercent": 0.91,
-      "losingBoardsContainingRate": 0.017241379310344827,
-      "losingBoardsContainingPercent": 1.72,
+      "winningBoardsContainingRate": 0.008695652173913044,
+      "winningBoardsContainingPercent": 0.87,
+      "losingBoardsContainingRate": 0.02631578947368421,
+      "losingBoardsContainingPercent": 2.63,
       "winningRepresentedCopies": 5,
       "losingRepresentedCopies": 1
     },
     {
       "itemId": "witch-eye",
       "name": "Hexenauge",
-      "winningBoardsContainingRate": 0.18140589569160998,
-      "winningBoardsContainingPercent": 18.14,
-      "losingBoardsContainingRate": 0.22413793103448276,
-      "losingBoardsContainingPercent": 22.41,
-      "winningRepresentedCopies": 140,
-      "losingRepresentedCopies": 30
+      "winningBoardsContainingRate": 0.18478260869565216,
+      "winningBoardsContainingPercent": 18.48,
+      "losingBoardsContainingRate": 0.3684210526315789,
+      "losingBoardsContainingPercent": 36.84,
+      "winningRepresentedCopies": 148,
+      "losingRepresentedCopies": 31
     },
     {
       "itemId": "venom-bulb",
       "name": "Vipernknolle",
-      "winningBoardsContainingRate": 0.049886621315192746,
-      "winningBoardsContainingPercent": 4.99,
-      "losingBoardsContainingRate": 0,
-      "losingBoardsContainingPercent": 0,
-      "winningRepresentedCopies": 37,
-      "losingRepresentedCopies": 0
+      "winningBoardsContainingRate": 0.043478260869565216,
+      "winningBoardsContainingPercent": 4.35,
+      "losingBoardsContainingRate": 0.05263157894736842,
+      "losingBoardsContainingPercent": 5.26,
+      "winningRepresentedCopies": 33,
+      "losingRepresentedCopies": 4
     },
     {
       "itemId": "egg-shell",
@@ -261,46 +261,46 @@
       "winningBoardsContainingPercent": 100,
       "losingBoardsContainingRate": 1,
       "losingBoardsContainingPercent": 100,
-      "winningRepresentedCopies": 1144,
-      "losingRepresentedCopies": 126
+      "winningRepresentedCopies": 1159,
+      "losingRepresentedCopies": 105
     },
     {
       "itemId": "healing-tuber",
       "name": "Heilknolle",
-      "winningBoardsContainingRate": 0.2494331065759637,
-      "winningBoardsContainingPercent": 24.94,
-      "losingBoardsContainingRate": 0.41379310344827586,
-      "losingBoardsContainingPercent": 41.38,
+      "winningBoardsContainingRate": 0.2391304347826087,
+      "winningBoardsContainingPercent": 23.91,
+      "losingBoardsContainingRate": 0.631578947368421,
+      "losingBoardsContainingPercent": 63.16,
       "winningRepresentedCopies": 200,
       "losingRepresentedCopies": 57
     },
     {
       "itemId": "gold-spoon",
       "name": "Goldlöffel",
-      "winningBoardsContainingRate": 0.16099773242630386,
-      "winningBoardsContainingPercent": 16.1,
-      "losingBoardsContainingRate": 0.034482758620689655,
-      "losingBoardsContainingPercent": 3.45,
-      "winningRepresentedCopies": 125,
-      "losingRepresentedCopies": 4
+      "winningBoardsContainingRate": 0.17391304347826086,
+      "winningBoardsContainingPercent": 17.39,
+      "losingBoardsContainingRate": 0.15789473684210525,
+      "losingBoardsContainingPercent": 15.79,
+      "winningRepresentedCopies": 136,
+      "losingRepresentedCopies": 12
     },
     {
       "itemId": "moon-salt",
       "name": "Mondsalz",
-      "winningBoardsContainingRate": 0.3242630385487528,
-      "winningBoardsContainingPercent": 32.43,
-      "losingBoardsContainingRate": 0.3620689655172414,
-      "losingBoardsContainingPercent": 36.21,
-      "winningRepresentedCopies": 249,
-      "losingRepresentedCopies": 45
+      "winningBoardsContainingRate": 0.28695652173913044,
+      "winningBoardsContainingPercent": 28.7,
+      "losingBoardsContainingRate": 0.5263157894736842,
+      "losingBoardsContainingPercent": 52.63,
+      "winningRepresentedCopies": 232,
+      "losingRepresentedCopies": 41
     }
   ],
   "powerEstimate": {
     "sampleCount": 512,
-    "pearsonCorrelation": 0.5369243514754544,
-    "decisiveSampleCount": 499,
-    "predictionErrorRate": 0.07414829659318638,
-    "predictionErrorPercent": 7.41,
+    "pearsonCorrelation": 0.4923291228548726,
+    "decisiveSampleCount": 498,
+    "predictionErrorRate": 0.11847389558232932,
+    "predictionErrorPercent": 11.85,
     "note": "Die Korrelation vergleicht die Differenz der groben Buildstärke mit der Differenz der verbleibenden relativen LP. Die Fehlerrate vergleicht nur entscheidende Kämpfe."
   }
 }
