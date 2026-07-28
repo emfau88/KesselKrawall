@@ -102,6 +102,41 @@ export function isStatusTick(event: CombatEvent): boolean {
   );
 }
 
+export interface ImportantCombatMessage {
+  event: CombatEvent;
+  label: string;
+  amountLabel: string;
+}
+
+function importantMessagePriority(event: CombatEvent): number {
+  if (event.kind === "boss") return 3;
+  if (event.kind === "synergy") return 2;
+  if (event.kind === "cleanse") return 1;
+  return 0;
+}
+
+export function getImportantCombatMessage(
+  events: readonly CombatEvent[],
+): ImportantCombatMessage | null {
+  let selected: CombatEvent | null = null;
+  let selectedPriority = 0;
+
+  for (const event of events) {
+    const priority = importantMessagePriority(event);
+    if (priority > selectedPriority) {
+      selected = event;
+      selectedPriority = priority;
+    }
+  }
+
+  if (!selected) return null;
+  return {
+    event: selected,
+    label: selected.label,
+    amountLabel: summarizeEventAmounts([selected]),
+  };
+}
+
 function summarizeEventAmounts(events: CombatEvent[]): string {
   const totals = new Map<
     string,

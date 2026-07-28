@@ -21,6 +21,7 @@ import {
   createCombatBeats,
   createEmptyCombatStatuses,
   getCombatBeatTiming,
+  getImportantCombatMessage,
   isStatusTick,
   type CombatBeatTier,
   type CombatContribution,
@@ -904,67 +905,6 @@ function StatsList({ stats }: { stats: ItemCombatStats[] }) {
         );
       })}
     </div>
-  );
-}
-
-function CombatContributionStrip({
-  contributions,
-  playerBoard,
-  enemyBoard,
-  focusedContributionId,
-  landedContributionIds,
-}: {
-  contributions: CombatContribution[];
-  playerBoard: Board;
-  enemyBoard: Board;
-  focusedContributionId: string | null;
-  landedContributionIds: string[];
-}) {
-  return (
-    <span className="contribution-strip" aria-label="Beiträge dieses Angriffs">
-      {contributions.map((contribution) => {
-        const source = findEventSource(
-          contribution.event,
-          playerBoard,
-          enemyBoard,
-        );
-        const landed = landedContributionIds.includes(contribution.id);
-        const focused = focusedContributionId === contribution.id;
-        const accessibleLabel =
-          `${source?.name ?? contribution.label}: ${contribution.amountLabel}` +
-          `${source ? `, ${source.cadenceLabel}` : ""}`;
-
-        return (
-          <span
-            className={[
-              "contribution-chip",
-              `from-${contribution.actor}`,
-              landed ? "is-landed" : "is-pending",
-              focused ? "is-focused" : "",
-            ].join(" ")}
-            key={contribution.id}
-            title={accessibleLabel}
-            aria-label={accessibleLabel}
-          >
-            {source ? (
-              <ArtSprite asset={source.art} className="contribution-art" />
-            ) : (
-              <UiIcon
-                asset={eventIcon(contribution.event.kind)}
-                className="contribution-art"
-              />
-            )}
-            <span>
-              <small>
-                {source?.name ?? contribution.label}
-                {source ? ` · ${source.cadenceLabel}` : ""}
-              </small>
-              <b>{contribution.amountLabel}</b>
-            </span>
-          </span>
-        );
-      })}
-    </span>
   );
 }
 
@@ -2092,11 +2032,34 @@ export default function Game() {
     focusedContribution &&
     battleView?.landedContributionIds.includes(focusedContribution.id),
   );
+  const importantCombatMessage = getImportantCombatMessage(
+    battleView?.contributions.flatMap(
+      (contribution) => contribution.events,
+    ) ?? [],
+  );
+  const importantMessageContribution = importantCombatMessage
+    ? battleView?.contributions.find((contribution) =>
+        contribution.events.includes(importantCombatMessage.event),
+      ) ?? null
+    : null;
+  const importantMessageLanded = Boolean(
+    importantMessageContribution &&
+    battleView?.landedContributionIds.includes(
+      importantMessageContribution.id,
+    ),
+  );
   const eventSource = findEventSource(
     focusedContribution?.event ?? battleView?.event ?? null,
     game.board,
     opponent.board,
   );
+  const importantEventSource = findEventSource(
+    importantCombatMessage?.event ?? null,
+    game.board,
+    opponent.board,
+  );
+  const effectLaneEventKind =
+    importantCombatMessage?.event.kind ?? battleView?.event?.kind;
   const remainingBattleSeconds = Math.max(
     0,
     Math.ceil(((combat?.duration ?? 0) - battleClock) / 1000),
@@ -2509,7 +2472,11 @@ export default function Game() {
           />
         </article>
 
-        <div className={`effect-lane ${battleView?.event ? `event-${battleView.event.kind}` : ""}`}>
+        <div
+          className={`effect-lane ${
+            effectLaneEventKind ? `event-${effectLaneEventKind}` : ""
+          }`}
+        >
           {battleEnding ? (
             <div className={`resolution-banner is-${battleEnding}`} role="status">
               <UiIcon
@@ -2527,49 +2494,37 @@ export default function Game() {
                       : `${opponent.name.toUpperCase()} SIEGT`}
               </strong>
             </div>
-          ) : battleView?.event ? (
+          ) : importantCombatMessage ? (
             <div
-              className={`combat-callout tier-${battleView.tier ?? "standard"} ${
-                battleView.contributions.length > 1 ? "is-volley" : ""
-              } ${battleView.impactLanded ? "has-landed" : "is-pending"}`}
-              key={battleView.beatId}
+              className={`combat-callout tier-${
+                battleView?.tier ?? "hero"
+              } ${
+                importantMessageLanded ? "has-landed" : "is-pending"
+              }`}
+              key={`${battleView?.beatId ?? "event"}-${
+                importantCombatMessage.event.kind
+              }-${importantCombatMessage.event.sourceUid}`}
             >
-              {battleView.contributions.length > 1 ? (
-                <>
-                  <CombatContributionStrip
-                    contributions={battleView.contributions}
-                    playerBoard={game.board}
-                    enemyBoard={opponent.board}
-                    focusedContributionId={
-                      battleView.focusedContributionId
-                    }
-                    landedContributionIds={
-                      battleView.landedContributionIds
-                    }
-                  />
-                  <span className="volley-total">{battleView.eventAmount}</span>
-                </>
+              {importantEventSource ? (
+                <ArtSprite
+                  asset={importantEventSource.art}
+                  className="callout-icon"
+                />
               ) : (
-                <>
-                  {eventSource ? (
-                    <ArtSprite asset={eventSource.art} className="callout-icon" />
-                  ) : (
-                    <UiIcon
-                      asset={eventIcon(battleView.event.kind)}
-                      className="callout-icon"
-                    />
-                  )}
-                  <strong>
-                    {battleView.eventLabel}
-                    {eventSource && (
-                      <small className="callout-timing">
-                        {eventSource.cadenceLabel}
-                      </small>
-                    )}
-                  </strong>
-                  <span>{battleView.eventAmount}</span>
-                </>
+                <UiIcon
+                  asset={eventIcon(importantCombatMessage.event.kind)}
+                  className="callout-icon"
+                />
               )}
+              <strong>
+                {importantCombatMessage.label}
+                {importantEventSource && (
+                  <small className="callout-timing">
+                    {importantEventSource.cadenceLabel}
+                  </small>
+                )}
+              </strong>
+              <span>{importantCombatMessage.amountLabel}</span>
             </div>
           ) : decisionCountdown ? (
             <div className="decision-countdown" role="timer">
@@ -2902,7 +2857,10 @@ export default function Game() {
               focusedContribution
                 ? `event-${focusedContribution.event.kind}`
                 : ""
-            } ${focusedContributionLanded ? "has-landed" : "is-pending"}`}
+            } ${focusedContributionLanded ? "has-landed" : "is-pending"} ${
+              importantCombatMessage ? "is-suppressed" : ""
+            }`}
+            aria-hidden={importantCombatMessage ? "true" : undefined}
           >
             <UiIcon
               asset={

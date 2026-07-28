@@ -1595,7 +1595,7 @@ button.board-slot:active {
   letter-spacing: 0.04em;
 }
 
-.combat-callout > span:not(.contribution-strip) {
+.combat-callout > span {
   color: var(--danger);
   font-size: 13px;
   font-weight: 900;
@@ -1604,31 +1604,22 @@ button.board-slot:active {
     transform 180ms cubic-bezier(0.18, 0.82, 0.24, 1.24);
 }
 
-.combat-callout.is-pending > span:not(.contribution-strip) {
+.combat-callout.is-pending > span {
   opacity: 0;
   transform: translateY(3px) scale(0.88);
 }
 
-.combat-callout.has-landed > span:not(.contribution-strip) {
+.combat-callout.has-landed > span {
   opacity: 1;
   transform: none;
 }
 
-.event-heal .combat-callout > span:not(.contribution-strip) {
+.event-cleanse .combat-callout > span {
   color: var(--poison);
 }
 
-.event-shield .combat-callout > span:not(.contribution-strip),
-.event-synergy .combat-callout > span:not(.contribution-strip) {
+.event-synergy .combat-callout > span {
   color: var(--guard);
-}
-
-.event-poison .combat-callout > span:not(.contribution-strip) {
-  color: var(--poison);
-}
-
-.event-burn .combat-callout > span:not(.contribution-strip) {
-  color: var(--fire);
 }
 
 .event-boss .combat-callout {
@@ -1637,7 +1628,7 @@ button.board-slot:active {
   box-shadow: 0 0 24px rgba(255, 117, 69, 0.34);
 }
 
-.event-boss .combat-callout > span:not(.contribution-strip) {
+.event-boss .combat-callout > span {
   color: #ffb064;
 }
 
@@ -1650,102 +1641,6 @@ button.board-slot:active {
   border-color: rgba(255, 255, 255, 0.09);
   background: rgba(16, 12, 21, 0.88);
   box-shadow: none;
-}
-
-.combat-callout.is-volley {
-  width: min(94vw, 430px);
-  min-width: 0;
-  padding: 3px 7px;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 5px;
-  border-radius: 13px;
-}
-
-.contribution-strip {
-  min-width: 0;
-  display: flex;
-  align-items: stretch;
-  gap: 3px;
-}
-
-.contribution-chip {
-  min-width: 0;
-  flex: 1 1 0;
-  height: 31px;
-  padding: 2px 4px 2px 2px;
-  display: grid;
-  grid-template-columns: 27px minmax(0, 1fr);
-  align-items: center;
-  gap: 3px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.045);
-  transition:
-    border-color 180ms ease,
-    background 180ms ease,
-    transform 180ms ease;
-}
-
-.contribution-chip.is-focused {
-  border-color: rgba(255, 226, 149, 0.72);
-  background: rgba(245, 197, 91, 0.12);
-  transform: translateY(-1px);
-}
-
-.contribution-chip.from-player {
-  border-bottom-color: rgba(141, 215, 91, 0.62);
-}
-
-.contribution-chip.from-enemy {
-  border-bottom-color: rgba(255, 117, 69, 0.62);
-}
-
-.contribution-art {
-  width: 27px;
-  height: 27px;
-  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4));
-}
-
-.contribution-chip > span {
-  min-width: 0;
-  display: grid;
-  gap: 1px;
-}
-
-.contribution-chip small,
-.contribution-chip b {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.contribution-chip small {
-  color: #e8dec9;
-  font-size: 10px;
-  font-weight: 800;
-}
-
-.contribution-chip b {
-  color: #fff1b8;
-  font-size: 10px;
-  opacity: 0;
-  transform: translateY(3px) scale(0.88);
-  transition:
-    opacity 120ms ease,
-    transform 180ms cubic-bezier(0.18, 0.82, 0.24, 1.24);
-}
-
-.contribution-chip.is-landed b {
-  opacity: 1;
-  transform: none;
-}
-
-.volley-total {
-  max-width: 90px;
-  font-size: 10px !important;
-  line-height: 1.05;
-  text-align: right;
 }
 
 .decision-countdown,
@@ -2397,6 +2292,10 @@ button.board-slot:active {
 .battle-score-grid,
 .battle-event-panel {
   display: none;
+}
+
+.battle-event-panel.is-suppressed {
+  visibility: hidden;
 }
 
 .battle-speed {

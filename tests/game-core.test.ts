@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   createCombatBeats,
   getCombatBeatTiming,
+  getImportantCombatMessage,
   isStatusTick,
 } from "../app/game/combatPresentation";
 import {
@@ -756,6 +757,43 @@ test("combat presentation preserves every simulated event and final snapshot", (
   );
   assert.equal(beats.at(-1)?.snapshot.playerHp, battle.finalPlayerHp);
   assert.equal(beats.at(-1)?.snapshot.enemyHp, battle.finalEnemyHp);
+});
+
+test("important combat messages are singular and exclude ordinary hits", () => {
+  for (const kind of [
+    "damage",
+    "poison",
+    "burn",
+    "heal",
+    "shield",
+  ] as const) {
+    assert.equal(
+      getImportantCombatMessage([combatEvent({ kind })]),
+      null,
+    );
+  }
+
+  const message = getImportantCombatMessage([
+    combatEvent({
+      kind: "cleanse",
+      label: "Gift entfernt",
+      amount: 4,
+    }),
+    combatEvent({
+      kind: "synergy",
+      label: "Schutz-Synergie",
+      amount: 12,
+    }),
+    combatEvent({
+      kind: "boss",
+      label: "Kesselzorn entfacht",
+      amount: 25,
+    }),
+  ]);
+
+  assert.equal(message?.event.kind, "boss");
+  assert.equal(message?.label, "Kesselzorn entfacht");
+  assert.equal(message?.amountLabel, "+25%");
 });
 
 test("combat presentation spotlights first item uses and compresses repeats", () => {
