@@ -324,7 +324,7 @@ button:focus-visible {
   min-height: 0;
   padding: 8px 12px;
   display: grid;
-  grid-template-rows: minmax(0, 0.94fr) 32px minmax(0, 1.06fr);
+  grid-template-rows: minmax(0, 0.94fr) 38px minmax(0, 1.06fr);
   overflow: hidden;
 }
 
@@ -459,6 +459,25 @@ button:focus-visible {
 
 .player-heading {
   justify-content: space-between;
+}
+
+.phase-battle .opponent-copy,
+.phase-battle .player-heading {
+  min-height: 39px;
+}
+
+.phase-battle .opponent-copy p {
+  display: none;
+}
+
+.phase-battle .opponent-emblem {
+  width: 38px;
+  height: 38px;
+}
+
+.phase-battle .opponent-copy h2,
+.phase-battle .player-heading h2 {
+  font-size: 16px;
 }
 
 .power-heading-wrap {
@@ -619,42 +638,46 @@ button:focus-visible {
 }
 
 .combat-status-row {
-  min-height: 19px;
-  margin-top: 3px;
+  min-height: 24px;
+  margin-top: 4px;
   display: flex;
   align-items: center;
   gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.combat-status-row::-webkit-scrollbar {
+  display: none;
 }
 
 .combat-status {
   --status-color: var(--guard);
-  min-width: 48px;
-  height: 19px;
-  padding: 1px 5px 1px 2px;
+  min-width: 74px;
+  height: 24px;
+  padding: 2px 5px 2px 3px;
   display: grid;
-  grid-template-columns: 17px auto auto;
+  grid-template-columns: 18px auto minmax(31px, 1fr);
   align-items: center;
   gap: 3px;
+  flex: 0 0 auto;
   border: 1px solid color-mix(in srgb, var(--status-color) 42%, transparent);
-  border-radius: 999px;
+  border-radius: 8px;
   background: color-mix(in srgb, var(--status-color) 10%, rgba(10, 7, 14, 0.9));
   box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.24);
   color: var(--status-color);
   line-height: 1;
 }
 
-.status-ring {
+.status-icon-shell {
   width: 17px;
   height: 17px;
-  padding: 2px;
+  padding: 1px;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background:
-    conic-gradient(
-      var(--status-color) var(--status-progress, 360deg),
-      rgba(255, 255, 255, 0.1) 0
-    );
+  background: color-mix(in srgb, var(--status-color) 23%, #17101d);
   filter: drop-shadow(0 0 3px color-mix(in srgb, var(--status-color) 54%, transparent));
 }
 
@@ -666,16 +689,64 @@ button:focus-visible {
   background: #17101d;
 }
 
-.combat-status b {
+.status-value {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.status-value b {
   color: #fff8e2;
   font-size: 10px;
 }
 
-.combat-status small {
+.status-value small,
+.status-timing small,
+.status-duration {
   color: var(--status-color);
   font-size: 10px;
   font-weight: 900;
   white-space: nowrap;
+}
+
+.status-value small {
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+
+.status-timing {
+  min-width: 31px;
+  display: grid;
+  gap: 2px;
+}
+
+.status-timing small {
+  font-size: 10px;
+}
+
+.status-progress {
+  position: relative;
+  width: 100%;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.status-progress span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--status-progress, 0%);
+  border-radius: inherit;
+  background: var(--status-color);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--status-color) 65%, transparent);
+}
+
+.status-duration {
+  justify-self: end;
+  font-size: 10px;
 }
 
 .combat-status.status-poison {
@@ -687,11 +758,12 @@ button:focus-visible {
 }
 
 .combat-status.status-rage {
+  min-width: 96px;
   --status-color: #d78cff;
 }
 
 .combat-status.status-shield {
-  --status-progress: 360deg;
+  min-width: 78px;
 }
 
 .cauldron-board {
@@ -913,30 +985,40 @@ button.board-slot:active {
   box-shadow: 0 0 27px rgba(255, 242, 161, 0.65);
 }
 
-.cooldown-ring {
+.cooldown-fill {
   position: absolute;
-  z-index: 8;
-  inset: -5px;
-  border-radius: 20px;
-  background:
-    conic-gradient(
-      from -90deg,
-      var(--cooldown-color, var(--gold)) var(--cooldown-progress, 0deg),
-      rgba(255, 255, 255, 0.08) 0
-    );
-  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 0);
-  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 0);
-  opacity: 0.78;
-  filter: drop-shadow(0 0 4px var(--cooldown-color, var(--gold)));
+  z-index: 1;
+  inset: 3px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--cooldown-color, var(--gold)) 42%, transparent);
+  border-radius: 12px;
   pointer-events: none;
 }
 
-.board-slot.is-active .cooldown-ring {
-  opacity: 1;
+.cooldown-fill::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: var(--cooldown-progress, 0%);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--cooldown-color, var(--gold)) 10%, transparent),
+      color-mix(in srgb, var(--cooldown-color, var(--gold)) 30%, transparent)
+    );
+  border-top: 2px solid color-mix(in srgb, var(--cooldown-color, var(--gold)) 78%, white);
+  box-shadow: 0 -3px 8px color-mix(in srgb, var(--cooldown-color, var(--gold)) 35%, transparent);
+}
+
+.board-slot.is-active .cooldown-fill {
   animation: cooldown-trigger 420ms ease both;
 }
 
 .item-icon {
+  position: relative;
+  z-index: 2;
   width: calc(var(--slot-size) - 9px);
   height: calc(var(--slot-size) - 9px);
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.45));
@@ -944,6 +1026,7 @@ button.board-slot:active {
 
 .item-level {
   position: absolute;
+  z-index: 4;
   right: -4px;
   bottom: -4px;
   min-width: 21px;
@@ -962,11 +1045,62 @@ button.board-slot:active {
 
 .item-family-dot {
   position: absolute;
+  z-index: 3;
   left: 4px;
   bottom: 4px;
   width: 7px;
   height: 7px;
   border-radius: 50%;
+}
+
+.slot-trigger-badge,
+.slot-haste-badge {
+  position: absolute;
+  z-index: 5;
+  top: -6px;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.27);
+  border-radius: 999px;
+  background: rgba(18, 12, 24, 0.96);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.46);
+  color: #fff1b0;
+  font-size: 8px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.slot-trigger-badge {
+  left: -6px;
+}
+
+.slot-trigger-badge.is-reactive {
+  border-color: rgba(101, 200, 242, 0.58);
+  color: var(--guard);
+}
+
+.slot-trigger-badge.is-emergency {
+  border-color: rgba(141, 215, 91, 0.58);
+  color: var(--poison);
+}
+
+.slot-trigger-badge.is-used {
+  filter: grayscale(0.8);
+  opacity: 0.52;
+}
+
+.slot-trigger-icon,
+.slot-haste-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.slot-haste-badge {
+  right: -6px;
+  border-color: rgba(245, 197, 91, 0.6);
+  color: var(--gold);
 }
 
 .item-family-dot.family-fire {
@@ -983,7 +1117,8 @@ button.board-slot:active {
 
 .effect-lane {
   position: relative;
-  z-index: 8;
+  z-index: 12;
+  min-height: 38px;
   display: grid;
   place-items: center;
 }
@@ -1326,6 +1461,7 @@ button.board-slot:active {
 
 .combat-callout {
   position: relative;
+  max-width: calc(100vw - 24px);
   min-width: 116px;
   padding: 5px 9px;
   display: grid;
@@ -3087,7 +3223,7 @@ button.board-slot:active {
   .arena {
     padding-top: 4px;
     padding-bottom: 4px;
-    grid-template-rows: minmax(0, 0.9fr) 24px minmax(0, 1.1fr);
+    grid-template-rows: minmax(0, 0.98fr) 34px minmax(0, 1.02fr);
   }
 
   .phase-shop .arena {
@@ -3123,6 +3259,10 @@ button.board-slot:active {
     --arc-rise: 18px;
     margin-top: -8px;
     margin-bottom: 0;
+  }
+
+  .phase-battle .combat-callout {
+    padding: 3px 7px;
   }
 
   .phase-result .cauldron-board {
@@ -4417,6 +4557,29 @@ button.board-slot:active {
 }
 
 @media (max-height: 640px) {
+  .phase-battle .opponent-copy,
+  .phase-battle .player-heading {
+    min-height: 35px;
+  }
+
+  .phase-battle .opponent-emblem {
+    width: 34px;
+    height: 34px;
+  }
+
+  .phase-battle .opponent-copy h2,
+  .phase-battle .player-heading h2 {
+    font-size: 14px;
+  }
+
+  .phase-battle .cauldron-board {
+    --pot-size: 78px;
+    --slot-size: 38px;
+    --board-height: 112px;
+    --arc-rise: 14px;
+    margin-top: -6px;
+  }
+
   .preparation-overview {
     padding-top: 6px;
     gap: 5px;
@@ -4582,6 +4745,37 @@ button.board-slot:active {
     grid-column: 1 / 3;
     grid-row: 2;
     padding: 10px 16px max(12px, var(--safe-bottom));
+  }
+}
+
+@media (min-width: 700px) and (orientation: landscape) and (max-height: 800px) {
+  .phase-battle .arena {
+    padding-top: 10px;
+    padding-bottom: 10px;
+    grid-template-rows: minmax(0, 1fr) 50px minmax(0, 1fr);
+  }
+
+  .phase-battle .opponent-copy,
+  .phase-battle .player-heading {
+    min-height: 44px;
+  }
+
+  .phase-battle .opponent-emblem {
+    width: 42px;
+    height: 42px;
+  }
+
+  .phase-battle .opponent-copy h2,
+  .phase-battle .player-heading h2 {
+    font-size: 18px;
+  }
+
+  .phase-battle .cauldron-board {
+    --pot-size: 120px;
+    --slot-size: 54px;
+    --board-height: 178px;
+    --arc-rise: 24px;
+    width: min(100%, 460px);
   }
 }
 

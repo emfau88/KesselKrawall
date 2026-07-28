@@ -255,7 +255,7 @@ function formatCooldown(milliseconds: number): string {
 
 function formatEffectDuration(milliseconds: number): string {
   if (milliseconds < 1_000) return "<1 s";
-  return `${Math.ceil(milliseconds / 100) / 10} s`;
+  return `${String(Math.ceil(milliseconds / 100) / 10).replace(".", ",")} s`;
 }
 
 function TimedStatusBadge({
@@ -286,7 +286,7 @@ function TimedStatusBadge({
       : `${label}: ${status.stacks} Stapel, noch etwa ${formatEffectDuration(remaining)}, ` +
         `nächster Tick in ${formatEffectDuration(untilTick)}`;
   const style = {
-    "--status-progress": `${progress * 360}deg`,
+    "--status-progress": `${progress * 100}%`,
   } as CSSProperties;
 
   return (
@@ -296,11 +296,19 @@ function TimedStatusBadge({
       title={description}
       aria-label={description}
     >
-      <span className="status-ring">
+      <span className="status-icon-shell">
         <UiIcon asset={asset} className="status-icon" />
       </span>
-      <b>{status.stacks}</b>
-      <small>{formatEffectDuration(remaining)}</small>
+      <span className="status-value">
+        <b>{status.stacks}</b>
+        <small>{label}</small>
+      </span>
+      <span className="status-timing" aria-hidden="true">
+        <small>Tick {formatEffectDuration(untilTick)}</small>
+        <i className="status-progress">
+          <span />
+        </i>
+      </span>
     </span>
   );
 }
@@ -322,11 +330,14 @@ function CombatStatusRow({
           title={`Schild: ${shield}. Maximal 50 % der maximalen Lebenspunkte.`}
           aria-label={`Schild ${shield}, begrenzt auf 50 Prozent der maximalen Lebenspunkte`}
         >
-          <span className="status-ring">
+          <span className="status-icon-shell">
             <UiIcon asset="shield" className="status-icon" />
           </span>
-          <b>{shield}</b>
-          <small>aktiv</small>
+          <span className="status-value">
+            <b>{shield}</b>
+            <small>Schild</small>
+          </span>
+          <small className="status-duration">bleibt</small>
         </span>
       )}
       <TimedStatusBadge
@@ -349,11 +360,14 @@ function CombatStatusRow({
           title="Kesselzorn: +25 % Kraft für den restlichen Kampf."
           aria-label="Kesselzorn, 25 Prozent mehr Kraft, dauerhaft"
         >
-          <span className="status-ring">
+          <span className="status-icon-shell">
             <UiIcon asset="status-rage" className="status-icon" />
           </span>
-          <b>+25%</b>
-          <small>∞</small>
+          <span className="status-value">
+            <b>+25%</b>
+            <small>Zorn</small>
+          </span>
+          <small className="status-duration">dauerhaft</small>
         </span>
       )}
     </div>
@@ -417,6 +431,7 @@ function CauldronBoard({
   compact = false,
   combatActive = false,
   combatTime = 0,
+  combatEvents = [],
 }: {
   board: Board;
   side: "player" | "enemy";
@@ -429,6 +444,7 @@ function CauldronBoard({
   compact?: boolean;
   combatActive?: boolean;
   combatTime?: number;
+  combatEvents?: readonly CombatEvent[];
 }) {
   return (
     <div
@@ -452,8 +468,60 @@ function CauldronBoard({
       <div className="slot-arc">
         {board.map((instance, slot) => {
           const definition = instance ? ITEM_BY_ID[instance.itemId] : null;
+          const rawCooldown =
+            definition && combatActive ? getItemCooldownMs(board, slot) : 0;
+          // The simulation schedules actions on a 100 ms raster.
+          const cooldown =
+            rawCooldown > 0 ? Math.round(rawCooldown / 100) * 100 : 0;
+          const baseCooldown =
+            definition && instance
+              ? definition.cooldown[instance.level - 1] * 1000
+              : 0;
+          const isHasted =
+            definition !== null &&
+            combatActive &&
+            rawCooldown > 0 &&
+            rawCooldown < baseCooldown - 1;
+          const trigger = definition?.trigger;
+          const lastActivationAt =
+            instance && combatActive
+              ? combatEvents.reduce(
+                  (latest, event) =>
+                    event.sourceUid === instance.uid &&
+                    event.actor === side &&
+                    event.time <= combatTime
+                      ? Math.max(latest, event.time)
+                      : latest,
+                  -1,
+                )
+              : -1;
+          const emergencyUsed =
+            trigger?.type === "emergency" && lastActivationAt >= 0;
+          const cooldownProgress =
+            cooldown <= 0 || trigger?.type === "emergency"
+              ? 0
+              : trigger?.type === "onHpDamage"
+                ? lastActivationAt < 0
+                  ? 1
+                  : Math.max(
+                      0,
+                      Math.min(1, (combatTime - lastActivationAt) / cooldown),
+                    )
+                : (combatTime % cooldown) / cooldown;
+          const cadenceLabel =
+            trigger?.type === "onHpDamage"
+              ? `Konter nach LP-Schaden, ${formatCooldown(cooldown)} Sperre`
+              : trigger?.type === "emergency"
+                ? `einmal unter ${Math.round(trigger.threshold * 100)} Prozent Leben${
+                    emergencyUsed ? ", bereits ausgelöst" : ""
+                  }`
+                : cooldown > 0
+                  ? `aktiviert alle ${formatCooldown(cooldown)}`
+                  : "";
           const slotLabel = definition
-            ? `Slot ${slot + 1}: ${definition.name}, Level ${instance!.level}`
+            ? `Slot ${slot + 1}: ${definition.name}, Level ${instance!.level}${
+                cadenceLabel ? `, ${cadenceLabel}` : ""
+              }${isHasted ? ", dauerhaft beschleunigt" : ""}`
             : `Slot ${slot + 1}: leer`;
           const content = (
             <>
@@ -465,6 +533,41 @@ function CauldronBoard({
                   />
                   <span className="item-level">{ROMAN_LEVEL[instance!.level]}</span>
                   <span className={`item-family-dot ${familyClass(definition.family)}`} />
+                  {combatActive && trigger?.type === "onHpDamage" && (
+                    <span
+                      className="slot-trigger-badge is-reactive"
+                      title={`Konter nach LP-Schaden · ${formatCooldown(cooldown)} Sperre`}
+                      aria-hidden="true"
+                    >
+                      <UiIcon asset="speed" className="slot-trigger-icon" />
+                    </span>
+                  )}
+                  {combatActive && trigger?.type === "emergency" && (
+                    <span
+                      className={`slot-trigger-badge is-emergency ${
+                        emergencyUsed ? "is-used" : ""
+                      }`}
+                      title={
+                        emergencyUsed
+                          ? "Notfallwirkung bereits ausgelöst"
+                          : `Einmalige Notfallwirkung unter ${Math.round(
+                              trigger.threshold * 100,
+                            )} % Leben`
+                      }
+                      aria-hidden="true"
+                    >
+                      {emergencyUsed ? "✓" : "1×"}
+                    </span>
+                  )}
+                  {isHasted && (
+                    <span
+                      className="slot-haste-badge"
+                      title="Dauerhaft beschleunigt"
+                      aria-hidden="true"
+                    >
+                      <UiIcon asset="speed" className="slot-haste-icon" />
+                    </span>
+                  )}
                 </>
               ) : (
                 <span className="empty-plus" aria-hidden="true">+</span>
@@ -479,13 +582,10 @@ function CauldronBoard({
             instance && activeUids.includes(instance.uid) ? "is-active" : "",
             definition ? familyClass(definition.family) : "",
           ].join(" ");
-          const cooldown =
-            definition && combatActive ? getItemCooldownMs(board, slot) : 0;
-          const cooldownProgress =
-            cooldown > 0 ? (combatTime % cooldown) / cooldown : 0;
-          const slotStyle = definition && combatActive
+          const slotStyle =
+            definition && combatActive && trigger?.type !== "emergency"
             ? ({
-                "--cooldown-progress": `${cooldownProgress * 360}deg`,
+                "--cooldown-progress": `${cooldownProgress * 100}%`,
                 "--cooldown-color": FAMILY_META[definition.family].color,
               } as CSSProperties)
             : undefined;
@@ -502,8 +602,8 @@ function CauldronBoard({
               style={slotStyle}
             >
               {content}
-              {definition && combatActive && (
-                <span className="cooldown-ring" aria-hidden="true" />
+              {definition && combatActive && trigger?.type !== "emergency" && (
+                <span className="cooldown-fill" aria-hidden="true" />
               )}
             </button>
           ) : (
@@ -515,8 +615,8 @@ function CauldronBoard({
               style={slotStyle}
             >
               {content}
-              {definition && combatActive && (
-                <span className="cooldown-ring" aria-hidden="true" />
+              {definition && combatActive && trigger?.type !== "emergency" && (
+                <span className="cooldown-fill" aria-hidden="true" />
               )}
             </div>
           );
@@ -2186,6 +2286,7 @@ export default function Game() {
             compact={!isCombatPhase}
             combatActive={game.phase === "battle"}
             combatTime={battleClock}
+            combatEvents={combat?.events}
           />
         </article>
 
@@ -2349,6 +2450,7 @@ export default function Game() {
             interactive={false}
             combatActive={game.phase === "battle"}
             combatTime={battleClock}
+            combatEvents={combat?.events}
           />
         </article>
         </section>
