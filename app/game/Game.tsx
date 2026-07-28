@@ -1470,7 +1470,12 @@ export default function Game() {
         now >= nextBeatAllowedAt
       ) {
         clearPresentationTimers();
-        const timing = getCombatBeatTiming(nextBeat, speedRef.current);
+        const previousBeatTime = combatBeats[beatIndex - 1]?.time ?? 0;
+        const timing = getCombatBeatTiming(
+          nextBeat,
+          previousBeatTime,
+          speedRef.current,
+        );
         const firstContribution = nextBeat.contributions[0] ?? null;
         shownTime = nextBeat.time;
         beatIndex += 1;

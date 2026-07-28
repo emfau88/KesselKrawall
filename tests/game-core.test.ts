@@ -623,23 +623,49 @@ test("combat director gives dense 1x playback a readable visual budget", () => {
   const beats = createCombatBeats(battle.events);
   let playbackEnd = 0;
   let visibleTime = 0;
+  let previousBeatTime = 0;
 
   for (const beat of beats) {
-    const timing = getCombatBeatTiming(beat, 1);
+    const timing = getCombatBeatTiming(beat, previousBeatTime, 1);
     playbackEnd = Math.max(playbackEnd, beat.time) + timing.holdMs;
     visibleTime += timing.visibleMs;
-    assert.ok(timing.recoveryMs >= 150);
+    assert.ok(timing.recoveryMs >= 50);
     if (beat.tier === "standard") {
       assert.ok(timing.shotDurationMs >= 1_050);
     }
     if (beat.tier === "hero") {
       assert.ok(timing.shotDurationMs >= 1_400);
     }
+    previousBeatTime = beat.time;
   }
 
   assert.ok(playbackEnd > battle.duration);
   assert.ok(playbackEnd < 60_000);
   assert.ok(visibleTime / playbackEnd < 0.9);
+});
+
+test("combat director shortens only dead air after tightly spaced beats", () => {
+  const board = [
+    item("p1", "chili", 2),
+    item("p2", "ember-core", 2),
+    item("p3", "slime-shroom", 2),
+    item("p4", "nightwing", 2),
+    item("p5", "moon-salt", 2),
+  ];
+  const battle = simulateBattle(board, CAMPAIGN_OPPONENTS[4]);
+  const beat = createCombatBeats(battle.events).find(
+    (candidate) => candidate.tier === "standard",
+  );
+
+  assert.ok(beat);
+  const tightTiming = getCombatBeatTiming(beat, beat.time - 100, 1);
+  const relaxedTiming = getCombatBeatTiming(beat, beat.time - 10_000, 1);
+
+  assert.equal(tightTiming.shotDurationMs, relaxedTiming.shotDurationMs);
+  assert.equal(tightTiming.shotStaggerMs, relaxedTiming.shotStaggerMs);
+  assert.equal(tightTiming.visibleMs, relaxedTiming.visibleMs);
+  assert.ok(tightTiming.holdMs < relaxedTiming.holdMs);
+  assert.ok(tightTiming.holdMs >= tightTiming.visibleMs + 50);
 });
 
 test("combat director keeps volleys causal and status ticks separate", () => {

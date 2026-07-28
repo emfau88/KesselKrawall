@@ -496,11 +496,14 @@ function isImmediateImprovement(
 
 function estimatedPlaybackMs(result: CombatResult, speed: number): number {
   let nextBeatAllowedAt = 0;
+  let previousBeatTime = 0;
   for (const beat of createCombatBeats(result.events)) {
     const releaseAt = beat.time / speed;
     const startsAt = Math.max(releaseAt, nextBeatAllowedAt);
     nextBeatAllowedAt =
-      startsAt + getCombatBeatTiming(beat, speed).holdMs;
+      startsAt +
+      getCombatBeatTiming(beat, previousBeatTime, speed).holdMs;
+    previousBeatTime = beat.time;
   }
   const finishDelay = result.reason === "timeout" ? 1_250 : 850;
   return (

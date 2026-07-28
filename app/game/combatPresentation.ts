@@ -72,6 +72,9 @@ const BURN_INTERVAL_MS = 1_000;
 const ATTACK_VOLLEY_WINDOW_MS = 1_300;
 const STATUS_BUNDLE_WINDOW_MS = 1_800;
 const MAX_VOLLEY_CONTRIBUTIONS = 5;
+const PRESENTATION_ADVANCE_FACTOR = 0.9;
+const MINIMUM_RECOVERY_RATIO = 0.5;
+const ABSOLUTE_MINIMUM_RECOVERY_MS = 50;
 
 function emptyTimedStatus(): TimedCombatStatus {
   return { stacks: 0, nextTickAt: 0, expiresAt: 0, interval: 0 };
@@ -465,16 +468,37 @@ export function createCombatBeats(events: CombatEvent[]): CombatBeat[] {
 
 export function getCombatBeatTiming(
   beat: CombatBeat,
+  previousBeatTime: number,
   speed: number,
 ): CombatBeatTiming {
   const baseTiming =
     beat.event.kind === "boss"
-      ? { holdMs: 2_400, shotDurationMs: 1_900, staggerMs: 460 }
+      ? {
+          holdMs: 2_400,
+          shotDurationMs: 1_900,
+          staggerMs: 460,
+          recoveryMs: 500,
+        }
       : beat.tier === "hero"
-        ? { holdMs: 1_750, shotDurationMs: 1_400, staggerMs: 420 }
+        ? {
+            holdMs: 1_750,
+            shotDurationMs: 1_400,
+            staggerMs: 420,
+            recoveryMs: 350,
+          }
         : beat.tier === "standard"
-          ? { holdMs: 1_300, shotDurationMs: 1_050, staggerMs: 360 }
-          : { holdMs: 650, shotDurationMs: 500, staggerMs: 180 };
+          ? {
+              holdMs: 1_300,
+              shotDurationMs: 1_050,
+              staggerMs: 360,
+              recoveryMs: 250,
+            }
+          : {
+              holdMs: 650,
+              shotDurationMs: 500,
+              staggerMs: 180,
+              recoveryMs: 150,
+            };
   const speedFactor = speed <= 1 ? 1 : speed <= 2 ? 0.62 : 0.4;
   const shotCount = Math.max(1, beat.contributions.length);
   const shotStaggerMs = Math.round(baseTiming.staggerMs * speedFactor);
@@ -483,7 +507,25 @@ export function getCombatBeatTiming(
   );
   const volleySpanMs = shotStaggerMs * (shotCount - 1);
   const visibleMs = shotDurationMs + volleySpanMs;
-  const holdMs = Math.round(baseTiming.holdMs * speedFactor) + volleySpanMs;
+  const maximumHoldMs =
+    Math.round(baseTiming.holdMs * speedFactor) + volleySpanMs;
+  // Dense beats trim only post-impact recovery; their complete VFX window stays intact.
+  const minimumRecoveryMs = Math.max(
+    ABSOLUTE_MINIMUM_RECOVERY_MS,
+    Math.round(
+      baseTiming.recoveryMs * MINIMUM_RECOVERY_RATIO * speedFactor,
+    ),
+  );
+  const minimumHoldMs = visibleMs + minimumRecoveryMs;
+  const gameAdvanceMs = Math.max(0, beat.time - previousBeatTime);
+  const gameAdvanceHoldMs =
+    Math.round(
+      gameAdvanceMs * PRESENTATION_ADVANCE_FACTOR * speedFactor,
+    ) + volleySpanMs;
+  const holdMs = Math.max(
+    minimumHoldMs,
+    Math.min(maximumHoldMs, gameAdvanceHoldMs),
+  );
 
   return {
     holdMs,
