@@ -1479,6 +1479,16 @@ button.board-slot:active {
     ease-out var(--impact-delay) both;
 }
 
+.battle-impact-trigger {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  animation:
+    battle-impact-trigger 1ms linear var(--impact-delay) both;
+}
+
 .vfx-particle {
   position: absolute;
   z-index: 4;
@@ -3065,6 +3075,13 @@ button.board-slot:active {
   }
 }
 
+@keyframes battle-impact-trigger {
+  from,
+  to {
+    transform: scale(1);
+  }
+}
+
 @keyframes vfx-particle {
   0% {
     opacity: 0;
@@ -4130,15 +4147,13 @@ button.board-slot:active {
 }
 
 .next-opponent-card summary {
-  min-height: 64px;
-  padding: 6px 7px;
+  min-height: 50px;
+  padding: 5px 7px;
   display: grid;
-  grid-template-columns: 50px minmax(0, 1fr) auto;
-  grid-template-areas:
-    "emblem copy stats"
-    "emblem board details";
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-areas: "emblem copy details";
   align-items: center;
-  gap: 3px 8px;
+  gap: 7px;
   list-style: none;
   cursor: pointer;
 }
@@ -4150,14 +4165,14 @@ button.board-slot:active {
 .prep-opponent-emblem {
   grid-area: emblem;
   position: relative;
-  width: 50px;
-  height: 50px;
-  padding: 3px;
+  width: 40px;
+  height: 40px;
+  padding: 2px;
   display: grid;
   place-items: center;
   overflow: hidden;
   border: 1px solid rgba(255, 117, 69, 0.3);
-  border-radius: 13px;
+  border-radius: 11px;
   background: rgba(33, 18, 26, 0.92);
 }
 
@@ -4187,12 +4202,10 @@ button.board-slot:active {
 }
 
 .prep-opponent-copy > strong {
-  overflow: hidden;
   font-family: Georgia, serif;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.05;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .prep-opponent-copy > small {
@@ -4293,6 +4306,28 @@ button.board-slot:active {
   font-size: 10px;
   font-weight: 900;
   text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.prep-opponent-meta {
+  margin-bottom: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.prep-opponent-meta > span {
+  min-height: 24px;
+  padding: 3px 7px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #eadfc7;
+  font-size: 10px;
+  font-weight: 900;
   white-space: nowrap;
 }
 
@@ -4435,6 +4470,23 @@ button.board-slot:active {
   margin-top: 1px;
 }
 
+.player-workbench .cauldron-board.without-cauldron {
+  --arc-rise: 0px;
+  --board-height: var(--slot-size);
+  width: min(100%, 310px);
+  height: var(--slot-size);
+  min-height: var(--slot-size);
+  margin: 4px auto 3px;
+}
+
+.player-workbench .cauldron-board.without-cauldron .slot-arc {
+  height: var(--slot-size);
+}
+
+.player-workbench .cauldron-board.without-cauldron .board-slot {
+  top: 0;
+}
+
 .player-workbench .synergy-strip {
   margin-top: -1px;
 }
@@ -4573,22 +4625,13 @@ button.board-slot:active {
 
 @media (max-width: 350px) {
   .next-opponent-card summary {
-    grid-template-columns: 46px minmax(0, 1fr) auto;
-    gap: 3px 5px;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    gap: 5px;
   }
 
   .prep-opponent-emblem {
-    width: 46px;
-    height: 46px;
-  }
-
-  .prep-opponent-stats > span {
-    padding-right: 4px;
-    padding-left: 4px;
-  }
-
-  .prep-opponent-stats > span:last-child {
-    display: none;
+    width: 36px;
+    height: 36px;
   }
 
   .prep-details-label {
@@ -4640,35 +4683,13 @@ button.board-slot:active {
   .next-opponent-card summary {
     min-height: 0;
     padding: 4px 6px;
-    grid-template-columns: 40px minmax(0, 1fr) auto;
-    gap: 2px 6px;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    gap: 5px;
   }
 
   .prep-opponent-emblem {
-    width: 40px;
-    height: 40px;
-  }
-
-  .prep-opponent-copy {
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-rows: auto auto;
-    column-gap: 4px;
-  }
-
-  .prep-opponent-copy .eyebrow {
-    grid-column: 1;
-    grid-row: 1;
-    align-self: center;
-  }
-
-  .prep-opponent-copy > strong {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .prep-opponent-copy > small {
-    grid-column: 1 / 3;
-    grid-row: 2;
+    width: 36px;
+    height: 36px;
   }
 
   .player-workbench {

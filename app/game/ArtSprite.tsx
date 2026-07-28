@@ -36,6 +36,38 @@ export const ART_FILES = {
 
 export type ArtAsset = keyof typeof ART_FILES;
 
+export async function preloadArtAssets(
+  assets: readonly ArtAsset[],
+): Promise<void> {
+  if (typeof window === "undefined") return;
+
+  await Promise.all(
+    assets.map(async (asset) => {
+      const image = new Image();
+      image.src = new URL(
+        `assets/art/${ART_FILES[asset]}`,
+        document.baseURI,
+      ).href;
+
+      if (typeof image.decode === "function") {
+        try {
+          await image.decode();
+        } catch {
+          // A failed eager decode must not block the game. The normal image
+          // element can still retry through the browser cache when rendered.
+        }
+        return;
+      }
+
+      if (image.complete) return;
+      await new Promise<void>((resolve) => {
+        image.addEventListener("load", () => resolve(), { once: true });
+        image.addEventListener("error", () => resolve(), { once: true });
+      });
+    }),
+  );
+}
+
 export const UI_FILES = {
   battle: "battle.png",
   coin: "coin.png",

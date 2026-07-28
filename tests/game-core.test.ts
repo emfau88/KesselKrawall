@@ -892,10 +892,11 @@ test("combat director shortens only dead air after tightly spaced beats", () => 
   assert.ok(tightTiming.holdMs >= tightTiming.visibleMs + 50);
 });
 
-test("presentation time freezes across pauses and discards wall-clock gaps", () => {
+test("presentation time freezes while paused and simulation caps wall-clock gaps", () => {
   const running = advancePresentationFrame(0, 0, 16, false);
   assert.equal(running.presentationTimeMs, 16);
-  assert.equal(running.frameDeltaMs, 16);
+  assert.equal(running.presentationDeltaMs, 16);
+  assert.equal(running.simulationDeltaMs, 16);
 
   const paused = advancePresentationFrame(
     running.presentationTimeMs,
@@ -904,7 +905,8 @@ test("presentation time freezes across pauses and discards wall-clock gaps", () 
     true,
   );
   assert.equal(paused.presentationTimeMs, 16);
-  assert.equal(paused.frameDeltaMs, 0);
+  assert.equal(paused.presentationDeltaMs, 0);
+  assert.equal(paused.simulationDeltaMs, 0);
 
   const resumed = advancePresentationFrame(
     paused.presentationTimeMs,
@@ -913,7 +915,8 @@ test("presentation time freezes across pauses and discards wall-clock gaps", () 
     false,
   );
   assert.equal(resumed.presentationTimeMs, 32);
-  assert.equal(resumed.frameDeltaMs, 16);
+  assert.equal(resumed.presentationDeltaMs, 16);
+  assert.equal(resumed.simulationDeltaMs, 16);
 
   const backgrounded = advancePresentationFrame(
     resumed.presentationTimeMs,
@@ -921,8 +924,22 @@ test("presentation time freezes across pauses and discards wall-clock gaps", () 
     15_032,
     false,
   );
-  assert.equal(backgrounded.presentationTimeMs, 132);
-  assert.equal(backgrounded.frameDeltaMs, 100);
+  assert.equal(backgrounded.presentationTimeMs, 10_032);
+  assert.equal(backgrounded.presentationDeltaMs, 10_000);
+  assert.equal(backgrounded.simulationDeltaMs, 100);
+});
+
+test("presentation deadlines keep pace with CSS across a delayed frame", () => {
+  const scheduler = new PresentationScheduler();
+  const calls: string[] = [];
+  scheduler.schedule(756, () => calls.push("impact"));
+
+  const delayed = advancePresentationFrame(500, 500, 900, false);
+  assert.equal(delayed.presentationTimeMs, 900);
+  assert.equal(delayed.presentationDeltaMs, 400);
+  assert.equal(delayed.simulationDeltaMs, 100);
+  assert.equal(scheduler.flush(delayed.presentationTimeMs), 1);
+  assert.deepEqual(calls, ["impact"]);
 });
 
 test("presentation scheduler fires deadlines once and in stable order", () => {

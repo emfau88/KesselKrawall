@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -13,6 +14,7 @@ import {
   BackdropImage,
   ITEM_ART,
   OPPONENT_ART,
+  preloadArtAssets,
   UiIcon,
   type ArtAsset,
   type UiAsset,
@@ -86,6 +88,15 @@ import type {
 
 const ROMAN_LEVEL = ["", "I", "II", "III"] as const;
 const BUILD_HASH = process.env.NEXT_PUBLIC_BUILD_SHA ?? "local";
+const COMBAT_VFX_ASSETS = [
+  "vfx-fire",
+  "vfx-fire-projectile",
+  "vfx-poison",
+  "vfx-poison-projectile",
+  "vfx-shield",
+  "vfx-ward-bloom",
+  "vfx-impact",
+] as const satisfies readonly ArtAsset[];
 type AppScreen = "menu" | "game";
 
 interface BattleView {
@@ -500,6 +511,7 @@ function CauldronBoard({
   interactive,
   onSlot,
   compact = false,
+  showCauldron = true,
   combatActive = false,
   combatTime = 0,
   activationTimesByUid = new Map(),
@@ -514,6 +526,7 @@ function CauldronBoard({
   interactive: boolean;
   onSlot?: (slot: number) => void;
   compact?: boolean;
+  showCauldron?: boolean;
   combatActive?: boolean;
   combatTime?: number;
   activationTimesByUid?: CombatActivationTimeline;
@@ -524,20 +537,23 @@ function CauldronBoard({
       className={[
         "cauldron-board",
         compact ? "is-compact" : "",
+        showCauldron ? "" : "without-cauldron",
         hitKind ? `is-reacting reaction-${hitKind}` : "",
       ].join(" ")}
       data-side={side}
     >
-      <div
-        className="cauldron"
-        aria-hidden="true"
-        key={`${hitKind ?? "idle"}-${activeUids.join("-") || "rest"}`}
-      >
-        <span className="cauldron-aura" />
-        <ArtSprite asset={cauldronAsset} className="cauldron-art" />
-        <span className="cauldron-steam steam-one" />
-        <span className="cauldron-steam steam-two" />
-      </div>
+      {showCauldron && (
+        <div
+          className="cauldron"
+          aria-hidden="true"
+          key={`${hitKind ?? "idle"}-${activeUids.join("-") || "rest"}`}
+        >
+          <span className="cauldron-aura" />
+          <ArtSprite asset={cauldronAsset} className="cauldron-art" />
+          <span className="cauldron-steam steam-one" />
+          <span className="cauldron-steam steam-two" />
+        </div>
+      )}
       <CombatFloatingNumberLayer numbers={floatingNumbers} />
       <div className="slot-arc">
         {board.map((instance, slot) => {
@@ -758,12 +774,14 @@ function OpponentPreparationCard({
                 : ""}
           </span>
           <strong>{opponent.name}</strong>
-          <small>
-            {opponent.title} · Variante {variant + 1}/
-            {1 + (opponent.boardVariants?.length ?? 0)}
-          </small>
+          <small>{opponent.title}</small>
         </span>
-        <span className="prep-opponent-stats">
+        <span className="prep-details-label">
+          Details <i aria-hidden="true">⌄</i>
+        </span>
+      </summary>
+      <div className="prep-opponent-details">
+        <div className="prep-opponent-meta">
           <span>
             <UiIcon asset="health" className="prep-stat-icon" />
             {opponent.baseHp} LP
@@ -772,48 +790,10 @@ function OpponentPreparationCard({
             <UiIcon asset="power" className="prep-stat-icon" />
             ≈ {power}
           </span>
-        </span>
-        <span
-          className="prep-opponent-board"
-          aria-label={`Zutaten von ${opponent.name}`}
-        >
-          {opponent.board.map((instance, slot) => {
-            const definition = instance
-              ? ITEM_BY_ID[instance.itemId]
-              : null;
-            return (
-              <span
-                key={slot}
-                className={[
-                  "prep-opponent-slot",
-                  definition ? familyClass(definition.family) : "is-empty",
-                ].join(" ")}
-                aria-label={
-                  definition
-                    ? `Slot ${slot + 1}: ${definition.name} ${ROMAN_LEVEL[instance!.level]}`
-                    : `Slot ${slot + 1}: leer`
-                }
-              >
-                {definition ? (
-                  <>
-                    <ArtSprite
-                      asset={ITEM_ART[definition.id]}
-                      className="prep-opponent-item"
-                    />
-                    <b>{ROMAN_LEVEL[instance!.level]}</b>
-                  </>
-                ) : (
-                  <i aria-hidden="true" />
-                )}
-              </span>
-            );
-          })}
-        </span>
-        <span className="prep-details-label">
-          Aufstellung <i aria-hidden="true">⌄</i>
-        </span>
-      </summary>
-      <div className="prep-opponent-details">
+          <span>
+            Variante {variant + 1}/{1 + (opponent.boardVariants?.length ?? 0)}
+          </span>
+        </div>
         <p>{opponent.threat}</p>
         <ul>
           {opponent.board.map((instance, slot) => {
@@ -976,6 +956,7 @@ function BattleVfx({
   tier,
   delayMs,
   layerIndex,
+  onImpact,
 }: {
   event: CombatEvent;
   source: EventSource | null;
@@ -983,6 +964,7 @@ function BattleVfx({
   tier: CombatBeatTier;
   delayMs: number;
   layerIndex: number;
+  onImpact: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [geometry, setGeometry] = useState<VfxGeometry | null>(null);
@@ -1161,6 +1143,10 @@ function BattleVfx({
         className={`battle-projectile ${projectileClass}`}
       />
       <ArtSprite asset="vfx-impact" className="battle-impact" />
+      <span
+        className="battle-impact-trigger"
+        onAnimationStart={onImpact}
+      />
       {tier !== "ambient" && (
         <span className="vfx-particle particle-one" />
       )}
@@ -1176,19 +1162,23 @@ function BattleVfx({
 }
 
 function BattleVolleyVfx({
+  beatId,
   contributions,
   playerBoard,
   enemyBoard,
   shotDurationMs,
   shotStaggerMs,
   tier,
+  onImpact,
 }: {
+  beatId: string;
   contributions: CombatContribution[];
   playerBoard: Board;
   enemyBoard: Board;
   shotDurationMs: number;
   shotStaggerMs: number;
   tier: CombatBeatTier;
+  onImpact: (beatId: string, contributionId: string) => void;
 }) {
   return contributions.map((contribution, index) => (
     <BattleVfx
@@ -1203,6 +1193,7 @@ function BattleVolleyVfx({
       tier={tier}
       delayMs={index * shotStaggerMs}
       layerIndex={index}
+      onImpact={() => onImpact(beatId, contribution.id)}
     />
   ));
 }
@@ -1258,6 +1249,9 @@ export default function Game() {
   const [isStandalone, setIsStandalone] = useState(false);
   const combatPausedRef = useRef(combatPaused);
   const pausedAnimationsRef = useRef<Animation[]>([]);
+  const impactHandlerRef = useRef<
+    (beatId: string, contributionId: string) => void
+  >(() => undefined);
   const speedRef = useRef(speed);
   const shellRef = useRef<HTMLElement>(null);
   const confirmNewRunRef = useRef<HTMLButtonElement>(null);
@@ -1283,6 +1277,12 @@ export default function Game() {
   const playerPowerBreakdown = getPowerBreakdown(game.board);
   const playerPower = playerPowerBreakdown.total;
   const enemyPower = getPowerValue(opponent.board);
+  const handleBattleVfxImpact = useCallback(
+    (beatId: string, contributionId: string) => {
+      impactHandlerRef.current(beatId, contributionId);
+    },
+    [],
+  );
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -1311,6 +1311,10 @@ export default function Game() {
       }
     }, 0);
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    void preloadArtAssets(COMBAT_VFX_ASSETS);
   }, []);
 
   useEffect(() => {
@@ -1471,6 +1475,7 @@ export default function Game() {
     const finishBattle = () => {
       if (finished) return;
       finished = true;
+      impactHandlerRef.current = () => undefined;
       clearPresentationTasks();
       setBattleClock(combat.duration);
       setBattleView({
@@ -1525,7 +1530,7 @@ export default function Game() {
       presentationTimeMs = frame.presentationTimeMs;
       lastWallTimeMs = frame.wallTimeMs;
 
-      if (frame.frameDeltaMs <= 0) {
+      if (frame.presentationDeltaMs <= 0) {
         animationFrame = window.requestAnimationFrame(animate);
         return;
       }
@@ -1533,7 +1538,7 @@ export default function Game() {
       targetSimulationTimeMs = Math.min(
         combat.duration,
         targetSimulationTimeMs +
-          frame.frameDeltaMs * speedRef.current,
+          frame.simulationDeltaMs * speedRef.current,
       );
       presentationScheduler.flush(presentationTimeMs);
       if (
@@ -1609,6 +1614,86 @@ export default function Game() {
           impactLanded: false,
         }));
 
+        const landedImpactIds = new Set<string>();
+        const reactionDuration = Math.min(
+          300,
+          Math.max(160, timing.shotStaggerMs - 80),
+        );
+        impactHandlerRef.current = (beatId, contributionId) => {
+          if (
+            beatId !== nextBeat.id ||
+            landedImpactIds.has(contributionId)
+          ) {
+            return;
+          }
+          const contribution = nextBeat.contributions.find(
+            (candidate) => candidate.id === contributionId,
+          );
+          if (!contribution) return;
+          landedImpactIds.add(contributionId);
+
+          const appearedNumbers = createFloatingCombatNumbers({
+            events: contribution.events,
+            idPrefix: contribution.id,
+            presentationTime: presentationTimeMs,
+          });
+          if (appearedNumbers.length > 0) {
+            activeFloatingNumbers = mergeFloatingCombatNumbers(
+              activeFloatingNumbers,
+              appearedNumbers,
+            );
+            setFloatingNumbers(activeFloatingNumbers);
+          }
+          playGameSound(
+            combatSound(
+              contribution.event,
+              findEventSource(
+                contribution.event,
+                game.board,
+                opponent.board,
+              ),
+            ),
+          );
+          setBattleView((current) => {
+            if (current?.beatId !== nextBeat.id) return current;
+            const landedContributionIds = [
+              ...current.landedContributionIds,
+              contribution.id,
+            ];
+            const volleyLanded =
+              landedContributionIds.length ===
+              nextBeat.contributions.length;
+
+            return {
+              ...current,
+              playerHp: contribution.snapshot.playerHp,
+              playerShield: contribution.snapshot.playerShield,
+              enemyHp: contribution.snapshot.enemyHp,
+              enemyShield: contribution.snapshot.enemyShield,
+              statuses: volleyLanded
+                ? nextBeat.statuses
+                : current.statuses,
+              landedContributionIds,
+              impactEvent: contribution.event,
+              impactContributionId: contribution.id,
+              impactLanded: volleyLanded,
+            };
+          });
+
+          schedulePresentation(() => {
+            setBattleView((current) =>
+              current?.beatId === nextBeat.id &&
+              current.impactContributionId === contribution.id
+                ? {
+                    ...current,
+                    impactEvent: null,
+                    impactContributionId: null,
+                  }
+                : current,
+            );
+          }, reactionDuration);
+        };
+
         nextBeat.contributions.forEach((contribution, index) => {
           const shotDelay = index * timing.shotStaggerMs;
           const shotTiming = getVfxTiming(
@@ -1636,81 +1721,19 @@ export default function Game() {
               current.focusedContributionId === contribution.id
                 ? { ...current, activeUids: [] }
                 : current,
-            );
+              );
           }, shotDelay + shotTiming.chargeMs);
 
           schedulePresentation(() => {
-            const appearedNumbers = createFloatingCombatNumbers({
-              events: contribution.events,
-              idPrefix: contribution.id,
-              presentationTime: presentationTimeMs,
-            });
-            if (appearedNumbers.length > 0) {
-              activeFloatingNumbers = mergeFloatingCombatNumbers(
-                activeFloatingNumbers,
-                appearedNumbers,
-              );
-              setFloatingNumbers(activeFloatingNumbers);
-            }
-            playGameSound(
-              combatSound(
-                contribution.event,
-                findEventSource(
-                  contribution.event,
-                  game.board,
-                  opponent.board,
-                ),
-              ),
-            );
-            setBattleView((current) => {
-              if (current?.beatId !== nextBeat.id) return current;
-              const landedContributionIds = [
-                ...current.landedContributionIds,
-                contribution.id,
-              ];
-              const volleyLanded =
-                landedContributionIds.length ===
-                nextBeat.contributions.length;
-
-              return {
-                ...current,
-                playerHp: contribution.snapshot.playerHp,
-                playerShield: contribution.snapshot.playerShield,
-                enemyHp: contribution.snapshot.enemyHp,
-                enemyShield: contribution.snapshot.enemyShield,
-                statuses: volleyLanded
-                  ? nextBeat.statuses
-                  : current.statuses,
-                landedContributionIds,
-                impactEvent: contribution.event,
-                impactContributionId: contribution.id,
-                impactLanded: volleyLanded,
-              };
-            });
+            impactHandlerRef.current(nextBeat.id, contribution.id);
           }, shotDelay + shotTiming.impactAtMs);
-
-          const reactionDuration = Math.min(
-            300,
-            Math.max(160, timing.shotStaggerMs - 80),
-          );
-          schedulePresentation(() => {
-            setBattleView((current) =>
-              current?.beatId === nextBeat.id &&
-              current.impactContributionId === contribution.id
-                ? {
-                    ...current,
-                    impactEvent: null,
-                    impactContributionId: null,
-                  }
-                : current,
-            );
-          }, shotDelay + shotTiming.impactAtMs + reactionDuration);
         });
       } else if (
         beatVisible &&
         presentationTimeMs >= beatHiddenAtMs
       ) {
         beatVisible = false;
+        impactHandlerRef.current = () => undefined;
         clearPresentationTasks();
         setBattleView((current) =>
           current
@@ -1739,7 +1762,7 @@ export default function Game() {
         nextBeatTimeMs: waitingBeat?.time ?? null,
         presentationTimeMs,
         nextBeatAllowedAtMs,
-        frameDeltaMs: frame.frameDeltaMs,
+        frameDeltaMs: frame.simulationDeltaMs,
         speed: speedRef.current,
         durationMs: combat.duration,
       });
@@ -1768,6 +1791,7 @@ export default function Game() {
     return () => {
       window.cancelAnimationFrame(animationFrame);
       clearPresentationTasks();
+      impactHandlerRef.current = () => undefined;
       setFloatingNumbers([]);
     };
   }, [
@@ -2405,12 +2429,14 @@ export default function Game() {
         {battleView?.event && battleView.tier && (
           <BattleVolleyVfx
             key={battleView.beatId}
+            beatId={battleView.beatId}
             contributions={battleView.contributions}
             playerBoard={game.board}
             enemyBoard={opponent.board}
             shotDurationMs={battleView.eventDuration}
             shotStaggerMs={battleView.shotStaggerMs}
             tier={battleView.tier}
+            onImpact={handleBattleVfxImpact}
           />
         )}
         <article className="combatant enemy-combatant">
@@ -2685,6 +2711,7 @@ export default function Game() {
                 activeUids={[]}
                 hitKind={null}
                 interactive
+                showCauldron={false}
                 onSlot={handleSlot}
               />
               <SynergyStrip board={game.board} />

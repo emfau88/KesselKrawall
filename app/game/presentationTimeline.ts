@@ -1,9 +1,10 @@
-export const MAX_PRESENTATION_FRAME_MS = 100;
+export const MAX_SIMULATION_FRAME_MS = 100;
 export const CLOCK_PAINT_INTERVAL_MS = 33;
 
 export interface PresentationFrame {
   presentationTimeMs: number;
-  frameDeltaMs: number;
+  presentationDeltaMs: number;
+  simulationDeltaMs: number;
   wallTimeMs: number;
 }
 
@@ -60,15 +61,16 @@ export function advancePresentationFrame(
   wallTimeMs: number,
   paused: boolean,
 ): PresentationFrame {
-  const wallDeltaMs = Math.max(
-    0,
-    Math.min(MAX_PRESENTATION_FRAME_MS, wallTimeMs - previousWallTimeMs),
-  );
-  const frameDeltaMs = paused ? 0 : wallDeltaMs;
+  const wallDeltaMs = Math.max(0, wallTimeMs - previousWallTimeMs);
+  const presentationDeltaMs = paused ? 0 : wallDeltaMs;
+  const simulationDeltaMs = paused
+    ? 0
+    : Math.min(MAX_SIMULATION_FRAME_MS, wallDeltaMs);
 
   return {
-    presentationTimeMs: presentationTimeMs + frameDeltaMs,
-    frameDeltaMs,
+    presentationTimeMs: presentationTimeMs + presentationDeltaMs,
+    presentationDeltaMs,
+    simulationDeltaMs,
     wallTimeMs,
   };
 }
