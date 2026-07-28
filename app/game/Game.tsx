@@ -2646,15 +2646,6 @@ export default function Game() {
               Gegner ≈ {enemyPower}
             </button>
           </div>
-          <HealthBar
-            hp={playerHp}
-            maxHp={100}
-            shield={playerShield}
-            label="Dein Kessel"
-            status={combatStatuses.player}
-            battleTime={battleClock}
-            showStatuses={isCombatPhase}
-          />
           <CauldronBoard
             board={game.board}
             side="player"
@@ -2673,6 +2664,15 @@ export default function Game() {
             floatingNumbers={floatingNumbers.filter(
               (number) => number.target === "player",
             )}
+          />
+          <HealthBar
+            hp={playerHp}
+            maxHp={100}
+            shield={playerShield}
+            label="Dein Kessel"
+            status={combatStatuses.player}
+            battleTime={battleClock}
+            showStatuses={isCombatPhase}
           />
         </article>
         </section>
