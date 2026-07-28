@@ -2082,6 +2082,18 @@ export default function Game() {
     game.board,
     opponent.board,
   );
+  const sideLabel = (side: Side) =>
+    side === "player" ? "Dein Kessel" : opponent.name;
+  const focusedEventRoute = focusedContribution
+    ? `${eventSource?.name ?? sideLabel(focusedContribution.event.actor)} → ${sideLabel(
+        focusedContribution.event.target,
+      )}`
+    : null;
+  const importantEventRoute = importantCombatMessage
+    ? `${importantEventSource?.name ?? sideLabel(importantCombatMessage.event.actor)} → ${sideLabel(
+        importantCombatMessage.event.target,
+      )}`
+    : null;
   const effectLaneEventKind =
     importantCombatMessage?.event.kind ?? battleView?.event?.kind;
   const remainingBattleSeconds = Math.max(
@@ -2544,9 +2556,9 @@ export default function Game() {
               )}
               <strong>
                 {importantCombatMessage.label}
-                {importantEventSource && (
+                {importantEventRoute && (
                   <small className="callout-timing">
-                    {importantEventSource.cadenceLabel}
+                    {importantEventRoute}
                   </small>
                 )}
               </strong>
@@ -2751,10 +2763,9 @@ export default function Game() {
             <div className="offer-grid">
               {game.offers.map((offer) => {
                 const definition = ITEM_BY_ID[offer.itemId];
-                const mergePreview = getPurchaseMergePreview(
-                  game.board,
-                  offer.itemId,
-                );
+                const mergePreview = offer.bought
+                  ? null
+                  : getPurchaseMergePreview(game.board, offer.itemId);
                 const disabled =
                   offer.bought ||
                   game.gold < definition.cost ||
@@ -2861,6 +2872,8 @@ export default function Game() {
                 ? "Wiedergabe und Effekte stehen sicher"
                 : decisionCountdown
                 ? `${remainingBattleSeconds} s bis zur Zeitentscheidung`
+                : focusedEventRoute
+                  ? focusedEventRoute
                 : speed === 1
                   ? "Lesemodus · Salven werden klar gestaffelt"
                   : `Beschleunigte Regie auf ${speed}×`}
@@ -2901,8 +2914,14 @@ export default function Game() {
               {focusedContribution
                 ? `${
                     eventSource
-                      ? `Slot ${eventSource.slot + 1} · ${eventSource.name} · ${eventSource.cadenceLabel} · `
-                      : ""
+                      ? `${sideLabel(focusedContribution.event.actor)} · Slot ${
+                          eventSource.slot + 1
+                        } · ${eventSource.name} → ${sideLabel(
+                          focusedContribution.event.target,
+                        )} · `
+                      : `${sideLabel(
+                          focusedContribution.event.actor,
+                        )} → ${sideLabel(focusedContribution.event.target)} · `
                   }${focusedContribution.label}`
                 : decisionCountdown
                   ? `Zeitentscheidung in ${remainingBattleSeconds}`

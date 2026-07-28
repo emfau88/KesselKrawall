@@ -1142,7 +1142,7 @@ test("one or two close impacts stay separate and the third becomes a bundle", ()
 
 test("direct impacts outside the 300 ms window remain individual", () => {
   let numbers: ReturnType<typeof createFloatingCombatNumbers> = [];
-  for (const [index, presentationTime] of [0, 150, 451].entries()) {
+  for (const [index, presentationTime] of [0, 451].entries()) {
     numbers = mergeFloatingCombatNumbers(
       numbers,
       createFloatingCombatNumbers({
@@ -1153,7 +1153,7 @@ test("direct impacts outside the 300 ms window remain individual", () => {
     );
   }
 
-  assert.equal(numbers.length, 3);
+  assert.equal(numbers.length, 2);
   assert.ok(numbers.every((number) => number.hitCount === 1));
 });
 
@@ -1227,6 +1227,6 @@ test("floating combat numbers are capped independently for each cauldron", () =>
     numbers
       .filter((number) => number.target === "player")
       .map((number) => number.type),
-    ["heal", "shield", "burn"],
+    ["shield", "burn"],
   );
 });

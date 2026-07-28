@@ -22,7 +22,7 @@ export interface FloatingCombatNumber {
 export const FLOATING_NUMBER_LIFETIME_MS = 1_150;
 export const FLOATING_NUMBER_BUNDLE_WINDOW_MS = 300;
 export const STATUS_NUMBER_BUNDLE_WINDOW_MS = 450;
-export const MAX_ACTIVE_FLOATING_NUMBERS_PER_SIDE = 3;
+export const MAX_ACTIVE_FLOATING_NUMBERS_PER_SIDE = 2;
 
 function getFloatingNumberType(
   event: CombatEvent,
