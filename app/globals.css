@@ -4476,35 +4476,51 @@ button.board-slot:active {
   scrollbar-width: thin;
 }
 
-.phase-shop .shop-card {
-  min-height: clamp(176px, 40dvh, 330px);
-  padding: 8px 9px 39px;
+.phase-shop .shop-card,
+.phase-shop .shop-card:has(.offer-merge-target) {
+  min-height: 152px;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 44px;
+  grid-template-rows: auto auto auto auto auto;
+  align-items: center;
+  gap: 1px 7px;
   scroll-snap-align: start;
+  text-align: left;
 }
 
-.phase-shop .shop-card:has(.offer-merge-target) {
-  min-height: clamp(190px, 42dvh, 345px);
-  padding-bottom: 39px;
+.phase-shop .offer-family {
+  grid-column: 2;
+  grid-row: 1;
 }
 
 .phase-shop .offer-icon {
-  width: clamp(56px, 10dvh, 82px);
-  height: clamp(56px, 10dvh, 82px);
+  grid-column: 1;
+  grid-row: 1 / 6;
+  width: 56px;
+  height: 56px;
+  margin: 0;
 }
 
 .phase-shop .shop-card > strong {
+  grid-column: 2;
+  grid-row: 2;
   overflow: visible;
   font-size: 13px;
   line-height: 1.15;
+  text-align: left;
   text-overflow: clip;
   white-space: normal;
 }
 
 .phase-shop .shop-card > small {
+  grid-column: 2;
+  grid-row: 3;
   display: block;
   overflow: visible;
   font-size: 11px;
   line-height: 1.3;
+  text-align: left;
   -webkit-line-clamp: unset;
 }
 
@@ -4512,28 +4528,37 @@ button.board-slot:active {
 .phase-shop .shop-card:has(.offer-merge-target) .offer-synergy,
 .phase-shop .offer-merge-target {
   position: static;
+  grid-column: 2;
   min-height: 17px;
-  margin-top: 4px;
+  margin-top: 2px;
   display: grid;
-  place-items: center;
+  place-items: center start;
   overflow: visible;
   font-size: 10px;
   line-height: 1.2;
-  text-align: center;
+  text-align: left;
   text-overflow: clip;
   white-space: normal;
 }
 
+.phase-shop .offer-synergy,
+.phase-shop .shop-card:has(.offer-merge-target) .offer-synergy {
+  grid-row: 4;
+}
+
 .phase-shop .offer-merge-target {
+  grid-row: 5;
   color: #fff0b5;
 }
 
 .phase-shop .offer-price {
-  right: 8px;
-  bottom: 7px;
-  left: 8px;
-  min-height: 27px;
+  position: static;
+  grid-column: 3;
+  grid-row: 1 / 6;
+  width: 44px;
+  min-height: 34px;
   font-size: 11px;
+  transform: none;
 }
 
 .phase-shop .shop-actions {
@@ -4640,8 +4665,41 @@ button.board-slot:active {
     padding-top: 5px;
   }
 
-  .phase-shop .shop-card {
-    min-height: 164px;
+  .phase-shop .shop-card,
+  .phase-shop .shop-card:has(.offer-merge-target) {
+    min-height: 148px;
+  }
+}
+
+@media (max-height: 600px) {
+  .phase-shop .shop-card,
+  .phase-shop .shop-card:has(.offer-merge-target) {
+    min-height: 112px;
+    padding: 6px;
+    grid-template-columns: 44px minmax(0, 1fr) 40px;
+    gap: 0 5px;
+  }
+
+  .phase-shop .offer-family {
+    display: none;
+  }
+
+  .phase-shop .offer-icon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .phase-shop .offer-synergy,
+  .phase-shop .shop-card:has(.offer-merge-target) .offer-synergy,
+  .phase-shop .offer-merge-target {
+    min-height: 14px;
+    margin-top: 0;
+    line-height: 1.1;
+  }
+
+  .phase-shop .offer-price {
+    width: 40px;
+    min-height: 30px;
   }
 }
 
