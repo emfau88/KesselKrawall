@@ -2249,6 +2249,18 @@ button.board-slot:active {
   overflow: hidden;
 }
 
+.combat--paused,
+.combat--paused *,
+.combat--paused *::before,
+.combat--paused *::after {
+  animation-play-state: paused !important;
+}
+
+.battle-controls.is-paused {
+  border-top-color: rgba(101, 200, 242, 0.54);
+  box-shadow: 0 -14px 42px rgba(101, 200, 242, 0.11);
+}
+
 .battle-controls > *:not(.panel-backdrop) {
   position: relative;
   z-index: 2;
@@ -2334,6 +2346,20 @@ button.board-slot:active {
 .speed-control button.is-active {
   background: rgba(245, 197, 91, 0.17);
   color: var(--gold);
+}
+
+.speed-control .pause-toggle {
+  border-right: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px 3px 3px 8px;
+}
+
+.speed-control .pause-toggle > span {
+  line-height: 1;
+}
+
+.speed-control .pause-toggle.is-pause-active {
+  background: rgba(101, 200, 242, 0.18);
+  color: var(--guard);
 }
 
 .result-sheet {

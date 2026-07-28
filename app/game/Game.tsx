@@ -30,6 +30,12 @@ import {
 } from "./combatPresentation";
 import { playGameSound, type GameSound } from "./audio";
 import { FAMILY_META, ITEM_BY_ID } from "./data";
+import {
+  advancePresentationFrame,
+  CLOCK_PAINT_INTERVAL_MS,
+  interpolateVisibleBattleTime,
+  PresentationScheduler,
+} from "./presentationTimeline";
 import { getItemCooldownMs, simulateBattle } from "./simulation";
 import {
   advanceAfterBattle,
@@ -1243,10 +1249,13 @@ export default function Game() {
   const [battleView, setBattleView] = useState<BattleView | null>(null);
   const [battleClock, setBattleClock] = useState(0);
   const [battleEnding, setBattleEnding] = useState<CombatResult["reason"] | null>(null);
+  const [combatPaused, setCombatPaused] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [showPowerHelp, setShowPowerHelp] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const combatPausedRef = useRef(combatPaused);
+  const pausedAnimationsRef = useRef<Animation[]>([]);
   const speedRef = useRef(speed);
   const shellRef = useRef<HTMLElement>(null);
   const confirmNewRunRef = useRef<HTMLButtonElement>(null);
@@ -1294,6 +1303,38 @@ export default function Game() {
   useEffect(() => {
     speedRef.current = speed;
   }, [speed]);
+
+  useEffect(() => {
+    combatPausedRef.current = combatPaused;
+  }, [combatPaused]);
+
+  useLayoutEffect(() => {
+    if (game.phase !== "battle") {
+      pausedAnimationsRef.current = [];
+      return;
+    }
+
+    if (combatPaused) {
+      const containers = shellRef.current?.querySelectorAll(
+        ".arena, .battle-controls",
+      );
+      const runningAnimations = containers
+        ? [...containers].flatMap((container) =>
+            container
+              .getAnimations({ subtree: true })
+              .filter((animation) => animation.playState === "running"),
+          )
+        : [];
+      runningAnimations.forEach((animation) => animation.pause());
+      pausedAnimationsRef.current = runningAnimations;
+      return;
+    }
+
+    pausedAnimationsRef.current.forEach((animation) => {
+      if (animation.playState === "paused") animation.play();
+    });
+    pausedAnimationsRef.current = [];
+  }, [combatPaused, game.phase]);
 
   useEffect(() => {
     if (!mergeNotice) return;
@@ -1367,37 +1408,55 @@ export default function Game() {
     const finalStatuses =
       combatBeats.at(-1)?.statuses ?? createEmptyCombatStatuses();
     let beatIndex = 0;
-    let targetTime = 0;
-    let shownTime = 0;
-    let lastRealTime = performance.now();
-    let nextBeatAllowedAt = lastRealTime;
-    let beatHiddenAt = lastRealTime;
-    let lastClockPaint = lastRealTime;
+    let targetSimulationTimeMs = 0;
+    let visibleSimulationTimeMs = 0;
+    let presentationTimeMs = 0;
+    let lastWallTimeMs = performance.now();
+    let nextBeatAllowedAtMs = 0;
+    let beatHiddenAtMs = 0;
+    let lastClockPaintAtMs = -CLOCK_PAINT_INTERVAL_MS;
     let beatVisible = false;
     let finished = false;
+    let resultShown = false;
     let animationFrame = 0;
-    let finishTimer = 0;
-    let presentationTimers: number[] = [];
+    let resultRevealAtMs: number | null = null;
+    const presentationScheduler = new PresentationScheduler();
 
-    const clearPresentationTimers = () => {
-      for (const timer of presentationTimers) {
-        window.clearTimeout(timer);
-      }
-      presentationTimers = [];
+    const clearPresentationTasks = () => {
+      presentationScheduler.clear();
     };
 
     const schedulePresentation = (
       callback: () => void,
       delay: number,
     ) => {
-      const timer = window.setTimeout(callback, Math.max(0, delay));
-      presentationTimers.push(timer);
+      presentationScheduler.schedule(
+        presentationTimeMs + Math.max(0, delay),
+        callback,
+      );
+    };
+
+    const revealBattleResult = () => {
+      if (resultShown) return;
+      resultShown = true;
+      setGame((current) => {
+        const next = showBattleResult(current);
+        persistGame(window.localStorage, next);
+        return next;
+      });
+      setFeedback(
+        combat.winner === "player"
+          ? "Dein Kessel gewinnt den Schlagabtausch!"
+          : combat.winner === "enemy"
+            ? `${opponent.name} behält die Oberhand.`
+            : "Beide Kessel sind gleichauf – unentschieden.",
+      );
     };
 
     const finishBattle = () => {
       if (finished) return;
       finished = true;
-      clearPresentationTimers();
+      clearPresentationTasks();
       setBattleClock(combat.duration);
       setBattleView({
         beatId: "finished",
@@ -1436,40 +1495,52 @@ export default function Game() {
             : [80, 45, 80]
           : 55,
       );
-      finishTimer = window.setTimeout(
-        () => {
-          setGame((current) => {
-            const next = showBattleResult(current);
-            persistGame(window.localStorage, next);
-            return next;
-          });
-          setFeedback(
-            combat.winner === "player"
-              ? "Dein Kessel gewinnt den Schlagabtausch!"
-              : combat.winner === "enemy"
-                ? `${opponent.name} behält die Oberhand.`
-                : "Beide Kessel sind gleichauf – unentschieden.",
-          );
-        },
-        combat.reason === "timeout" ? 1_250 : 850,
-      );
+      resultRevealAtMs =
+        presentationTimeMs +
+        (combat.reason === "timeout" ? 1_250 : 850);
     };
 
-    const animate = (now: number) => {
-      const realDelta = Math.min(100, now - lastRealTime);
-      targetTime = Math.min(
-        combat.duration,
-        targetTime + realDelta * speedRef.current,
+    const animate = (wallTimeMs: number) => {
+      const frame = advancePresentationFrame(
+        presentationTimeMs,
+        lastWallTimeMs,
+        wallTimeMs,
+        combatPausedRef.current,
       );
-      lastRealTime = now;
+      presentationTimeMs = frame.presentationTimeMs;
+      lastWallTimeMs = frame.wallTimeMs;
+
+      if (frame.frameDeltaMs <= 0) {
+        animationFrame = window.requestAnimationFrame(animate);
+        return;
+      }
+
+      targetSimulationTimeMs = Math.min(
+        combat.duration,
+        targetSimulationTimeMs +
+          frame.frameDeltaMs * speedRef.current,
+      );
+      presentationScheduler.flush(presentationTimeMs);
+
+      if (finished) {
+        if (
+          resultRevealAtMs !== null &&
+          presentationTimeMs >= resultRevealAtMs
+        ) {
+          revealBattleResult();
+          return;
+        }
+        animationFrame = window.requestAnimationFrame(animate);
+        return;
+      }
 
       const nextBeat = combatBeats[beatIndex];
       if (
         nextBeat &&
-        nextBeat.time <= targetTime &&
-        now >= nextBeatAllowedAt
+        nextBeat.time <= targetSimulationTimeMs &&
+        presentationTimeMs >= nextBeatAllowedAtMs
       ) {
-        clearPresentationTimers();
+        clearPresentationTasks();
         const previousBeatTime = combatBeats[beatIndex - 1]?.time ?? 0;
         const timing = getCombatBeatTiming(
           nextBeat,
@@ -1477,11 +1548,12 @@ export default function Game() {
           speedRef.current,
         );
         const firstContribution = nextBeat.contributions[0] ?? null;
-        shownTime = nextBeat.time;
+        visibleSimulationTimeMs = nextBeat.time;
         beatIndex += 1;
         beatVisible = true;
-        beatHiddenAt = now + timing.visibleMs;
-        nextBeatAllowedAt = now + timing.holdMs;
+        beatHiddenAtMs = presentationTimeMs + timing.visibleMs;
+        nextBeatAllowedAtMs =
+          presentationTimeMs + timing.holdMs;
         setBattleView((current) => ({
           beatId: nextBeat.id,
           time: nextBeat.time,
@@ -1592,9 +1664,12 @@ export default function Game() {
             );
           }, shotDelay + shotTiming.impactAtMs + reactionDuration);
         });
-      } else if (beatVisible && now >= beatHiddenAt) {
+      } else if (
+        beatVisible &&
+        presentationTimeMs >= beatHiddenAtMs
+      ) {
         beatVisible = false;
-        clearPresentationTimers();
+        clearPresentationTasks();
         setBattleView((current) =>
           current
             ? {
@@ -1616,22 +1691,33 @@ export default function Game() {
       }
 
       const waitingBeat = combatBeats[beatIndex];
-      const hasBacklog = Boolean(
-        waitingBeat && waitingBeat.time <= targetTime,
-      );
-      const visibleTime = hasBacklog ? shownTime : targetTime;
-      if (now - lastClockPaint >= 100) {
-        lastClockPaint = now;
-        setBattleClock(Math.min(combat.duration, visibleTime));
+      visibleSimulationTimeMs = interpolateVisibleBattleTime({
+        currentTimeMs: visibleSimulationTimeMs,
+        targetTimeMs: targetSimulationTimeMs,
+        nextBeatTimeMs: waitingBeat?.time ?? null,
+        presentationTimeMs,
+        nextBeatAllowedAtMs,
+        frameDeltaMs: frame.frameDeltaMs,
+        speed: speedRef.current,
+        durationMs: combat.duration,
+      });
+      if (
+        presentationTimeMs - lastClockPaintAtMs >=
+          CLOCK_PAINT_INTERVAL_MS ||
+        visibleSimulationTimeMs >= combat.duration
+      ) {
+        lastClockPaintAtMs = presentationTimeMs;
+        setBattleClock(
+          Math.min(combat.duration, visibleSimulationTimeMs),
+        );
       }
 
       if (
         beatIndex >= combatBeats.length &&
-        targetTime >= combat.duration &&
-        now >= nextBeatAllowedAt
+        targetSimulationTimeMs >= combat.duration &&
+        presentationTimeMs >= nextBeatAllowedAtMs
       ) {
         finishBattle();
-        return;
       }
       animationFrame = window.requestAnimationFrame(animate);
     };
@@ -1639,8 +1725,7 @@ export default function Game() {
     animationFrame = window.requestAnimationFrame(animate);
     return () => {
       window.cancelAnimationFrame(animationFrame);
-      window.clearTimeout(finishTimer);
-      clearPresentationTimers();
+      clearPresentationTasks();
     };
   }, [
     combat,
@@ -1729,6 +1814,15 @@ export default function Game() {
     announce(`Verkauft für ${result.goldDelta} Gold.`);
   }
 
+  function updateCombatPause(paused: boolean) {
+    combatPausedRef.current = paused;
+    setCombatPaused(paused);
+  }
+
+  function handleCombatPause() {
+    updateCombatPause(!combatPausedRef.current);
+  }
+
   function handleFight() {
     if (busy) return;
     const result = beginBattle(game);
@@ -1736,6 +1830,7 @@ export default function Game() {
     const battle = simulateBattle(game.board, opponent);
     const battleState = { ...result.state, pendingBattle: battle };
     persistGame(window.localStorage, battleState);
+    updateCombatPause(false);
     setCombat(battle);
     setBattleClock(0);
     setBattleEnding(null);
@@ -1747,6 +1842,7 @@ export default function Game() {
   function handleContinue() {
     if (!combat) return;
     const outcome = combat.winner;
+    updateCombatPause(false);
     setGame((current) => advanceAfterBattle(current, outcome));
     setCombat(null);
     setBattleView(null);
@@ -1773,6 +1869,7 @@ export default function Game() {
 
   function handleReset() {
     const next = resetRun();
+    updateCombatPause(false);
     setGame(next);
     setCombat(null);
     setBattleView(null);
@@ -1806,6 +1903,7 @@ export default function Game() {
 
   function handleReturnToMenu() {
     persistGame(window.localStorage, game);
+    updateCombatPause(false);
     if (game.phase === "battle" && combat) {
       setBattleView(createBattleViewState(combat));
       setBattleClock(0);
@@ -2226,7 +2324,17 @@ export default function Game() {
       </header>
 
       {game.phase !== "shop" && (
-        <section className="arena" aria-label="Kampfarena">
+        <section
+          className={`arena ${
+            game.phase === "battle" && combatPaused
+              ? "combat--paused"
+              : ""
+          }`}
+          aria-label="Kampfarena"
+          data-combat-paused={
+            game.phase === "battle" ? combatPaused : undefined
+          }
+        >
           <BackdropImage backdrop="arena" className="arena-backdrop" />
         {battleView?.event && battleView.tier && (
           <BattleVolleyVfx
@@ -2645,16 +2753,23 @@ export default function Game() {
 
       {game.phase === "battle" && (
         <section
-          className={`battle-controls ${decisionCountdown ? "is-decision-window" : ""}`}
+          className={`battle-controls ${
+            decisionCountdown ? "is-decision-window" : ""
+          } ${combatPaused ? "combat--paused is-paused" : ""}`}
           aria-label="Kampfsteuerung"
+          data-combat-paused={combatPaused}
         >
           <BackdropImage backdrop="arena" className="panel-backdrop battle-backdrop" />
-          <div className="battle-status">
+          <div className="battle-status" aria-live="polite">
             <UiIcon asset="battle" className="battle-title-icon" />
             <span className="live-dot" aria-hidden="true" />
-            <strong>Kampf läuft</strong>
+            <strong>
+              {combatPaused ? "Kampf pausiert" : "Kampf läuft"}
+            </strong>
             <small>
-              {decisionCountdown
+              {combatPaused
+                ? "Wiedergabe und Effekte stehen sicher"
+                : decisionCountdown
                 ? `${remainingBattleSeconds} s bis zur Zeitentscheidung`
                 : speed === 1
                   ? "Lesemodus · Salven werden klar gestaffelt"
@@ -2710,7 +2825,27 @@ export default function Game() {
           </div>
           <div className="battle-speed">
             <span><UiIcon asset="speed" className="speed-icon" /> TEMPO</span>
-            <div className="speed-control" aria-label="Kampfgeschwindigkeit">
+            <div
+              className="speed-control"
+              aria-label="Pause und Kampfgeschwindigkeit"
+            >
+              <button
+                type="button"
+                className={`pause-toggle ${
+                  combatPaused ? "is-pause-active" : ""
+                }`}
+                onClick={handleCombatPause}
+                aria-label={
+                  combatPaused ? "Kampf fortsetzen" : "Kampf pausieren"
+                }
+                aria-pressed={combatPaused}
+                data-testid="combat-pause-toggle"
+              >
+                <span aria-hidden="true">
+                  {combatPaused ? "▶" : "Ⅱ"}
+                </span>
+                <small>{combatPaused ? "WEITER" : "PAUSE"}</small>
+              </button>
               {[1, 2, 4].map((value) => (
                 <button
                   type="button"

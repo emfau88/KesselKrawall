@@ -13,6 +13,11 @@ import {
   simulateBattle,
 } from "../app/game/simulation";
 import {
+  advancePresentationFrame,
+  interpolateVisibleBattleTime,
+  PresentationScheduler,
+} from "../app/game/presentationTimeline";
+import {
   advanceAfterBattle,
   buyOffer,
   createInitialState,
@@ -666,6 +671,90 @@ test("combat director shortens only dead air after tightly spaced beats", () => 
   assert.equal(tightTiming.visibleMs, relaxedTiming.visibleMs);
   assert.ok(tightTiming.holdMs < relaxedTiming.holdMs);
   assert.ok(tightTiming.holdMs >= tightTiming.visibleMs + 50);
+});
+
+test("presentation time freezes across pauses and discards wall-clock gaps", () => {
+  const running = advancePresentationFrame(0, 0, 16, false);
+  assert.equal(running.presentationTimeMs, 16);
+  assert.equal(running.frameDeltaMs, 16);
+
+  const paused = advancePresentationFrame(
+    running.presentationTimeMs,
+    running.wallTimeMs,
+    5_016,
+    true,
+  );
+  assert.equal(paused.presentationTimeMs, 16);
+  assert.equal(paused.frameDeltaMs, 0);
+
+  const resumed = advancePresentationFrame(
+    paused.presentationTimeMs,
+    paused.wallTimeMs,
+    5_032,
+    false,
+  );
+  assert.equal(resumed.presentationTimeMs, 32);
+  assert.equal(resumed.frameDeltaMs, 16);
+
+  const backgrounded = advancePresentationFrame(
+    resumed.presentationTimeMs,
+    resumed.wallTimeMs,
+    15_032,
+    false,
+  );
+  assert.equal(backgrounded.presentationTimeMs, 132);
+  assert.equal(backgrounded.frameDeltaMs, 100);
+});
+
+test("presentation scheduler fires deadlines once and in stable order", () => {
+  const scheduler = new PresentationScheduler();
+  const calls: string[] = [];
+  scheduler.schedule(200, () => calls.push("late"));
+  scheduler.schedule(100, () => calls.push("first"));
+  scheduler.schedule(100, () => calls.push("second"));
+
+  assert.equal(scheduler.flush(99), 0);
+  assert.deepEqual(calls, []);
+  assert.equal(scheduler.flush(100), 2);
+  assert.deepEqual(calls, ["first", "second"]);
+  assert.equal(scheduler.flush(100), 0);
+  assert.equal(scheduler.flush(200), 1);
+  assert.deepEqual(calls, ["first", "second", "late"]);
+  assert.equal(scheduler.size, 0);
+});
+
+test("visible battle time interpolates monotonically to the next beat", () => {
+  let visibleTimeMs = 0;
+  for (let step = 1; step <= 10; step += 1) {
+    const previousTimeMs = visibleTimeMs;
+    visibleTimeMs = interpolateVisibleBattleTime({
+      currentTimeMs: visibleTimeMs,
+      targetTimeMs: 1_200,
+      nextBeatTimeMs: 1_000,
+      presentationTimeMs: step * 100,
+      nextBeatAllowedAtMs: 1_000,
+      frameDeltaMs: 100,
+      speed: step < 5 ? 1 : 4,
+      durationMs: 5_000,
+    });
+    assert.ok(visibleTimeMs >= previousTimeMs);
+    assert.ok(visibleTimeMs <= 1_000);
+  }
+
+  assert.equal(visibleTimeMs, 1_000);
+  assert.equal(
+    interpolateVisibleBattleTime({
+      currentTimeMs: visibleTimeMs,
+      targetTimeMs: 2_000,
+      nextBeatTimeMs: 2_500,
+      presentationTimeMs: 1_000,
+      nextBeatAllowedAtMs: 1_500,
+      frameDeltaMs: 0,
+      speed: 2,
+      durationMs: 5_000,
+    }),
+    visibleTimeMs,
+  );
 });
 
 test("combat director keeps volleys causal and status ticks separate", () => {
