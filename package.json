@@ -12,6 +12,7 @@
     "start": "vinext start",
     "test": "npm run build && tsx --test tests/*.test.*",
     "balance:analysis": "tsx tools/balance-analysis.ts",
+    "balance:parking": "tsx tools/parking-counterfactual.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next"
   },

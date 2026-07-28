@@ -14,11 +14,15 @@ import type {
 } from "./types";
 
 const PLAYER_MAX_HP = 100;
-const COMBAT_LIMIT_MS = 25_000;
+export const DEFAULT_COMBAT_LIMIT_MS = 25_000;
 const STEP_MS = 100;
 export const POISON_CAP = 12;
 export const POISON_DECAY_PER_TICK = 2;
 export const SHIELD_CAP_RATIO = 0.5;
+
+export interface BattleSimulationOptions {
+  combatLimitMs?: number;
+}
 
 interface RuntimeItem {
   instance: ItemInstance;
@@ -625,7 +629,14 @@ function finalWinner(world: World): BattleOutcome {
 export function simulateBattle(
   playerBoard: Board,
   opponent: OpponentDefinition,
+  options: BattleSimulationOptions = {},
 ): CombatResult {
+  const combatLimitMs = Math.max(
+    STEP_MS,
+    Math.floor(
+      (options.combatLimitMs ?? DEFAULT_COMBAT_LIMIT_MS) / STEP_MS,
+    ) * STEP_MS,
+  );
   const enemyMaxHp = opponent.baseHp;
   const world: World = {
     time: 0,
@@ -639,7 +650,7 @@ export function simulateBattle(
   addStartingSynergyShield(world, world.enemy);
 
   let reason: "knockout" | "timeout" = "timeout";
-  for (let time = STEP_MS; time <= COMBAT_LIMIT_MS; time += STEP_MS) {
+  for (let time = STEP_MS; time <= combatLimitMs; time += STEP_MS) {
     world.time = time;
     const playerAliveAtStart = world.player.hp > 0;
     const enemyAliveAtStart = world.enemy.hp > 0;

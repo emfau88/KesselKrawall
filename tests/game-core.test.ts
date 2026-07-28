@@ -300,13 +300,25 @@ test("a burn knockout stops the defeated cauldron before it can act", () => {
 });
 
 test("shield is capped and never decides an otherwise tied timeout", () => {
-  const battle = simulateBattle(
-    [item("shell", "egg-shell", 3), null, null, null, null],
-    opponent([null, null, null, null, null]),
-  );
+  const board = [
+    item("shell", "egg-shell", 3),
+    null,
+    null,
+    null,
+    null,
+  ];
+  const target = opponent([null, null, null, null, null]);
+  const battle = simulateBattle(board, target);
   assert.equal(battle.finalPlayerShield, 100 * SHIELD_CAP_RATIO);
   assert.equal(battle.winner, "draw");
   assert.equal(battle.reason, "timeout");
+  assert.equal(battle.duration, 25_000);
+
+  const extendedAnalysis = simulateBattle(board, target, {
+    combatLimitMs: 35_000,
+  });
+  assert.equal(extendedAnalysis.duration, 35_000);
+  assert.equal(extendedAnalysis.winner, "draw");
 });
 
 test("simultaneous knockout is a real draw", () => {
