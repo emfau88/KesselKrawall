@@ -888,6 +888,88 @@ button:focus-visible {
   animation-name: boss-rage;
 }
 
+.combat-number-layer {
+  position: absolute;
+  z-index: 7;
+  top: calc(var(--pot-size) * 0.48);
+  left: 50%;
+  width: var(--pot-size);
+  height: 1px;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.cauldron-board[data-side="player"] .combat-number-layer {
+  top: auto;
+  bottom: calc(var(--pot-size) * 0.44);
+}
+
+.combat-floating-number {
+  --number-x: 0px;
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  display: grid;
+  min-width: 54px;
+  padding: 3px 7px 4px;
+  border: 1px solid color-mix(in srgb, currentColor 55%, transparent);
+  border-radius: 11px;
+  color: #fff4d2;
+  background: rgba(24, 14, 24, 0.84);
+  box-shadow: 0 4px 13px rgba(0, 0, 0, 0.42);
+  text-align: center;
+  line-height: 1;
+  animation: combat-number-rise var(--number-lifetime) ease-out both;
+}
+
+.combat-floating-number:nth-child(3n + 1) {
+  --number-x: -24px;
+}
+
+.combat-floating-number:nth-child(3n + 2) {
+  --number-x: 19px;
+}
+
+.combat-floating-number strong {
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: 0.03em;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.85);
+}
+
+.combat-floating-number small {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.combat-floating-number.is-damage {
+  color: #fff1cf;
+  border-color: rgba(255, 176, 111, 0.78);
+}
+
+.combat-floating-number.is-heal {
+  color: #bfffa8;
+  border-color: rgba(141, 215, 91, 0.85);
+}
+
+.combat-floating-number.is-shield {
+  color: #bceaff;
+  border-color: rgba(101, 205, 245, 0.85);
+}
+
+.combat-floating-number.is-poison {
+  color: #d4ff86;
+  border-color: rgba(171, 232, 72, 0.88);
+}
+
+.combat-floating-number.is-burn {
+  color: #ffc078;
+  border-color: rgba(255, 117, 69, 0.9);
+}
+
 .slot-arc {
   position: absolute;
   z-index: 5;
@@ -2892,6 +2974,25 @@ button.board-slot:active {
   100% {
     filter: brightness(1);
     transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes combat-number-rise {
+  0% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--number-x)), 10px) scale(0.82);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--number-x)), -4px) scale(1.06);
+  }
+  68% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--number-x)), -42px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--number-x)), -62px) scale(0.94);
   }
 }
 

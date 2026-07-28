@@ -9,6 +9,10 @@ import {
   createCombatActivationTimeline,
   getCombatCooldownState,
 } from "../app/game/combatCooldownTimeline";
+import {
+  createFloatingCombatNumbers,
+  pruneExpiredFloatingNumbers,
+} from "../app/game/combatFloatingNumbers";
 import { CAMPAIGN_OPPONENTS, ITEM_BY_ID } from "../app/game/data";
 import {
   getItemCooldownMs,
@@ -36,6 +40,7 @@ import {
 } from "../app/game/state";
 import { loadStoredGame, persistGame } from "../app/game/storage";
 import type {
+  CombatEvent,
   GameState,
   ItemInstance,
   OpponentDefinition,
@@ -63,6 +68,25 @@ function opponent(
     rank: "regular",
     baseHp,
     board,
+  };
+}
+
+function combatEvent(
+  overrides: Partial<CombatEvent> = {},
+): CombatEvent {
+  return {
+    time: 1_000,
+    kind: "damage",
+    actor: "player",
+    target: "enemy",
+    sourceUid: "source",
+    label: "Treffer",
+    amount: 5,
+    playerHp: 100,
+    playerShield: 0,
+    enemyHp: 95,
+    enemyShield: 0,
+    ...overrides,
   };
 }
 
@@ -935,4 +959,75 @@ test("combat director keeps volleys causal and status ticks separate", () => {
       assert.ok(beat.events.every((event) => !isStatusTick(event)));
     }
   }
+});
+
+test("floating combat numbers represent impacts but not status application", () => {
+  const numbers = createFloatingCombatNumbers({
+    idPrefix: "impact",
+    presentationTime: 2_400,
+    events: [
+      combatEvent({ kind: "damage", amount: 7 }),
+      combatEvent({
+        kind: "heal",
+        target: "player",
+        amount: 6,
+      }),
+      combatEvent({
+        kind: "shield",
+        target: "player",
+        amount: 4,
+      }),
+      combatEvent({
+        kind: "synergy",
+        target: "player",
+        amount: 12,
+      }),
+      combatEvent({
+        kind: "poison",
+        label: "Gift +3",
+        amount: 3,
+      }),
+      combatEvent({
+        kind: "poison",
+        label: "Gift tickt",
+        amount: 5,
+      }),
+      combatEvent({
+        kind: "burn",
+        label: "Brand tickt",
+        amount: 2,
+      }),
+      combatEvent({
+        kind: "cleanse",
+        target: "player",
+        amount: 3,
+      }),
+    ],
+  });
+
+  assert.deepEqual(
+    numbers.map(({ target, type, value }) => ({ target, type, value })),
+    [
+      { target: "enemy", type: "damage", value: 7 },
+      { target: "player", type: "heal", value: 6 },
+      { target: "player", type: "shield", value: 4 },
+      { target: "player", type: "shield", value: 12 },
+      { target: "enemy", type: "poison", value: 5 },
+      { target: "enemy", type: "burn", value: 2 },
+    ],
+  );
+  assert.ok(numbers.every((number) => number.createdAt === 2_400));
+});
+
+test("floating combat number lifetime follows presentation time", () => {
+  const numbers = createFloatingCombatNumbers({
+    idPrefix: "paused-impact",
+    presentationTime: 500,
+    lifetime: 1_000,
+    events: [combatEvent()],
+  });
+
+  assert.equal(pruneExpiredFloatingNumbers(numbers, 1_499), numbers);
+  assert.equal(numbers[0].expiresAt, 1_500);
+  assert.deepEqual(pruneExpiredFloatingNumbers(numbers, 1_500), []);
 });

@@ -33,6 +33,12 @@ import {
   getCombatCooldownState,
   type CombatActivationTimeline,
 } from "./combatCooldownTimeline";
+import {
+  createFloatingCombatNumbers,
+  pruneExpiredFloatingNumbers,
+  type FloatingCombatNumber,
+  type FloatingCombatNumberType,
+} from "./combatFloatingNumbers";
 import { playGameSound, type GameSound } from "./audio";
 import { FAMILY_META, ITEM_BY_ID } from "./data";
 import {
@@ -269,6 +275,14 @@ function formatEffectDuration(milliseconds: number): string {
   return `${String(Math.ceil(milliseconds / 100) / 10).replace(".", ",")} s`;
 }
 
+const FLOATING_NUMBER_LABEL: Record<FloatingCombatNumberType, string> = {
+  damage: "Treffer",
+  heal: "Heilung",
+  shield: "Schild",
+  poison: "Gift",
+  burn: "Brand",
+};
+
 function TimedStatusBadge({
   label,
   asset,
@@ -430,6 +444,44 @@ function HealthBar({
   );
 }
 
+function CombatFloatingNumberLayer({
+  numbers,
+}: {
+  numbers: readonly FloatingCombatNumber[];
+}) {
+  if (numbers.length === 0) return null;
+
+  return (
+    <div className="combat-number-layer" aria-hidden="true">
+      {numbers.map((number) => (
+        <span
+          className={`combat-floating-number is-${number.type}`}
+          data-floating-number={number.id}
+          data-number-type={number.type}
+          data-created-at={number.createdAt}
+          data-expires-at={number.expiresAt}
+          key={number.id}
+          style={
+            {
+              "--number-lifetime": `${number.expiresAt - number.createdAt}ms`,
+            } as CSSProperties
+          }
+        >
+          <strong>
+            {number.type === "damage" ||
+            number.type === "poison" ||
+            number.type === "burn"
+              ? "−"
+              : "+"}
+            {number.value}
+          </strong>
+          <small>{FLOATING_NUMBER_LABEL[number.type]}</small>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function CauldronBoard({
   board,
   side,
@@ -443,6 +495,7 @@ function CauldronBoard({
   combatActive = false,
   combatTime = 0,
   activationTimesByUid = new Map(),
+  floatingNumbers = [],
 }: {
   board: Board;
   side: "player" | "enemy";
@@ -456,6 +509,7 @@ function CauldronBoard({
   combatActive?: boolean;
   combatTime?: number;
   activationTimesByUid?: CombatActivationTimeline;
+  floatingNumbers?: readonly FloatingCombatNumber[];
 }) {
   return (
     <div
@@ -476,6 +530,7 @@ function CauldronBoard({
         <span className="cauldron-steam steam-one" />
         <span className="cauldron-steam steam-two" />
       </div>
+      <CombatFloatingNumberLayer numbers={floatingNumbers} />
       <div className="slot-arc">
         {board.map((instance, slot) => {
           const definition = instance ? ITEM_BY_ID[instance.itemId] : null;
@@ -1244,6 +1299,9 @@ export default function Game() {
   const [busy, setBusy] = useState(false);
   const [combat, setCombat] = useState<CombatResult | null>(null);
   const [battleView, setBattleView] = useState<BattleView | null>(null);
+  const [floatingNumbers, setFloatingNumbers] = useState<
+    FloatingCombatNumber[]
+  >([]);
   const [battleClock, setBattleClock] = useState(0);
   const [battleEnding, setBattleEnding] = useState<CombatResult["reason"] | null>(null);
   const [combatPaused, setCombatPaused] = useState(false);
@@ -1423,11 +1481,13 @@ export default function Game() {
     let nextBeatAllowedAtMs = 0;
     let beatHiddenAtMs = 0;
     let lastClockPaintAtMs = -CLOCK_PAINT_INTERVAL_MS;
+    let lastFloatingCleanupAtMs = -CLOCK_PAINT_INTERVAL_MS;
     let beatVisible = false;
     let finished = false;
     let resultShown = false;
     let animationFrame = 0;
     let resultRevealAtMs: number | null = null;
+    let activeFloatingNumbers: FloatingCombatNumber[] = [];
     const presentationScheduler = new PresentationScheduler();
 
     const clearPresentationTasks = () => {
@@ -1529,6 +1589,21 @@ export default function Game() {
           frame.frameDeltaMs * speedRef.current,
       );
       presentationScheduler.flush(presentationTimeMs);
+      if (
+        activeFloatingNumbers.length > 0 &&
+        presentationTimeMs - lastFloatingCleanupAtMs >=
+          CLOCK_PAINT_INTERVAL_MS
+      ) {
+        lastFloatingCleanupAtMs = presentationTimeMs;
+        const remainingNumbers = pruneExpiredFloatingNumbers(
+          activeFloatingNumbers,
+          presentationTimeMs,
+        );
+        if (remainingNumbers !== activeFloatingNumbers) {
+          activeFloatingNumbers = [...remainingNumbers];
+          setFloatingNumbers(activeFloatingNumbers);
+        }
+      }
 
       if (finished) {
         if (
@@ -1618,6 +1693,18 @@ export default function Game() {
           }, shotDelay + shotTiming.chargeMs);
 
           schedulePresentation(() => {
+            const appearedNumbers = createFloatingCombatNumbers({
+              events: contribution.events,
+              idPrefix: contribution.id,
+              presentationTime: presentationTimeMs,
+            });
+            if (appearedNumbers.length > 0) {
+              activeFloatingNumbers = [
+                ...activeFloatingNumbers,
+                ...appearedNumbers,
+              ];
+              setFloatingNumbers(activeFloatingNumbers);
+            }
             playGameSound(
               combatSound(
                 contribution.event,
@@ -1734,6 +1821,7 @@ export default function Game() {
     return () => {
       window.cancelAnimationFrame(animationFrame);
       clearPresentationTasks();
+      setFloatingNumbers([]);
     };
   }, [
     combat,
@@ -2408,6 +2496,9 @@ export default function Game() {
             combatActive={game.phase === "battle"}
             combatTime={battleClock}
             activationTimesByUid={combatActivationTimes.enemy}
+            floatingNumbers={floatingNumbers.filter(
+              (number) => number.target === "enemy",
+            )}
           />
         </article>
 
@@ -2572,6 +2663,9 @@ export default function Game() {
             combatActive={game.phase === "battle"}
             combatTime={battleClock}
             activationTimesByUid={combatActivationTimes.player}
+            floatingNumbers={floatingNumbers.filter(
+              (number) => number.target === "player",
+            )}
           />
         </article>
         </section>
