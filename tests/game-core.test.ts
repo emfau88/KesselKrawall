@@ -5,6 +5,10 @@ import {
   getCombatBeatTiming,
   isStatusTick,
 } from "../app/game/combatPresentation";
+import {
+  createCombatActivationTimeline,
+  getCombatCooldownState,
+} from "../app/game/combatCooldownTimeline";
 import { CAMPAIGN_OPPONENTS, ITEM_BY_ID } from "../app/game/data";
 import {
   getItemCooldownMs,
@@ -188,6 +192,157 @@ test("combat cooldown exposes the effective slot timing for the UI", () => {
   ];
   assert.equal(getItemCooldownMs(board, 0), 2460);
   assert.equal(getItemCooldownMs(board, 2), 0);
+});
+
+test("combat cooldown timeline follows true hasted activations", () => {
+  const board = [
+    item("hasted-chili", "chili"),
+    item("ember", "ember-core"),
+    item("ramp", "dragon-tooth"),
+    null,
+    null,
+  ];
+  const battle = simulateBattle(
+    board,
+    opponent([null, null, null, null, null], 1_000),
+  );
+  const timeline = createCombatActivationTimeline(
+    battle.events,
+    board,
+    "player",
+  );
+  const chiliTimes = timeline.get("hasted-chili") ?? [];
+  const expectedFirstActivation =
+    Math.round(getItemCooldownMs(board, 0) / 100) * 100;
+
+  assert.ok(chiliTimes.length >= 3);
+  assert.equal(chiliTimes[0], expectedFirstActivation);
+  assert.ok(expectedFirstActivation < ITEM_BY_ID.chili.cooldown[0] * 1_000);
+  assert.ok(
+    chiliTimes
+      .slice(1)
+      .every(
+        (time, index) =>
+          time - chiliTimes[index] === expectedFirstActivation,
+      ),
+  );
+  assert.ok((timeline.get("ramp") ?? []).length >= 2);
+});
+
+test("combat cooldown timeline excludes derived status ticks and duplicate effects", () => {
+  const board = [
+    item("venom", "venom-bulb"),
+    null,
+    null,
+    null,
+    null,
+  ];
+  const battle = simulateBattle(
+    board,
+    opponent([null, null, null, null, null], 1_000),
+  );
+  const timeline = createCombatActivationTimeline(
+    battle.events,
+    board,
+    "player",
+  );
+  const activationTimes = timeline.get("venom") ?? [];
+  const directEventTimes = battle.events
+    .filter(
+      (event) =>
+        event.actor === "player" &&
+        event.sourceUid === "venom" &&
+        !isStatusTick(event),
+    )
+    .map((event) => event.time);
+
+  assert.ok(directEventTimes.length > activationTimes.length);
+  assert.deepEqual(
+    activationTimes,
+    [...new Set(directEventTimes)].sort((a, b) => a - b),
+  );
+  assert.ok(
+    battle.events.some(
+      (event) => event.sourceUid === "venom" && isStatusTick(event),
+    ),
+  );
+});
+
+test("event cooldown progress resets only on true activations", () => {
+  const activationTimes = [2_500, 5_300, 8_700];
+
+  assert.equal(
+    getCombatCooldownState({
+      battleTime: 1_250,
+      activationTimes,
+      fallbackCooldown: 4_000,
+    }).progress,
+    0.5,
+  );
+  assert.equal(
+    getCombatCooldownState({
+      battleTime: 2_500,
+      activationTimes,
+      fallbackCooldown: 4_000,
+    }).progress,
+    0,
+  );
+  assert.equal(
+    getCombatCooldownState({
+      battleTime: 3_900,
+      activationTimes,
+      fallbackCooldown: 4_000,
+    }).progress,
+    0.5,
+  );
+  assert.equal(
+    getCombatCooldownState({
+      battleTime: 10_300,
+      activationTimes,
+      fallbackCooldown: 4_000,
+    }).progress,
+    0.4,
+  );
+  assert.equal(
+    getCombatCooldownState({
+      battleTime: 14_000,
+      activationTimes,
+      fallbackCooldown: 4_000,
+    }).progress,
+    1,
+  );
+});
+
+test("reactive cooldown is ready before its first real trigger", () => {
+  const activationTimes = [3_000, 8_000];
+
+  assert.equal(
+    getCombatCooldownState({
+      battleTime: 0,
+      activationTimes,
+      fallbackCooldown: 4_000,
+      startsReady: true,
+    }).progress,
+    1,
+  );
+  assert.equal(
+    getCombatCooldownState({
+      battleTime: 3_000,
+      activationTimes,
+      fallbackCooldown: 4_000,
+      startsReady: true,
+    }).progress,
+    0,
+  );
+  assert.equal(
+    getCombatCooldownState({
+      battleTime: 5_500,
+      activationTimes,
+      fallbackCooldown: 4_000,
+      startsReady: true,
+    }).progress,
+    0.5,
+  );
 });
 
 test("a knockout ends with the defeated health bar at zero", () => {

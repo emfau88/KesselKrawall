@@ -28,6 +28,11 @@ import {
   type CombatStatusSnapshot,
   type TimedCombatStatus,
 } from "./combatPresentation";
+import {
+  createCombatActivationTimeline,
+  getCombatCooldownState,
+  type CombatActivationTimeline,
+} from "./combatCooldownTimeline";
 import { playGameSound, type GameSound } from "./audio";
 import { FAMILY_META, ITEM_BY_ID } from "./data";
 import {
@@ -437,7 +442,7 @@ function CauldronBoard({
   compact = false,
   combatActive = false,
   combatTime = 0,
-  combatEvents = [],
+  activationTimesByUid = new Map(),
 }: {
   board: Board;
   side: "player" | "enemy";
@@ -450,7 +455,7 @@ function CauldronBoard({
   compact?: boolean;
   combatActive?: boolean;
   combatTime?: number;
-  combatEvents?: readonly CombatEvent[];
+  activationTimesByUid?: CombatActivationTimeline;
 }) {
   return (
     <div
@@ -489,31 +494,23 @@ function CauldronBoard({
             rawCooldown > 0 &&
             rawCooldown < baseCooldown - 1;
           const trigger = definition?.trigger;
-          const lastActivationAt =
+          const activationTimes =
             instance && combatActive
-              ? combatEvents.reduce(
-                  (latest, event) =>
-                    event.sourceUid === instance.uid &&
-                    event.actor === side &&
-                    event.time <= combatTime
-                      ? Math.max(latest, event.time)
-                      : latest,
-                  -1,
-                )
-              : -1;
+              ? activationTimesByUid.get(instance.uid) ?? []
+              : [];
+          const cooldownState = getCombatCooldownState({
+            battleTime: combatTime,
+            activationTimes,
+            fallbackCooldown: cooldown,
+            startsReady: trigger?.type === "onHpDamage",
+          });
           const emergencyUsed =
-            trigger?.type === "emergency" && lastActivationAt >= 0;
+            trigger?.type === "emergency" &&
+            cooldownState.lastActivationAt !== null;
           const cooldownProgress =
             cooldown <= 0 || trigger?.type === "emergency"
               ? 0
-              : trigger?.type === "onHpDamage"
-                ? lastActivationAt < 0
-                  ? 1
-                  : Math.max(
-                      0,
-                      Math.min(1, (combatTime - lastActivationAt) / cooldown),
-                    )
-                : (combatTime % cooldown) / cooldown;
+              : cooldownState.progress;
           const cadenceLabel =
             trigger?.type === "onHpDamage"
               ? `Konter nach LP-Schaden, ${formatCooldown(cooldown)} Sperre`
@@ -1262,6 +1259,17 @@ export default function Game() {
   const mergeNotice = mergeNotices[0] ?? null;
 
   const opponent = useMemo(() => getCurrentOpponent(game), [game]);
+  const combatActivationTimes = useMemo(
+    () => ({
+      player: combat
+        ? createCombatActivationTimeline(combat.events, game.board, "player")
+        : new Map<string, readonly number[]>(),
+      enemy: combat
+        ? createCombatActivationTimeline(combat.events, opponent.board, "enemy")
+        : new Map<string, readonly number[]>(),
+    }),
+    [combat, game.board, opponent.board],
+  );
   const selectedItem =
     game.selectedSlot === null ? null : game.board[game.selectedSlot];
   const selectedDefinition = selectedItem
@@ -2399,7 +2407,7 @@ export default function Game() {
             compact={!isCombatPhase}
             combatActive={game.phase === "battle"}
             combatTime={battleClock}
-            combatEvents={combat?.events}
+            activationTimesByUid={combatActivationTimes.enemy}
           />
         </article>
 
@@ -2563,7 +2571,7 @@ export default function Game() {
             interactive={false}
             combatActive={game.phase === "battle"}
             combatTime={battleClock}
-            combatEvents={combat?.events}
+            activationTimesByUid={combatActivationTimes.player}
           />
         </article>
         </section>
