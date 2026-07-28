@@ -11,6 +11,8 @@ import {
 } from "../app/game/combatCooldownTimeline";
 import {
   createFloatingCombatNumbers,
+  MAX_ACTIVE_FLOATING_NUMBERS_PER_SIDE,
+  mergeFloatingCombatNumbers,
   pruneExpiredFloatingNumbers,
 } from "../app/game/combatFloatingNumbers";
 import { CAMPAIGN_OPPONENTS, ITEM_BY_ID } from "../app/game/data";
@@ -1030,4 +1032,146 @@ test("floating combat number lifetime follows presentation time", () => {
   assert.equal(pruneExpiredFloatingNumbers(numbers, 1_499), numbers);
   assert.equal(numbers[0].expiresAt, 1_500);
   assert.deepEqual(pruneExpiredFloatingNumbers(numbers, 1_500), []);
+});
+
+test("one or two close impacts stay separate and the third becomes a bundle", () => {
+  let numbers = mergeFloatingCombatNumbers(
+    [],
+    createFloatingCombatNumbers({
+      idPrefix: "first",
+      presentationTime: 100,
+      events: [combatEvent({ amount: 3 })],
+    }),
+  );
+  numbers = mergeFloatingCombatNumbers(
+    numbers,
+    createFloatingCombatNumbers({
+      idPrefix: "second",
+      presentationTime: 250,
+      events: [combatEvent({ amount: 4 })],
+    }),
+  );
+  assert.deepEqual(
+    numbers.map((number) => number.hitCount),
+    [1, 1],
+  );
+
+  numbers = mergeFloatingCombatNumbers(
+    numbers,
+    createFloatingCombatNumbers({
+      idPrefix: "third",
+      presentationTime: 400,
+      events: [combatEvent({ amount: 5 })],
+    }),
+  );
+  assert.equal(numbers.length, 1);
+  assert.equal(numbers[0].value, 12);
+  assert.equal(numbers[0].hitCount, 3);
+  assert.equal(numbers[0].createdAt, 400);
+
+  numbers = mergeFloatingCombatNumbers(
+    numbers,
+    createFloatingCombatNumbers({
+      idPrefix: "fourth",
+      presentationTime: 650,
+      events: [combatEvent({ amount: 6 })],
+    }),
+  );
+  assert.equal(numbers.length, 1);
+  assert.equal(numbers[0].value, 18);
+  assert.equal(numbers[0].hitCount, 4);
+  assert.equal(numbers[0].createdAt, 650);
+  assert.equal(pruneExpiredFloatingNumbers(numbers, 1_799), numbers);
+  assert.deepEqual(pruneExpiredFloatingNumbers(numbers, 1_800), []);
+});
+
+test("direct impacts outside the 300 ms window remain individual", () => {
+  let numbers: ReturnType<typeof createFloatingCombatNumbers> = [];
+  for (const [index, presentationTime] of [0, 150, 451].entries()) {
+    numbers = mergeFloatingCombatNumbers(
+      numbers,
+      createFloatingCombatNumbers({
+        idPrefix: `spread-${index}`,
+        presentationTime,
+        events: [combatEvent({ amount: index + 1 })],
+      }),
+    );
+  }
+
+  assert.equal(numbers.length, 3);
+  assert.ok(numbers.every((number) => number.hitCount === 1));
+});
+
+test("status damage uses the wider 450 ms bundle window", () => {
+  let numbers: ReturnType<typeof createFloatingCombatNumbers> = [];
+  for (const [index, presentationTime] of [0, 225, 450].entries()) {
+    numbers = mergeFloatingCombatNumbers(
+      numbers,
+      createFloatingCombatNumbers({
+        idPrefix: `poison-${index}`,
+        presentationTime,
+        events: [
+          combatEvent({
+            kind: "poison",
+            label: "Gift tickt",
+            amount: 2,
+          }),
+        ],
+      }),
+    );
+  }
+
+  assert.equal(numbers.length, 1);
+  assert.equal(numbers[0].type, "poison");
+  assert.equal(numbers[0].value, 6);
+  assert.equal(numbers[0].hitCount, 3);
+});
+
+test("floating combat numbers are capped independently for each cauldron", () => {
+  let numbers: ReturnType<typeof createFloatingCombatNumbers> = [];
+  const playerEvents: CombatEvent[] = [
+    combatEvent({ target: "player", amount: 1 }),
+    combatEvent({ kind: "heal", target: "player", amount: 2 }),
+    combatEvent({ kind: "shield", target: "player", amount: 3 }),
+    combatEvent({
+      kind: "burn",
+      target: "player",
+      label: "Brand tickt",
+      amount: 4,
+    }),
+  ];
+
+  playerEvents.forEach((event, index) => {
+    numbers = mergeFloatingCombatNumbers(
+      numbers,
+      createFloatingCombatNumbers({
+        idPrefix: `player-${index}`,
+        presentationTime: index * 20,
+        events: [event],
+      }),
+    );
+  });
+  numbers = mergeFloatingCombatNumbers(
+    numbers,
+    createFloatingCombatNumbers({
+      idPrefix: "enemy",
+      presentationTime: 100,
+      events: [combatEvent({ target: "enemy" })],
+    }),
+  );
+
+  assert.equal(
+    numbers.filter((number) => number.target === "player").length,
+    MAX_ACTIVE_FLOATING_NUMBERS_PER_SIDE,
+  );
+  assert.equal(
+    numbers.filter((number) => number.target === "enemy").length,
+    1,
+  );
+  assert.deepEqual(
+    numbers
+      .filter((number) => number.target === "player")
+      .map((number) => number.type),
+    ["heal", "shield", "burn"],
+  );
 });

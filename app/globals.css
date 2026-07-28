@@ -923,11 +923,11 @@ button:focus-visible {
 }
 
 .combat-floating-number:nth-child(3n + 1) {
-  --number-x: -24px;
+  --number-x: -38px;
 }
 
 .combat-floating-number:nth-child(3n + 2) {
-  --number-x: 19px;
+  --number-x: 38px;
 }
 
 .combat-floating-number strong {
@@ -943,6 +943,19 @@ button:focus-visible {
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.combat-floating-number.is-bundle {
+  min-width: 66px;
+  border-width: 2px;
+  background: rgba(31, 17, 31, 0.92);
+  box-shadow:
+    0 5px 15px rgba(0, 0, 0, 0.5),
+    0 0 12px color-mix(in srgb, currentColor 30%, transparent);
+}
+
+.combat-floating-number.is-bundle strong {
+  font-size: 22px;
 }
 
 .combat-floating-number.is-damage {

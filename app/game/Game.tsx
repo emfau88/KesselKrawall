@@ -35,6 +35,7 @@ import {
 } from "./combatCooldownTimeline";
 import {
   createFloatingCombatNumbers,
+  mergeFloatingCombatNumbers,
   pruneExpiredFloatingNumbers,
   type FloatingCombatNumber,
   type FloatingCombatNumberType,
@@ -455,9 +456,12 @@ function CombatFloatingNumberLayer({
     <div className="combat-number-layer" aria-hidden="true">
       {numbers.map((number) => (
         <span
-          className={`combat-floating-number is-${number.type}`}
+          className={`combat-floating-number is-${number.type} ${
+            number.hitCount > 1 ? "is-bundle" : ""
+          }`}
           data-floating-number={number.id}
           data-number-type={number.type}
+          data-hit-count={number.hitCount}
           data-created-at={number.createdAt}
           data-expires-at={number.expiresAt}
           key={number.id}
@@ -475,7 +479,10 @@ function CombatFloatingNumberLayer({
               : "+"}
             {number.value}
           </strong>
-          <small>{FLOATING_NUMBER_LABEL[number.type]}</small>
+          <small>
+            {number.hitCount > 1 ? `${number.hitCount}× ` : ""}
+            {FLOATING_NUMBER_LABEL[number.type]}
+          </small>
         </span>
       ))}
     </div>
@@ -1699,10 +1706,10 @@ export default function Game() {
               presentationTime: presentationTimeMs,
             });
             if (appearedNumbers.length > 0) {
-              activeFloatingNumbers = [
-                ...activeFloatingNumbers,
-                ...appearedNumbers,
-              ];
+              activeFloatingNumbers = mergeFloatingCombatNumbers(
+                activeFloatingNumbers,
+                appearedNumbers,
+              );
               setFloatingNumbers(activeFloatingNumbers);
             }
             playGameSound(

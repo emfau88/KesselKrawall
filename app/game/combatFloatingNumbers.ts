@@ -13,11 +13,16 @@ export interface FloatingCombatNumber {
   target: Side;
   type: FloatingCombatNumberType;
   value: number;
+  hitCount: number;
+  lastHitAt: number;
   createdAt: number;
   expiresAt: number;
 }
 
 export const FLOATING_NUMBER_LIFETIME_MS = 1_150;
+export const FLOATING_NUMBER_BUNDLE_WINDOW_MS = 300;
+export const STATUS_NUMBER_BUNDLE_WINDOW_MS = 450;
+export const MAX_ACTIVE_FLOATING_NUMBERS_PER_SIDE = 3;
 
 function getFloatingNumberType(
   event: CombatEvent,
@@ -52,12 +57,96 @@ export function createFloatingCombatNumbers({
       target: event.target,
       type,
       value: event.amount,
+      hitCount: 1,
+      lastHitAt: presentationTime,
       createdAt: presentationTime,
       expiresAt: presentationTime + lifetime,
     });
   });
 
   return numbers;
+}
+
+function getBundleWindow(type: FloatingCombatNumberType): number {
+  return type === "poison" || type === "burn"
+    ? STATUS_NUMBER_BUNDLE_WINDOW_MS
+    : FLOATING_NUMBER_BUNDLE_WINDOW_MS;
+}
+
+function limitNumbersPerSide(
+  numbers: readonly FloatingCombatNumber[],
+): FloatingCombatNumber[] {
+  const keptIds = new Set(
+    (["player", "enemy"] as const).flatMap((target) =>
+      numbers
+        .filter((number) => number.target === target)
+        .slice(-MAX_ACTIVE_FLOATING_NUMBERS_PER_SIDE)
+        .map((number) => number.id),
+    ),
+  );
+  return numbers.filter((number) => keptIds.has(number.id));
+}
+
+export function mergeFloatingCombatNumbers(
+  existing: readonly FloatingCombatNumber[],
+  incoming: readonly FloatingCombatNumber[],
+): FloatingCombatNumber[] {
+  let merged = [...existing];
+
+  for (const number of incoming) {
+    const bundleWindow = getBundleWindow(number.type);
+    const recentMatches = merged.filter(
+      (candidate) =>
+        candidate.target === number.target &&
+        candidate.type === number.type &&
+        number.lastHitAt >= candidate.lastHitAt &&
+        number.lastHitAt - candidate.lastHitAt <= bundleWindow,
+    );
+    const existingBundle = recentMatches.find(
+      (candidate) => candidate.hitCount >= 3,
+    );
+
+    if (existingBundle) {
+      merged = merged.filter(
+        (candidate) => candidate.id !== existingBundle.id,
+      );
+      merged.push({
+        ...number,
+        id: `${number.id}-bundle-${existingBundle.hitCount + 1}`,
+        value: existingBundle.value + number.value,
+        hitCount: existingBundle.hitCount + 1,
+      });
+    } else if (recentMatches.length >= 2) {
+      const bundledValue =
+        recentMatches.reduce(
+          (total, candidate) => total + candidate.value,
+          0,
+        ) + number.value;
+      const bundledHits =
+        recentMatches.reduce(
+          (total, candidate) => total + candidate.hitCount,
+          0,
+        ) + number.hitCount;
+      const matchedIds = new Set(
+        recentMatches.map((candidate) => candidate.id),
+      );
+      merged = merged.filter(
+        (candidate) => !matchedIds.has(candidate.id),
+      );
+      merged.push({
+        ...number,
+        id: `${number.id}-bundle-${bundledHits}`,
+        value: bundledValue,
+        hitCount: bundledHits,
+      });
+    } else {
+      merged.push(number);
+    }
+
+    merged = limitNumbersPerSide(merged);
+  }
+
+  return merged;
 }
 
 export function pruneExpiredFloatingNumbers(
