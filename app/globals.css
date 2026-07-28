@@ -3903,6 +3903,688 @@ button.board-slot:active {
   }
 }
 
+/* Phase 1: the shop is a dedicated preparation state, not a frozen arena. */
+.game-shell.phase-shop {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.phase-shop .shop-sheet {
+  grid-row: 2;
+  min-height: 0;
+  max-height: none;
+  padding: 0;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border-radius: 0;
+}
+
+.phase-shop .shop-sheet::after {
+  background:
+    linear-gradient(180deg, rgba(30, 18, 35, 0.66), rgba(14, 9, 20, 0.92)),
+    radial-gradient(circle at 50% 28%, transparent 0 24%, rgba(8, 5, 12, 0.48) 82%);
+}
+
+.preparation-overview {
+  position: relative;
+  z-index: 4;
+  min-height: 0;
+  padding: 8px 10px 7px;
+  display: grid;
+  gap: 7px;
+  border-bottom: 1px solid rgba(245, 197, 91, 0.2);
+  background:
+    linear-gradient(180deg, rgba(20, 13, 26, 0.96), rgba(27, 16, 32, 0.93)),
+    radial-gradient(circle at 50% 100%, rgba(141, 215, 91, 0.08), transparent 58%);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
+}
+
+.next-opponent-card {
+  position: relative;
+  z-index: 12;
+  border: 1px solid rgba(255, 117, 69, 0.28);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 8% 50%, rgba(255, 117, 69, 0.14), transparent 24%),
+    rgba(8, 6, 12, 0.66);
+}
+
+.next-opponent-card summary {
+  min-height: 64px;
+  padding: 6px 7px;
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr) auto;
+  grid-template-areas:
+    "emblem copy stats"
+    "emblem board details";
+  align-items: center;
+  gap: 3px 8px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.next-opponent-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.prep-opponent-emblem {
+  grid-area: emblem;
+  position: relative;
+  width: 50px;
+  height: 50px;
+  padding: 3px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(255, 117, 69, 0.3);
+  border-radius: 13px;
+  background: rgba(33, 18, 26, 0.92);
+}
+
+.prep-opponent-portrait {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.48));
+}
+
+.prep-opponent-rank {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  width: 18px;
+  height: 18px;
+}
+
+.prep-opponent-copy {
+  grid-area: copy;
+  min-width: 0;
+  display: grid;
+  align-content: center;
+}
+
+.prep-opponent-copy .eyebrow {
+  font-size: 10px;
+}
+
+.prep-opponent-copy > strong {
+  overflow: hidden;
+  font-family: Georgia, serif;
+  font-size: 15px;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prep-opponent-copy > small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prep-opponent-stats {
+  grid-area: stats;
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.prep-opponent-stats > span,
+.workbench-stats > span,
+.workbench-stats > button {
+  min-height: 25px;
+  padding: 3px 6px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #eadfc7;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.prep-stat-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.prep-opponent-board {
+  grid-area: board;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.prep-opponent-slot {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  padding: 1px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, currentColor 44%, transparent);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.prep-opponent-slot.is-empty {
+  color: rgba(255, 255, 255, 0.14);
+}
+
+.prep-opponent-slot.is-empty i {
+  width: 7px;
+  height: 1px;
+  background: currentColor;
+}
+
+.prep-opponent-item {
+  width: 100%;
+  height: 100%;
+}
+
+.prep-opponent-slot b {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  min-width: 14px;
+  height: 14px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #130d18;
+  color: #fff2bd;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.prep-details-label {
+  grid-area: details;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.prep-details-label i {
+  font-size: 13px;
+  font-style: normal;
+  transition: transform 160ms ease;
+}
+
+.next-opponent-card[open] .prep-details-label i {
+  transform: rotate(180deg);
+}
+
+.prep-opponent-details {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 5px);
+  right: 0;
+  left: 0;
+  max-height: min(42dvh, 330px);
+  padding: 10px;
+  overflow-y: auto;
+  border: 1px solid rgba(245, 197, 91, 0.34);
+  border-radius: 14px;
+  background: rgba(16, 10, 21, 0.99);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.62);
+}
+
+.prep-opponent-details > p {
+  margin: 0 0 8px;
+  color: #e4d7bc;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.prep-opponent-details ul {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+  list-style: none;
+}
+
+.prep-opponent-details li {
+  min-height: 42px;
+  padding: 5px 6px;
+  display: grid;
+  grid-template-columns: 38px 34px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 1px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.prep-opponent-details li > span {
+  grid-row: 1 / 3;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.prep-detail-item {
+  grid-row: 1 / 3;
+  width: 32px;
+  height: 32px;
+}
+
+.prep-opponent-details li > strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prep-opponent-details li > small {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.prep-opponent-details li > em {
+  grid-row: 1 / 3;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 10px;
+}
+
+.player-workbench {
+  position: relative;
+  min-height: 0;
+  padding: 6px 7px 5px;
+  border: 1px solid rgba(141, 215, 91, 0.18);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 50% 72%, rgba(141, 215, 91, 0.09), transparent 32%),
+    rgba(8, 6, 12, 0.5);
+}
+
+.workbench-heading {
+  min-height: 33px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+}
+
+.workbench-heading h2 {
+  margin-top: 1px;
+  font-family: Georgia, serif;
+  font-size: 13px;
+  line-height: 1.05;
+}
+
+.workbench-stats {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.workbench-stats > button {
+  cursor: help;
+}
+
+.prep-power-explainer {
+  top: 39px;
+  right: 7px;
+  left: 7px;
+  width: auto;
+}
+
+.player-workbench .cauldron-board {
+  --pot-size: 68px;
+  --slot-size: 48px;
+  --board-height: 112px;
+  --arc-rise: 15px;
+  width: min(100%, 310px);
+  margin-top: 1px;
+}
+
+.player-workbench .synergy-strip {
+  margin-top: -1px;
+}
+
+.player-workbench .synergy-pill {
+  min-height: 34px;
+  padding: 4px 5px;
+  align-content: center;
+}
+
+.player-workbench .synergy-bonus {
+  display: none;
+}
+
+.player-workbench .synergy-progress {
+  height: 2px;
+}
+
+.phase-shop .shop-scroll {
+  padding: 8px 10px 10px;
+  scroll-padding: 8px;
+}
+
+.phase-shop .shop-topline {
+  min-height: 44px;
+  padding-bottom: 6px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.phase-shop .shop-topline h2 {
+  font-size: 15px;
+}
+
+.phase-shop .shop-topline > p {
+  max-width: 48%;
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.25;
+  text-align: right;
+}
+
+.phase-shop .offer-grid {
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: clamp(220px, 78vw, 330px);
+  padding: 1px 1px 7px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: inline mandatory;
+  scrollbar-width: thin;
+}
+
+.phase-shop .shop-card {
+  min-height: clamp(176px, 40dvh, 330px);
+  padding: 8px 9px 39px;
+  scroll-snap-align: start;
+}
+
+.phase-shop .shop-card:has(.offer-merge-target) {
+  min-height: clamp(190px, 42dvh, 345px);
+  padding-bottom: 39px;
+}
+
+.phase-shop .offer-icon {
+  width: clamp(56px, 10dvh, 82px);
+  height: clamp(56px, 10dvh, 82px);
+}
+
+.phase-shop .shop-card > strong {
+  overflow: visible;
+  font-size: 13px;
+  line-height: 1.15;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.phase-shop .shop-card > small {
+  display: block;
+  overflow: visible;
+  font-size: 11px;
+  line-height: 1.3;
+  -webkit-line-clamp: unset;
+}
+
+.phase-shop .offer-synergy,
+.phase-shop .shop-card:has(.offer-merge-target) .offer-synergy,
+.phase-shop .offer-merge-target {
+  position: static;
+  min-height: 17px;
+  margin-top: 4px;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  font-size: 10px;
+  line-height: 1.2;
+  text-align: center;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.phase-shop .offer-merge-target {
+  color: #fff0b5;
+}
+
+.phase-shop .offer-price {
+  right: 8px;
+  bottom: 7px;
+  left: 8px;
+  min-height: 27px;
+  font-size: 11px;
+}
+
+.phase-shop .shop-actions {
+  margin-top: 0;
+  padding: 7px 10px var(--safe-bottom);
+}
+
+@media (max-width: 350px) {
+  .next-opponent-card summary {
+    grid-template-columns: 46px minmax(0, 1fr) auto;
+    gap: 3px 5px;
+  }
+
+  .prep-opponent-emblem {
+    width: 46px;
+    height: 46px;
+  }
+
+  .prep-opponent-stats > span {
+    padding-right: 4px;
+    padding-left: 4px;
+  }
+
+  .prep-opponent-stats > span:last-child {
+    display: none;
+  }
+
+  .prep-details-label {
+    font-size: 10px;
+  }
+
+  .workbench-heading h2 {
+    font-size: 12px;
+  }
+
+  .workbench-stats > span {
+    display: none;
+  }
+
+  .phase-shop .shop-topline > p {
+    display: none;
+  }
+
+  .phase-shop .shop-topline {
+    min-height: 38px;
+  }
+}
+
+@media (max-height: 640px) {
+  .preparation-overview {
+    padding-top: 6px;
+    gap: 5px;
+  }
+
+  .next-opponent-card summary {
+    min-height: 56px;
+  }
+
+  .prep-opponent-emblem {
+    width: 44px;
+    height: 44px;
+  }
+
+  .player-workbench {
+    padding-top: 4px;
+    padding-bottom: 3px;
+  }
+
+  .player-workbench .cauldron-board {
+    --pot-size: 58px;
+    --slot-size: 45px;
+    --board-height: 98px;
+    --arc-rise: 11px;
+  }
+
+  .player-workbench .synergy-pill {
+    min-height: 29px;
+  }
+
+  .phase-shop .shop-scroll {
+    padding-top: 5px;
+  }
+
+  .phase-shop .shop-card {
+    min-height: 164px;
+  }
+}
+
+@media (min-width: 700px) and (orientation: landscape) {
+  .game-shell.phase-shop {
+    grid-template-columns: minmax(360px, 0.9fr) minmax(480px, 1.1fr);
+  }
+
+  .phase-shop .shop-sheet {
+    grid-column: 1 / 3;
+    grid-row: 2;
+    grid-template-columns: minmax(360px, 0.9fr) minmax(480px, 1.1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .phase-shop .preparation-overview {
+    grid-column: 1;
+    grid-row: 1;
+    padding: 16px;
+    align-content: start;
+    overflow-y: auto;
+    border-right: 1px solid rgba(245, 197, 91, 0.2);
+    border-bottom: 0;
+  }
+
+  .phase-shop .player-workbench {
+    padding: 10px;
+  }
+
+  .phase-shop .player-workbench .cauldron-board {
+    --pot-size: 104px;
+    --slot-size: 58px;
+    --board-height: 166px;
+    --arc-rise: 24px;
+    width: min(100%, 380px);
+  }
+
+  .phase-shop .player-workbench .synergy-pill {
+    min-height: 48px;
+  }
+
+  .phase-shop .player-workbench .synergy-bonus {
+    display: block;
+  }
+
+  .phase-shop .shop-scroll {
+    grid-column: 2;
+    grid-row: 1;
+    padding: 16px;
+  }
+
+  .phase-shop .shop-topline {
+    min-height: 62px;
+  }
+
+  .phase-shop .offer-grid {
+    grid-template-columns: 1fr;
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    overflow-x: visible;
+  }
+
+  .phase-shop .shop-card,
+  .phase-shop .shop-card:has(.offer-merge-target) {
+    min-height: 118px;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr) 62px;
+    grid-template-rows: auto auto auto auto auto;
+    align-items: center;
+    gap: 1px 10px;
+    text-align: left;
+  }
+
+  .phase-shop .offer-family {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .phase-shop .offer-icon {
+    grid-column: 1;
+    grid-row: 1 / 6;
+    width: 66px;
+    height: 66px;
+    margin: 0;
+  }
+
+  .phase-shop .shop-card > strong {
+    grid-column: 2;
+    grid-row: 2;
+    text-align: left;
+  }
+
+  .phase-shop .shop-card > small {
+    grid-column: 2;
+    grid-row: 3;
+    text-align: left;
+  }
+
+  .phase-shop .offer-synergy,
+  .phase-shop .shop-card:has(.offer-merge-target) .offer-synergy {
+    grid-column: 2;
+    grid-row: 4;
+    margin-top: 2px;
+    place-items: center start;
+    text-align: left;
+  }
+
+  .phase-shop .offer-merge-target {
+    grid-column: 2;
+    grid-row: 5;
+    margin-top: 1px;
+    place-items: center start;
+    text-align: left;
+  }
+
+  .phase-shop .offer-price {
+    position: static;
+    grid-column: 3;
+    grid-row: 1 / 6;
+    width: 58px;
+    min-height: 36px;
+    transform: none;
+  }
+
+  .phase-shop .shop-actions {
+    grid-column: 1 / 3;
+    grid-row: 2;
+    padding: 10px 16px max(12px, var(--safe-bottom));
+  }
+}
+
 @media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
   .rotate-device {
     position: absolute;

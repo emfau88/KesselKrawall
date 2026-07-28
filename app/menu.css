@@ -88,6 +88,15 @@
   gap: 8px;
 }
 
+.menu-build-hash {
+  color: rgba(232, 220, 191, 0.58);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 .menu-save-state {
   min-width: 0;
   max-width: 150px;
@@ -812,6 +821,13 @@
   }
 }
 
+@media (max-width: 440px) {
+  .game-header .brand-kicker,
+  .game-header .round-pips {
+    display: none;
+  }
+}
+
 @media (max-width: 600px) {
   .menu-save-state {
     display: none;
@@ -858,18 +874,27 @@
   }
 
   .game-header .brand-lockup {
-    max-width: 86px;
+    max-width: 100px;
   }
 
   .game-header .brand-lockup strong {
     overflow: hidden;
     display: block;
-    font-size: 11px;
-    text-overflow: ellipsis;
+    font-size: 10px;
+    text-overflow: clip;
     white-space: nowrap;
   }
 
   .game-header .round-pips {
+    display: none;
+  }
+
+  .game-header .menu-return-button {
+    width: 40px;
+    height: 44px;
+  }
+
+  .game-header .menu-return-button small {
     display: none;
   }
 }

@@ -61,10 +61,12 @@ import type {
   ItemCombatStats,
   ItemDefinition,
   ItemLevel,
+  OpponentDefinition,
   Side,
 } from "./types";
 
 const ROMAN_LEVEL = ["", "I", "II", "III"] as const;
+const BUILD_HASH = process.env.NEXT_PUBLIC_BUILD_SHA ?? "local";
 type AppScreen = "menu" | "game";
 
 interface BattleView {
@@ -556,6 +558,127 @@ function SynergyStrip({ board }: { board: Board }) {
         );
       })}
     </div>
+  );
+}
+
+function OpponentPreparationCard({
+  opponent,
+  power,
+  variant,
+}: {
+  opponent: OpponentDefinition;
+  power: number;
+  variant: number;
+}) {
+  return (
+    <details className="next-opponent-card">
+      <summary>
+        <span className="prep-opponent-emblem" aria-hidden="true">
+          <ArtSprite
+            asset={OPPONENT_ART[opponent.id]}
+            className="prep-opponent-portrait"
+          />
+          {opponent.rank !== "regular" && (
+            <UiIcon asset="elite" className="prep-opponent-rank" />
+          )}
+        </span>
+        <span className="prep-opponent-copy">
+          <span className="eyebrow">
+            NÄCHSTER GEGNER
+            {opponent.rank === "boss"
+              ? " · BOSS"
+              : opponent.rank === "elite"
+                ? " · ELITE"
+                : ""}
+          </span>
+          <strong>{opponent.name}</strong>
+          <small>
+            {opponent.title} · Variante {variant + 1}/
+            {1 + (opponent.boardVariants?.length ?? 0)}
+          </small>
+        </span>
+        <span className="prep-opponent-stats">
+          <span>
+            <UiIcon asset="health" className="prep-stat-icon" />
+            {opponent.baseHp} LP
+          </span>
+          <span>
+            <UiIcon asset="power" className="prep-stat-icon" />
+            ≈ {power}
+          </span>
+        </span>
+        <span
+          className="prep-opponent-board"
+          aria-label={`Zutaten von ${opponent.name}`}
+        >
+          {opponent.board.map((instance, slot) => {
+            const definition = instance
+              ? ITEM_BY_ID[instance.itemId]
+              : null;
+            return (
+              <span
+                key={slot}
+                className={[
+                  "prep-opponent-slot",
+                  definition ? familyClass(definition.family) : "is-empty",
+                ].join(" ")}
+                aria-label={
+                  definition
+                    ? `Slot ${slot + 1}: ${definition.name} ${ROMAN_LEVEL[instance!.level]}`
+                    : `Slot ${slot + 1}: leer`
+                }
+              >
+                {definition ? (
+                  <>
+                    <ArtSprite
+                      asset={ITEM_ART[definition.id]}
+                      className="prep-opponent-item"
+                    />
+                    <b>{ROMAN_LEVEL[instance!.level]}</b>
+                  </>
+                ) : (
+                  <i aria-hidden="true" />
+                )}
+              </span>
+            );
+          })}
+        </span>
+        <span className="prep-details-label">
+          Aufstellung <i aria-hidden="true">⌄</i>
+        </span>
+      </summary>
+      <div className="prep-opponent-details">
+        <p>{opponent.threat}</p>
+        <ul>
+          {opponent.board.map((instance, slot) => {
+            const definition = instance
+              ? ITEM_BY_ID[instance.itemId]
+              : null;
+            return (
+              <li key={slot}>
+                <span>Slot {slot + 1}</span>
+                {definition ? (
+                  <>
+                    <ArtSprite
+                      asset={ITEM_ART[definition.id]}
+                      className="prep-detail-item"
+                    />
+                    <strong>
+                      {definition.name} {ROMAN_LEVEL[instance!.level]}
+                    </strong>
+                    <small>
+                      {definition.descriptions[instance!.level - 1]}
+                    </small>
+                  </>
+                ) : (
+                  <em>leer</em>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </details>
   );
 }
 
@@ -1721,6 +1844,9 @@ export default function Game() {
             MAGISCHER AUTOBATTLER
           </span>
           <div className="menu-top-actions">
+            <span className="menu-build-hash" aria-label={`Build ${BUILD_HASH}`}>
+              Build {BUILD_HASH}
+            </span>
             {hasStoredRun && hydrated && (
               <span className="menu-save-state" aria-label={`Gespeichert: ${runStateLabel}`}>
                 <UiIcon asset="run-seal" className="menu-save-icon" />
@@ -1994,8 +2120,9 @@ export default function Game() {
         </div>
       </header>
 
-      <section className="arena" aria-label="Kampfarena">
-        <BackdropImage backdrop="arena" className="arena-backdrop" />
+      {game.phase !== "shop" && (
+        <section className="arena" aria-label="Kampfarena">
+          <BackdropImage backdrop="arena" className="arena-backdrop" />
         {battleView?.event && battleView.tier && (
           <BattleVolleyVfx
             key={battleView.beatId}
@@ -2219,25 +2346,79 @@ export default function Game() {
                 ? battleView.impactEvent.kind
                 : null
             }
-            interactive={game.phase === "shop"}
-            onSlot={handleSlot}
+            interactive={false}
             combatActive={game.phase === "battle"}
             combatTime={battleClock}
           />
         </article>
-      </section>
+        </section>
+      )}
 
       {game.phase === "shop" && (
-        <section className="shop-sheet" aria-label="Zutatenladen">
+        <section
+          className="shop-sheet preparation-screen"
+          aria-label="Einkaufs- und Vorbereitungsphase"
+        >
           <BackdropImage backdrop="market" className="panel-backdrop market-backdrop" />
-          <div className="sheet-handle" aria-hidden="true" />
+          <div className="preparation-overview">
+            <OpponentPreparationCard
+              opponent={opponent}
+              power={enemyPower}
+              variant={game.opponentVariant}
+            />
+
+            <section className="player-workbench" aria-labelledby="player-workbench-title">
+              <div className="workbench-heading">
+                <div>
+                  <span className="eyebrow">DEIN AUFBAU</span>
+                  <h2 id="player-workbench-title">Fünf Zutaten für den Kampf</h2>
+                </div>
+                <div className="workbench-stats">
+                  <span>
+                    <UiIcon asset="health" className="prep-stat-icon" />
+                    100 LP
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowPowerHelp((current) => !current)}
+                    aria-expanded={showPowerHelp}
+                    aria-controls="power-explainer"
+                  >
+                    <UiIcon asset="power" className="prep-stat-icon" />
+                    Build ≈ {playerPower}
+                  </button>
+                </div>
+              </div>
+              {showPowerHelp && (
+                <div className="power-explainer prep-power-explainer" id="power-explainer">
+                  <strong>Buildstärke ist eine grobe Schätzung</strong>
+                  <p>
+                    Sie fasst Zutaten, Tempo und aktive Synergien zusammen,
+                    verändert den Kampf aber nicht.
+                  </p>
+                </div>
+              )}
+              <CauldronBoard
+                board={game.board}
+                side="player"
+                cauldronAsset="cauldron-player"
+                selectedSlot={game.selectedSlot}
+                activeUids={[]}
+                hitKind={null}
+                interactive
+                onSlot={handleSlot}
+              />
+              <SynergyStrip board={game.board} />
+            </section>
+          </div>
+
           <div className="shop-scroll">
             <div className="shop-topline">
               <div>
                 <span className="eyebrow">HEXENMARKT</span>
-                <h2>Drei frische Zutaten</h2>
+                <h2>Wähle aus drei frischen Zutaten</h2>
               </div>
-              <SynergyStrip board={game.board} />
+              <p>Karte antippen: kaufen · eigenen Slot antippen: auswählen oder tauschen</p>
             </div>
 
             {selectedDefinition && selectedItem && (
