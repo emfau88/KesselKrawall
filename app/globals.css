@@ -4567,39 +4567,28 @@ button.board-slot:active {
 }
 
 .phase-shop .shop-topline h2 {
+  display: block;
   font-size: 15px;
 }
 
-.phase-shop .shop-topline > p {
-  max-width: 48%;
-  margin: 0;
-  color: var(--muted);
-  font-size: 10px;
-  line-height: 1.25;
-  text-align: right;
-}
-
 .phase-shop .offer-grid {
-  grid-template-columns: none;
-  grid-auto-flow: column;
-  grid-auto-columns: clamp(220px, 78vw, 330px);
-  padding: 1px 1px 7px;
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-  scroll-snap-type: inline mandatory;
-  scrollbar-width: thin;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-flow: row;
+  grid-auto-columns: auto;
+  gap: 3px;
+  padding: 0;
+  overflow-x: hidden;
 }
 
 .phase-shop .shop-card,
 .phase-shop .shop-card:has(.offer-merge-target) {
-  min-height: 152px;
-  padding: 8px;
+  min-height: 78px;
+  padding: 5px;
   display: grid;
-  grid-template-columns: 58px minmax(0, 1fr) 44px;
+  grid-template-columns: 46px minmax(0, 1fr) 42px;
   grid-template-rows: auto auto auto auto auto;
   align-items: center;
-  gap: 1px 7px;
-  scroll-snap-align: start;
+  gap: 0 6px;
   text-align: left;
 }
 
@@ -4611,8 +4600,8 @@ button.board-slot:active {
 .phase-shop .offer-icon {
   grid-column: 1;
   grid-row: 1 / 6;
-  width: 56px;
-  height: 56px;
+  width: 44px;
+  height: 44px;
   margin: 0;
 }
 
@@ -4620,8 +4609,8 @@ button.board-slot:active {
   grid-column: 2;
   grid-row: 2;
   overflow: visible;
-  font-size: 13px;
-  line-height: 1.15;
+  font-size: 12px;
+  line-height: 1.1;
   text-align: left;
   text-overflow: clip;
   white-space: normal;
@@ -4630,12 +4619,13 @@ button.board-slot:active {
 .phase-shop .shop-card > small {
   grid-column: 2;
   grid-row: 3;
-  display: block;
-  overflow: visible;
-  font-size: 11px;
-  line-height: 1.3;
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 10.5px;
+  line-height: 1.2;
   text-align: left;
-  -webkit-line-clamp: unset;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .phase-shop .offer-synergy,
@@ -4643,13 +4633,13 @@ button.board-slot:active {
 .phase-shop .offer-merge-target {
   position: static;
   grid-column: 2;
-  min-height: 17px;
-  margin-top: 2px;
+  min-height: 12px;
+  margin-top: 0;
   display: grid;
   place-items: center start;
   overflow: visible;
   font-size: 10px;
-  line-height: 1.2;
+  line-height: 1.1;
   text-align: left;
   text-overflow: clip;
   white-space: normal;
@@ -4669,8 +4659,8 @@ button.board-slot:active {
   position: static;
   grid-column: 3;
   grid-row: 1 / 6;
-  width: 44px;
-  min-height: 34px;
+  width: 42px;
+  min-height: 32px;
   font-size: 11px;
   transform: none;
 }
@@ -4712,16 +4702,12 @@ button.board-slot:active {
     display: none;
   }
 
-  .phase-shop .shop-topline > p {
-    display: none;
-  }
-
   .phase-shop .shop-topline {
     min-height: 38px;
   }
 }
 
-@media (max-height: 640px) {
+@media (max-height: 641px) {
   .phase-battle .opponent-copy,
   .phase-battle .player-heading {
     min-height: 35px;
@@ -4746,61 +4732,133 @@ button.board-slot:active {
   }
 
   .preparation-overview {
-    padding-top: 6px;
-    gap: 5px;
+    padding: 4px 8px;
+    gap: 4px;
   }
 
   .next-opponent-card summary {
-    min-height: 56px;
+    min-height: 0;
+    padding: 4px 6px;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 2px 6px;
   }
 
   .prep-opponent-emblem {
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .prep-opponent-copy {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: 4px;
+  }
+
+  .prep-opponent-copy .eyebrow {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+  }
+
+  .prep-opponent-copy > strong {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .prep-opponent-copy > small {
+    grid-column: 1 / 3;
+    grid-row: 2;
   }
 
   .player-workbench {
-    padding-top: 4px;
-    padding-bottom: 3px;
+    padding: 3px 6px 2px;
+  }
+
+  .workbench-heading {
+    min-height: 30px;
+  }
+
+  .workbench-heading h2 {
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .prep-opponent-stats > span,
+  .workbench-stats > span,
+  .workbench-stats > button {
+    min-height: 22px;
+    padding-top: 2px;
+    padding-bottom: 2px;
   }
 
   .player-workbench .cauldron-board {
-    --pot-size: 58px;
-    --slot-size: 45px;
-    --board-height: 98px;
-    --arc-rise: 11px;
+    --pot-size: 50px;
+    --slot-size: 40px;
+    --board-height: 78px;
+    --arc-rise: 9px;
+    margin-top: -1px;
   }
 
   .player-workbench .synergy-pill {
-    min-height: 29px;
+    min-height: 27px;
+    padding-top: 3px;
+    padding-bottom: 3px;
   }
 
   .phase-shop .shop-scroll {
-    padding-top: 5px;
+    padding-top: 3px;
+  }
+
+  .phase-shop .shop-topline {
+    min-height: 38px;
+    padding-bottom: 3px;
+  }
+
+  .phase-shop .shop-actions {
+    padding: 4px 8px var(--safe-bottom);
+    gap: 5px;
+  }
+
+  .phase-shop .secondary-button,
+  .phase-shop .fight-button {
+    min-height: 44px;
+  }
+
+  .phase-shop .secondary-button {
+    padding: 3px 6px;
+  }
+
+  .phase-shop .fight-button {
+    padding: 4px 8px;
+  }
+
+  .phase-shop .fight-button .button-icon {
+    width: 18px;
+    height: 18px;
   }
 
   .phase-shop .shop-card,
   .phase-shop .shop-card:has(.offer-merge-target) {
-    min-height: 148px;
+    min-height: 74px;
   }
 }
 
 @media (max-height: 600px) {
   .phase-shop .shop-card,
   .phase-shop .shop-card:has(.offer-merge-target) {
-    min-height: 112px;
-    padding: 6px;
-    grid-template-columns: 44px minmax(0, 1fr) 40px;
-    gap: 0 5px;
+    min-height: 70px;
+    padding: 4px;
+    grid-template-columns: 40px minmax(0, 1fr) 38px;
+    gap: 0 4px;
   }
 
   .phase-shop .offer-family {
-    display: none;
+    display: flex;
   }
 
   .phase-shop .offer-icon {
-    width: 42px;
-    height: 42px;
+    width: 38px;
+    height: 38px;
   }
 
   .phase-shop .offer-synergy,
@@ -4812,8 +4870,8 @@ button.board-slot:active {
   }
 
   .phase-shop .offer-price {
-    width: 40px;
-    min-height: 30px;
+    width: 38px;
+    min-height: 28px;
   }
 }
 

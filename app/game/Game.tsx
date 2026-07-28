@@ -2742,7 +2742,6 @@ export default function Game() {
                 <span className="eyebrow">HEXENMARKT</span>
                 <h2>Wähle aus drei frischen Zutaten</h2>
               </div>
-              <p>Karte antippen: kaufen · eigenen Slot antippen: auswählen oder tauschen</p>
             </div>
 
             {selectedDefinition && selectedItem && (
