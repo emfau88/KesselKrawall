@@ -27,10 +27,18 @@ export const ART_FILES = {
   "opponent-grosskessel": "opponent-grosskessel.png",
   "vfx-fire": "vfx-fire.png",
   "vfx-fire-projectile": "vfx-fire-projectile.png",
+  "vfx-dragon-tooth-projectile": "vfx-dragon-tooth-projectile.png",
+  "vfx-ember-core-projectile": "vfx-ember-core-projectile.png",
+  "vfx-cinder-berry-projectile": "vfx-cinder-berry-projectile.png",
   "vfx-poison": "vfx-poison.png",
   "vfx-poison-projectile": "vfx-poison-projectile.png",
+  "vfx-nightwing-projectile": "vfx-nightwing-projectile.png",
+  "vfx-witch-eye-projectile": "vfx-witch-eye-projectile.png",
+  "vfx-venom-bulb-projectile": "vfx-venom-bulb-projectile.png",
   "vfx-shield": "vfx-shield.png",
   "vfx-ward-bloom": "vfx-ward-bloom.png",
+  "vfx-gold-spoon-projectile": "vfx-gold-spoon-projectile.png",
+  "vfx-moon-salt-projectile": "vfx-moon-salt-projectile.png",
   "vfx-impact": "vfx-impact.png",
 } as const;
 
@@ -110,6 +118,17 @@ export const ITEM_ART: Record<string, ArtAsset> = {
   "healing-tuber": "item-healing-tuber",
   "gold-spoon": "item-gold-spoon",
   "moon-salt": "item-moon-salt",
+};
+
+export const ITEM_PROJECTILE_ART: Partial<Record<string, ArtAsset>> = {
+  "dragon-tooth": "vfx-dragon-tooth-projectile",
+  "ember-core": "vfx-ember-core-projectile",
+  "cinder-berry": "vfx-cinder-berry-projectile",
+  nightwing: "vfx-nightwing-projectile",
+  "witch-eye": "vfx-witch-eye-projectile",
+  "venom-bulb": "vfx-venom-bulb-projectile",
+  "gold-spoon": "vfx-gold-spoon-projectile",
+  "moon-salt": "vfx-moon-salt-projectile",
 };
 
 export const OPPONENT_ART: Record<string, ArtAsset> = {

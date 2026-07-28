@@ -13,6 +13,7 @@ import {
   ArtSprite,
   BackdropImage,
   ITEM_ART,
+  ITEM_PROJECTILE_ART,
   OPPONENT_ART,
   preloadArtAssets,
   UiIcon,
@@ -91,10 +92,18 @@ const BUILD_HASH = process.env.NEXT_PUBLIC_BUILD_SHA ?? "local";
 const COMBAT_VFX_ASSETS = [
   "vfx-fire",
   "vfx-fire-projectile",
+  "vfx-dragon-tooth-projectile",
+  "vfx-ember-core-projectile",
+  "vfx-cinder-berry-projectile",
   "vfx-poison",
   "vfx-poison-projectile",
+  "vfx-nightwing-projectile",
+  "vfx-witch-eye-projectile",
+  "vfx-venom-bulb-projectile",
   "vfx-shield",
   "vfx-ward-bloom",
+  "vfx-gold-spoon-projectile",
+  "vfx-moon-salt-projectile",
   "vfx-impact",
 ] as const satisfies readonly ArtAsset[];
 type AppScreen = "menu" | "game";
@@ -141,6 +150,7 @@ interface MergeNotice {
 }
 
 interface EventSource {
+  itemId: string;
   name: string;
   art: ArtAsset;
   family: Family;
@@ -157,9 +167,6 @@ interface VfxTiming {
 }
 
 interface VfxGeometry {
-  width: number;
-  height: number;
-  path: string;
   style: CSSProperties;
 }
 
@@ -263,6 +270,7 @@ function findEventSource(
   if (!instance) return null;
   const definition = ITEM_BY_ID[instance.itemId];
   return {
+    itemId: definition.id,
     name: definition.name,
     art: ITEM_ART[definition.id],
     family: definition.family,
@@ -978,26 +986,38 @@ function BattleVfx({
     event.kind === "synergy" ||
     event.kind === "cleanse" ||
     event.kind === "heal";
-  const projectile: ArtAsset = statusTick
-    ? poisonEffect
-      ? "vfx-poison"
-      : "vfx-fire"
-    : isSelfEffect || defensiveEffect
-      ? "vfx-ward-bloom"
-      : poisonEffect
-        ? "vfx-poison-projectile"
-        : sourceFamily === "guard"
-          ? "vfx-shield"
-          : "vfx-fire-projectile";
-  const projectileClass = statusTick
-    ? "projectile-status"
-    : isSelfEffect || defensiveEffect
-      ? "projectile-ward"
-      : poisonEffect
-        ? "projectile-poison"
-        : sourceFamily === "guard"
-          ? "projectile-guard"
-          : "projectile-fire";
+  const itemProjectile = source
+    ? ITEM_PROJECTILE_ART[source.itemId]
+    : undefined;
+  const usesItemProjectile =
+    !statusTick &&
+    ((isSelfEffect || defensiveEffect)
+      ? source?.itemId === "gold-spoon"
+      : Boolean(itemProjectile));
+  const projectile: ArtAsset = usesItemProjectile && itemProjectile
+    ? itemProjectile
+    : statusTick
+      ? poisonEffect
+        ? "vfx-poison"
+        : "vfx-fire"
+      : isSelfEffect || defensiveEffect
+        ? "vfx-ward-bloom"
+        : poisonEffect
+          ? "vfx-poison-projectile"
+          : sourceFamily === "guard"
+            ? "vfx-shield"
+            : "vfx-fire-projectile";
+  const projectileClass = usesItemProjectile && source
+    ? `projectile-item projectile-item-${source.itemId}`
+    : statusTick
+      ? "projectile-status"
+      : isSelfEffect || defensiveEffect
+        ? "projectile-ward"
+        : poisonEffect
+          ? "projectile-poison"
+          : sourceFamily === "guard"
+            ? "projectile-guard"
+            : "projectile-fire";
   const timing = getVfxTiming(duration, event);
   const effectStyle = {
     "--event-duration": `${Math.max(120, duration)}ms`,
@@ -1075,7 +1095,6 @@ function BattleVfx({
         toY,
         progress,
       );
-    const path = `M ${fromX.toFixed(1)} ${fromY.toFixed(1)} Q ${controlX.toFixed(1)} ${controlY.toFixed(1)} ${toX.toFixed(1)} ${toY.toFixed(1)}`;
     const style = {
       "--from-x": `${fromX}px`,
       "--from-y": `${fromY}px`,
@@ -1095,9 +1114,6 @@ function BattleVfx({
     } as CSSProperties;
 
     setGeometry({
-      width: arenaRect.width,
-      height: arenaRect.height,
-      path,
       style,
     });
   }, [
@@ -1129,15 +1145,6 @@ function BattleVfx({
       style={effectStyle}
       aria-hidden="true"
     >
-      {geometry && !isSelfEffect && !statusTick && (
-        <svg
-          className="projectile-trail"
-          viewBox={`0 0 ${geometry.width} ${geometry.height}`}
-          preserveAspectRatio="none"
-        >
-          <path d={geometry.path} pathLength="1" />
-        </svg>
-      )}
       <ArtSprite
         asset={projectile}
         className={`battle-projectile ${projectileClass}`}
