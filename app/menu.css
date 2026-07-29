@@ -259,19 +259,36 @@
   z-index: 0;
   left: 50%;
   bottom: 16px;
-  width: 236px;
-  height: 72px;
-  border: 2px solid rgba(245, 197, 91, 0.48);
-  border-radius: 50%;
-  background:
-    radial-gradient(ellipse, rgba(141, 215, 91, 0.35), transparent 57%),
-    repeating-conic-gradient(from 15deg, rgba(245, 197, 91, 0.65) 0 2deg, transparent 2deg 44deg);
-  box-shadow:
-    0 0 28px rgba(141, 215, 91, 0.38),
-    inset 0 0 22px rgba(245, 197, 91, 0.28);
-  opacity: 0.84;
-  transform: translateX(-50%);
+  width: 260px;
+  height: 260px;
+  opacity: 0.88;
+  transform: translateX(-50%) scaleY(0.31);
+  transform-origin: 50% 100%;
+  filter:
+    drop-shadow(0 0 18px rgba(245, 197, 91, 0.42))
+    drop-shadow(0 0 28px rgba(141, 215, 91, 0.24));
   animation: menu-ring-pulse 3.6s ease-in-out infinite;
+}
+
+.menu-rune-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform-origin: 50% 50%;
+}
+
+.menu-rune-ring-outer {
+  inset: 0;
+  animation: menu-rune-ring-clockwise 22s linear infinite;
+}
+
+.menu-rune-ring-inner {
+  inset: 14%;
+  width: 72%;
+  height: 72%;
+  opacity: 0.9;
+  animation: menu-rune-ring-counterclockwise 16s linear infinite;
 }
 
 .menu-cauldron {
@@ -302,6 +319,7 @@
 }
 
 .menu-ingredient {
+  display: none;
   position: absolute;
   z-index: 3;
   width: 72px;
@@ -756,12 +774,28 @@
 @keyframes menu-ring-pulse {
   0%,
   100% {
-    opacity: 0.58;
-    transform: translateX(-50%) scale(0.94);
+    opacity: 0.68;
+    filter:
+      drop-shadow(0 0 14px rgba(245, 197, 91, 0.32))
+      drop-shadow(0 0 24px rgba(141, 215, 91, 0.18));
   }
   50% {
-    opacity: 0.92;
-    transform: translateX(-50%) scale(1.03);
+    opacity: 0.96;
+    filter:
+      drop-shadow(0 0 21px rgba(245, 197, 91, 0.54))
+      drop-shadow(0 0 32px rgba(141, 215, 91, 0.3));
+  }
+}
+
+@keyframes menu-rune-ring-clockwise {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes menu-rune-ring-counterclockwise {
+  to {
+    transform: rotate(-1turn);
   }
 }
 
@@ -958,7 +992,8 @@
   .menu-magic-ring {
     bottom: 16px;
     width: min(35vh, 350px);
-    height: min(10vh, 105px);
+    height: min(35vh, 350px);
+    transform: translateX(-50%) scaleY(0.3);
   }
 
   .menu-ingredient {
@@ -1070,6 +1105,7 @@
   .main-menu-shell,
   .game-shell,
   .menu-magic-ring,
+  .menu-rune-ring,
   .menu-cauldron,
   .menu-ingredient,
   .new-run-dialog-backdrop,

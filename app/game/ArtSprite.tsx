@@ -2,6 +2,8 @@ export const ART_FILES = {
   "cauldron-player": "cauldron-player.png",
   "cauldron-enemy": "cauldron-enemy.png",
   "cauldron-boss": "cauldron-boss.png",
+  "menu-rune-ring-outer": "menu-rune-ring-outer.webp",
+  "menu-rune-ring-inner": "menu-rune-ring-inner.webp",
   "result-victory": "result-victory.png",
   "result-defeat": "result-defeat.png",
   "merge-sigil": "merge-sigil.png",

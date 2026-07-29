@@ -2255,7 +2255,16 @@ export default function Game() {
             </div>
 
             <div className="menu-cauldron-stage" aria-hidden="true">
-              <span className="menu-magic-ring" />
+              <div className="menu-magic-ring">
+                <ArtSprite
+                  asset="menu-rune-ring-outer"
+                  className="menu-rune-ring menu-rune-ring-outer"
+                />
+                <ArtSprite
+                  asset="menu-rune-ring-inner"
+                  className="menu-rune-ring menu-rune-ring-inner"
+                />
+              </div>
               <ArtSprite asset="item-chili" className="menu-ingredient menu-ingredient-fire" />
               <ArtSprite asset="item-slime-shroom" className="menu-ingredient menu-ingredient-poison" />
               <ArtSprite asset="item-egg-shell" className="menu-ingredient menu-ingredient-guard" />
