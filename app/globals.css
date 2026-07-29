@@ -1369,6 +1369,12 @@ button.board-slot:active {
   object-fit: contain;
 }
 
+.battle-projectile.projectile-item-dragon-tooth {
+  width: 70px;
+  height: 43px;
+  margin: -21.5px 0 0 -35px;
+}
+
 .battle-projectile.projectile-item-nightwing {
   --projectile-angle-offset: 90deg;
   width: 48px;
@@ -1466,6 +1472,13 @@ button.board-slot:active {
   width: 60px;
   height: 38px;
   margin: -19px 0 0 -30px;
+}
+
+.arena-vfx.tier-standard
+  .battle-projectile.projectile-item-dragon-tooth {
+  width: 54px;
+  height: 34px;
+  margin: -17px 0 0 -27px;
 }
 
 .arena-vfx.tier-standard .battle-projectile.projectile-item-nightwing {
@@ -1568,6 +1581,92 @@ button.board-slot:active {
 .particle-one {
   --particle-x: -21px;
   --particle-y: 25px;
+}
+
+@media (max-width: 430px) {
+  .arena-vfx.is-projectile .battle-projectile.projectile-fire,
+  .arena-vfx.is-projectile .battle-projectile.projectile-poison {
+    width: 74px;
+    height: 38px;
+    margin: -19px 0 0 -37px;
+  }
+
+  .arena-vfx.is-projectile .battle-projectile.projectile-guard {
+    width: 52px;
+    height: 52px;
+    margin: -26px 0 0 -26px;
+  }
+
+  .arena-vfx.is-projectile .battle-projectile.projectile-item {
+    width: 70px;
+    height: 43px;
+    margin: -21.5px 0 0 -35px;
+  }
+
+  .arena-vfx.is-projectile
+    .battle-projectile.projectile-item-nightwing {
+    width: 43px;
+    height: 56px;
+    margin: -28px 0 0 -21.5px;
+  }
+
+  .arena-vfx.is-projectile
+    .battle-projectile.projectile-item-dragon-tooth {
+    width: 63px;
+    height: 39px;
+    margin: -19.5px 0 0 -31.5px;
+  }
+
+  .arena-vfx.is-projectile
+    .battle-projectile.projectile-item-moon-salt {
+    width: 74px;
+    height: 46px;
+    margin: -23px 0 0 -37px;
+  }
+
+  .arena-vfx.is-projectile.tier-standard
+    .battle-projectile.projectile-fire,
+  .arena-vfx.is-projectile.tier-standard
+    .battle-projectile.projectile-poison {
+    width: 61px;
+    height: 31px;
+    margin: -15.5px 0 0 -30.5px;
+  }
+
+  .arena-vfx.is-projectile.tier-standard
+    .battle-projectile.projectile-guard {
+    width: 45px;
+    height: 45px;
+    margin: -22.5px 0 0 -22.5px;
+  }
+
+  .arena-vfx.is-projectile.tier-standard
+    .battle-projectile.projectile-item {
+    width: 54px;
+    height: 34px;
+    margin: -17px 0 0 -27px;
+  }
+
+  .arena-vfx.is-projectile.tier-standard
+    .battle-projectile.projectile-item-nightwing {
+    width: 38px;
+    height: 49px;
+    margin: -24.5px 0 0 -19px;
+  }
+
+  .arena-vfx.is-projectile.tier-standard
+    .battle-projectile.projectile-item-dragon-tooth {
+    width: 49px;
+    height: 31px;
+    margin: -15.5px 0 0 -24.5px;
+  }
+
+  .arena-vfx.is-projectile.tier-standard
+    .battle-projectile.projectile-item-moon-salt {
+    width: 57px;
+    height: 36px;
+    margin: -18px 0 0 -28.5px;
+  }
 }
 
 .versus-mark {
