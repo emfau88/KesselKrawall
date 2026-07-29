@@ -914,7 +914,9 @@ function getVfxTiming(
   }
 
   const chargeMs = Math.round(total * 0.22);
-  const flightMs = Math.round(total * 0.5);
+  // Give the projectile ten percent more readable travel time without
+  // changing the complete VFX window or any simulated combat timing.
+  const flightMs = Math.round(total * 0.55);
   const impactAtMs = chargeMs + flightMs;
   return {
     chargeMs,

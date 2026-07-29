@@ -1314,10 +1314,15 @@ button.board-slot:active {
     drop-shadow(0 4px 5px rgba(0, 0, 0, 0.48));
 }
 
+.battle-projectile {
+  backface-visibility: hidden;
+  will-change: translate, transform, opacity;
+}
+
 .is-projectile .battle-projectile {
   animation:
     projectile-flight var(--flight-duration)
-    cubic-bezier(0.2, 0.62, 0.3, 1)
+    linear
     calc(var(--shot-delay) + var(--charge-duration)) both;
 }
 
@@ -1345,24 +1350,24 @@ button.board-slot:active {
 }
 
 .battle-projectile.projectile-item {
-  width: 88px;
-  height: 64px;
-  margin: -32px 0 0 -44px;
+  width: 78px;
+  height: 48px;
+  margin: -24px 0 0 -39px;
   object-fit: contain;
 }
 
 .battle-projectile.projectile-item-nightwing {
   --projectile-angle-offset: 90deg;
-  width: 68px;
-  height: 88px;
-  margin: -44px 0 0 -34px;
+  width: 48px;
+  height: 62px;
+  margin: -31px 0 0 -24px;
 }
 
 .battle-projectile.projectile-item-gold-spoon {
   --vfx-color: var(--gold);
-  width: 88px;
-  height: 88px;
-  margin: -44px 0 0 -44px;
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
 }
 
 .is-self-effect .battle-projectile {
@@ -1445,21 +1450,21 @@ button.board-slot:active {
 }
 
 .arena-vfx.tier-standard .battle-projectile.projectile-item {
-  width: 68px;
-  height: 50px;
-  margin: -25px 0 0 -34px;
+  width: 60px;
+  height: 38px;
+  margin: -19px 0 0 -30px;
 }
 
 .arena-vfx.tier-standard .battle-projectile.projectile-item-nightwing {
-  width: 52px;
-  height: 68px;
-  margin: -34px 0 0 -26px;
+  width: 42px;
+  height: 54px;
+  margin: -27px 0 0 -21px;
 }
 
 .arena-vfx.tier-standard .battle-projectile.projectile-item-gold-spoon {
-  width: 64px;
-  height: 64px;
-  margin: -32px 0 0 -32px;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
 }
 
 .arena-vfx.tier-standard .battle-impact {
@@ -2986,8 +2991,7 @@ button.board-slot:active {
 
 @keyframes projectile-flight {
   0% {
-    top: var(--from-y);
-    left: var(--from-x);
+    translate: 0 0;
     opacity: 0;
     transform:
       scale(0.45)
@@ -2997,22 +3001,25 @@ button.board-slot:active {
     opacity: 1;
   }
   25% {
-    top: var(--point-25-y);
-    left: var(--point-25-x);
+    translate:
+      calc(var(--point-25-x) - var(--from-x))
+      calc(var(--point-25-y) - var(--from-y));
     transform:
       scale(0.82)
       rotate(calc(var(--angle-25) + var(--projectile-angle-offset)));
   }
   50% {
-    top: var(--point-50-y);
-    left: var(--point-50-x);
+    translate:
+      calc(var(--point-50-x) - var(--from-x))
+      calc(var(--point-50-y) - var(--from-y));
     transform:
       scale(0.94)
       rotate(calc(var(--angle-50) + var(--projectile-angle-offset)));
   }
   75% {
-    top: var(--point-75-y);
-    left: var(--point-75-x);
+    translate:
+      calc(var(--point-75-x) - var(--from-x))
+      calc(var(--point-75-y) - var(--from-y));
     transform:
       scale(1.02)
       rotate(calc(var(--angle-75) + var(--projectile-angle-offset)));
@@ -3021,8 +3028,9 @@ button.board-slot:active {
     opacity: 1;
   }
   100% {
-    top: var(--to-y);
-    left: var(--to-x);
+    translate:
+      calc(var(--to-x) - var(--from-x))
+      calc(var(--to-y) - var(--from-y));
     opacity: 0;
     transform:
       scale(1.08)
