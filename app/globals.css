@@ -2676,6 +2676,7 @@ button.board-slot:active {
 
 .merge-overlay {
   --merge-color: var(--gold);
+  --merge-duration: 1700ms;
   position: absolute;
   z-index: 100;
   top: 50%;
@@ -2694,7 +2695,7 @@ button.board-slot:active {
     0 0 60px color-mix(in srgb, var(--merge-color) 42%, transparent),
     0 20px 70px rgba(0, 0, 0, 0.72);
   transform: translate(-50%, -50%);
-  animation: merge-overlay-sequence 1400ms cubic-bezier(0.18, 0.8, 0.2, 1) both;
+  animation: merge-overlay-sequence var(--merge-duration) cubic-bezier(0.18, 0.8, 0.2, 1) both;
 }
 
 .merge-overlay.family-fire {
@@ -2764,11 +2765,11 @@ button.board-slot:active {
 }
 
 .merge-input-left {
-  animation: merge-input-left 1400ms ease-in-out both;
+  animation: merge-input-left var(--merge-duration) ease-in-out both;
 }
 
 .merge-input-right {
-  animation: merge-input-right 1400ms ease-in-out both;
+  animation: merge-input-right var(--merge-duration) ease-in-out both;
 }
 
 .merge-input-art {
@@ -2799,14 +2800,14 @@ button.board-slot:active {
   font-family: Georgia, serif;
   font-size: 23px;
   font-weight: 900;
-  animation: merge-plus 1400ms ease both;
+  animation: merge-plus var(--merge-duration) ease both;
 }
 
 .merge-output {
   width: 118px;
   height: 118px;
   opacity: 0;
-  animation: merge-output-pop 1400ms cubic-bezier(0.16, 0.86, 0.18, 1.12) both;
+  animation: merge-output-pop var(--merge-duration) cubic-bezier(0.16, 0.86, 0.18, 1.12) both;
 }
 
 .merge-sigil {
@@ -2815,7 +2816,7 @@ button.board-slot:active {
   width: 100%;
   height: 100%;
   filter: drop-shadow(0 0 18px color-mix(in srgb, var(--merge-color) 72%, transparent));
-  animation: merge-sigil-spin 1400ms ease-out both;
+  animation: merge-sigil-spin var(--merge-duration) ease-out both;
 }
 
 .merge-item-art {

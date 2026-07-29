@@ -258,6 +258,10 @@ function mergeBonusLabel(definition: ItemDefinition, level: ItemLevel): string |
   }
 }
 
+function getMergeDurationMs(level: ItemLevel): number {
+  return level === 3 ? 2_100 : 1_700;
+}
+
 function findEventSource(
   event: CombatEvent | null,
   playerBoard: Board,
@@ -1426,7 +1430,7 @@ export default function Game() {
         if (remaining.length === 0) setBusy(false);
         return remaining;
       });
-    }, 1_400);
+    }, getMergeDurationMs(mergeNotice.toLevel));
     return () => window.clearTimeout(timer);
   }, [mergeNotice]);
 
@@ -3157,6 +3161,9 @@ export default function Game() {
           role="status"
           aria-live="assertive"
           key={`${mergeNotice.label}-${mergeNotice.step}`}
+          style={{
+            "--merge-duration": `${getMergeDurationMs(mergeNotice.toLevel)}ms`,
+          } as CSSProperties}
         >
           <div className="merge-progress">
             <span>MERGE</span>
