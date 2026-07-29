@@ -863,12 +863,69 @@ function StatsList({ stats }: { stats: ItemCombatStats[] }) {
   if (meaningful.length === 0) {
     return <p className="empty-stats">Noch keine auswertbaren Aktionen.</p>;
   }
+  const sorted = [...meaningful].sort(
+    (left, right) =>
+      right.totalDamage - left.totalDamage ||
+      right.healing + right.shield - (left.healing + left.shield) ||
+      right.triggers - left.triggers,
+  );
+  const strongestValue = Math.max(
+    1,
+    ...sorted.map((stat) =>
+      Math.max(stat.totalDamage, stat.healing, stat.shield),
+    ),
+  );
+  const topDamageUid = sorted.find((stat) => stat.totalDamage > 0)?.uid;
+
   return (
     <div className="stats-list">
-      {meaningful.map((stat) => {
+      <div className="stats-heading">
+        <span>KAMPFBEITRÄGE</span>
+        <small>stärkste Zutat zuerst</small>
+      </div>
+      {sorted.map((stat) => {
         const definition = ITEM_BY_ID[stat.itemId];
+        const primaryValue =
+          stat.totalDamage > 0
+            ? stat.totalDamage
+            : stat.healing > 0
+              ? stat.healing
+              : stat.shield;
+        const primaryLabel =
+          stat.totalDamage > 0
+            ? "Schaden"
+            : stat.healing > 0
+              ? "Heilung"
+              : "Schild";
+        const details = [`${stat.triggers}× ausgelöst`];
+        if (stat.shieldDamage > 0) {
+          if (stat.hpDamage > 0) details.push(`${stat.hpDamage} LP`);
+          details.push(`${stat.shieldDamage} Schild`);
+        }
+        if (stat.totalDamage > 0 && stat.healing > 0) {
+          details.push(`+${stat.healing} Heilung`);
+        }
+        if (stat.totalDamage > 0 && stat.shield > 0) {
+          details.push(`+${stat.shield} Schild`);
+        }
+        if (stat.poisonApplied > 0) {
+          details.push(`${stat.poisonApplied} Gift`);
+        }
+        const barWidth = Math.max(
+          8,
+          Math.round((primaryValue / strongestValue) * 100),
+        );
+
         return (
-          <div className="stat-row" key={stat.uid}>
+          <div
+            className={`stat-row ${
+              stat.uid === topDamageUid ? "is-top-damage" : ""
+            }`}
+            key={stat.uid}
+            style={{
+              "--stat-color": FAMILY_META[definition.family].color,
+            } as CSSProperties}
+          >
             <span className="stat-icon" aria-hidden="true">
               <ArtSprite
                 asset={ITEM_ART[definition.id]}
@@ -877,25 +934,14 @@ function StatsList({ stats }: { stats: ItemCombatStats[] }) {
             </span>
             <span className="stat-name">
               {definition.name} {ROMAN_LEVEL[stat.level]}
-              <small>{stat.triggers}× ausgelöst</small>
+              <small>{details.join(" · ")}</small>
             </span>
-            <span className="stat-values">
-              {stat.hpDamage > 0 && (
-                <b className="damage-stat">{stat.hpDamage} LP-Schaden</b>
-              )}
-              {stat.shieldDamage > 0 && (
-                <b className="shield-damage-stat">
-                  {stat.shieldDamage} Schildschaden
-                </b>
-              )}
-              {stat.totalDamage > 0 && (
-                <b className="total-damage-stat">
-                  {stat.totalDamage} gesamt
-                </b>
-              )}
-              {stat.healing > 0 && <b className="heal-stat">{stat.healing} Heilung</b>}
-              {stat.shield > 0 && <b className="shield-stat">{stat.shield} Schild</b>}
-              {stat.poisonApplied > 0 && <b className="poison-stat">{stat.poisonApplied} Gift</b>}
+            <span className="stat-primary">
+              <b>{primaryValue}</b>
+              <small>{primaryLabel}</small>
+            </span>
+            <span className="stat-bar" aria-hidden="true">
+              <i style={{ width: `${barWidth}%` }} />
             </span>
           </div>
         );
