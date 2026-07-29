@@ -620,7 +620,7 @@ button:focus-visible {
 }
 
 .health-track {
-  height: 6px;
+  height: 8px;
   margin-top: 2px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -629,12 +629,25 @@ button:focus-visible {
 }
 
 .health-track span {
+  position: relative;
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #ce3d47, #f28066);
-  box-shadow: 0 0 10px rgba(240, 106, 104, 0.45);
-  transition: width 220ms ease;
+  background-color: #ce3d47;
+  box-shadow: 0 0 10px color-mix(in srgb, currentColor 48%, transparent);
+  transition:
+    width 220ms ease,
+    color 220ms ease,
+    background-color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.health-track span::after {
+  position: absolute;
+  content: "";
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.18), transparent 62%);
 }
 
 .combat-status-row {

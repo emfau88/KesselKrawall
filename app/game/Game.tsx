@@ -438,6 +438,8 @@ function HealthBar({
   showStatuses: boolean;
 }) {
   const hpPercent = Math.max(0, Math.min(100, (hp / maxHp) * 100));
+  const healthHue = Math.round(hpPercent * 1.15);
+  const healthColor = `hsl(${healthHue} 72% 50%)`;
   return (
     <div className="health-cluster" aria-label={`${label}: ${hp} Leben, ${shield} Schild`}>
       <div className="health-meta">
@@ -452,7 +454,13 @@ function HealthBar({
         )}
       </div>
       <div className="health-track">
-        <span style={{ width: `${hpPercent}%` }} />
+        <span
+          style={{
+            width: `${hpPercent}%`,
+            backgroundColor: healthColor,
+            color: healthColor,
+          }}
+        />
       </div>
       {showStatuses && (
         <CombatStatusRow
