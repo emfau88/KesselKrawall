@@ -19,6 +19,8 @@ import {
 import { CAMPAIGN_OPPONENTS, ITEM_BY_ID } from "../app/game/data";
 import {
   getItemCooldownMs,
+  getKesselHeatDamageMultiplier,
+  KESSEL_HEAT_START_MS,
   POISON_CAP,
   SHIELD_CAP_RATIO,
   simulateBattle,
@@ -328,6 +330,47 @@ test("battle simulation is deterministic and produces item statistics", () => {
   assert.ok(first.events.every((event) => event.amount > 0));
   assert.ok(first.duration <= 25_000);
   assert.ok(first.playerStats.some((entry) => entry.triggers > 0));
+});
+
+test("kessel heat starts late and rises in small capped steps", () => {
+  assert.equal(getKesselHeatDamageMultiplier(KESSEL_HEAT_START_MS - 1), 1);
+  assert.equal(getKesselHeatDamageMultiplier(KESSEL_HEAT_START_MS), 1.05);
+  assert.equal(
+    getKesselHeatDamageMultiplier(KESSEL_HEAT_START_MS + 4_000),
+    1.15,
+  );
+  assert.equal(
+    getKesselHeatDamageMultiplier(KESSEL_HEAT_START_MS + 20_000),
+    1.25,
+  );
+});
+
+test("kessel heat preserves early hits and strengthens only late damage", () => {
+  const board = [item("chili", "chili"), null, null, null, null];
+  const target = opponent([null, null, null, null, null], 1_000);
+  const heated = simulateBattle(board, target);
+  const unheated = simulateBattle(board, target, {
+    enableKesselHeat: false,
+  });
+  const heatedHits = heated.events.filter(
+    (event) => event.actor === "player" && event.kind === "damage",
+  );
+  const unheatedHits = unheated.events.filter(
+    (event) => event.actor === "player" && event.kind === "damage",
+  );
+
+  assert.deepEqual(
+    heatedHits
+      .filter((event) => event.time < KESSEL_HEAT_START_MS)
+      .map(({ time, amount }) => ({ time, amount })),
+    unheatedHits
+      .filter((event) => event.time < KESSEL_HEAT_START_MS)
+      .map(({ time, amount }) => ({ time, amount })),
+  );
+  assert.ok(
+    heatedHits.some((event, index) => event.amount > unheatedHits[index].amount),
+  );
+  assert.ok(heated.finalEnemyHp < unheated.finalEnemyHp);
 });
 
 test("combat cooldown exposes the effective slot timing for the UI", () => {

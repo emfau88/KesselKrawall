@@ -1415,7 +1415,7 @@ async function main(): Promise<void> {
       durationScenarioNote:
         "35/45 Sekunden werden auf denselben Boards und Gegnern gegengerechnet. Die Kampagnenprogression bleibt für Vergleichbarkeit auf dem unveränderten 25-Sekunden-Ergebnis.",
       parkingSignalNote:
-        "Zwei blockierte, bezahlbare Angebote derselben Zutat ab Runde 6 sind nur ein Indiz, dass ein Parkslot späteres Mergen ermöglichen könnte; es ist noch kein simulierter Rucksack.",
+        "Zwei trotz der einzelnen Ablage blockierte, bezahlbare Angebote derselben Zutat ab Runde 6 zeigen verbleibenden Inventardruck; die Ablage selbst wird durch die echte Spiellogik simuliert.",
     },
     strategies: strategyResults,
     aggregateRounds: aggregateRoundResults,
@@ -1554,9 +1554,9 @@ async function main(): Promise<void> {
     "| --- | ---: | ---: | ---: | ---: |",
     ...buildTable,
     "",
-    "## Parkslot-Signal ab Runde 6",
+    "## Restlicher Inventardruck ab Runde 6",
     "",
-    "Gezählt werden Kampagnen, in denen bei vollem Board mindestens zweimal dieselbe bezahlbare Zutat blockiert wurde. Das zeigt Mergepotenzial, simuliert aber noch keinen Rucksack.",
+    "Gezählt werden Kampagnen, in denen trotz der einzelnen Ablage mindestens zweimal dieselbe bezahlbare Zutat blockiert wurde. Die Ablage wird dabei durch die echte Spiellogik simuliert.",
     "",
     "| Strategie | Kampagnen mit Wiederholung | blockierte Paare |",
     "| --- | ---: | ---: |",

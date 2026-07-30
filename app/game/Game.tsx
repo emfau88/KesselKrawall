@@ -52,7 +52,12 @@ import {
   interpolateVisibleBattleTime,
   PresentationScheduler,
 } from "./presentationTimeline";
-import { getItemCooldownMs, simulateBattle } from "./simulation";
+import {
+  getItemCooldownMs,
+  getKesselHeatDamageMultiplier,
+  KESSEL_HEAT_START_MS,
+  simulateBattle,
+} from "./simulation";
 import {
   advanceAfterBattle,
   beginBattle,
@@ -1415,6 +1420,9 @@ export default function Game() {
       try {
         const parsed = loadStoredGame(window.localStorage);
         if (parsed) {
+          const restoredSpeed = parsed.round === 1 ? 1 : 2;
+          speedRef.current = restoredSpeed;
+          setSpeed(restoredSpeed);
           setGame(parsed);
           setHasStoredRun(true);
           if (parsed.pendingBattle) {
@@ -2055,6 +2063,11 @@ export default function Game() {
     setCombatPaused(paused);
   }
 
+  function updateCombatSpeed(nextSpeed: number) {
+    speedRef.current = nextSpeed;
+    setSpeed(nextSpeed);
+  }
+
   function handleCombatPause() {
     updateCombatPause(!combatPausedRef.current);
   }
@@ -2080,6 +2093,9 @@ export default function Game() {
     if (!combat) return;
     const outcome = combat.winner;
     updateCombatPause(false);
+    if (game.round === 1 && speedRef.current === 1) {
+      updateCombatSpeed(2);
+    }
     setReserveSelected(false);
     setGame((current) => advanceAfterBattle(current, outcome));
     setCombat(null);
@@ -2110,6 +2126,7 @@ export default function Game() {
   function handleReset() {
     const next = resetRun();
     updateCombatPause(false);
+    updateCombatSpeed(1);
     setGame(next);
     setCombat(null);
     setBattleView(null);
@@ -2279,6 +2296,12 @@ export default function Game() {
     game.phase === "battle" &&
     combat?.reason === "timeout" &&
     remainingBattleSeconds <= 5 &&
+    !battleEnding;
+  const kesselHeatMultiplier = getKesselHeatDamageMultiplier(battleClock);
+  const kesselHeatPercent = Math.round((kesselHeatMultiplier - 1) * 100);
+  const kesselHeatActive =
+    game.phase === "battle" &&
+    battleClock >= KESSEL_HEAT_START_MS &&
     !battleEnding;
   const playerHpPercent = combat
     ? Math.round((combat.finalPlayerHp / combat.playerMaxHp) * 100)
@@ -2615,7 +2638,7 @@ export default function Game() {
             game.phase === "battle" && combatPaused
               ? "combat--paused"
               : ""
-          }`}
+          } ${kesselHeatActive ? "is-kessel-heated" : ""}`}
           aria-label="Kampfarena"
           data-combat-paused={
             game.phase === "battle" ? combatPaused : undefined
@@ -3093,7 +3116,9 @@ export default function Game() {
         <section
           className={`battle-controls ${
             decisionCountdown ? "is-decision-window" : ""
-          } ${combatPaused ? "combat--paused is-paused" : ""}`}
+          } ${combatPaused ? "combat--paused is-paused" : ""} ${
+            kesselHeatActive ? "is-kessel-heated" : ""
+          }`}
           aria-label="Kampfsteuerung"
           data-combat-paused={combatPaused}
         >
@@ -3102,7 +3127,11 @@ export default function Game() {
             <UiIcon asset="battle" className="battle-title-icon" />
             <span className="live-dot" aria-hidden="true" />
             <strong>
-              {combatPaused ? "Kampf pausiert" : "Kampf läuft"}
+              {combatPaused
+                ? "Kampf pausiert"
+                : kesselHeatActive
+                  ? `Kesselhitze +${kesselHeatPercent}%`
+                  : "Kampf läuft"}
             </strong>
             <small>
               {combatPaused
@@ -3111,6 +3140,8 @@ export default function Game() {
                 ? `${remainingBattleSeconds} s bis zur Zeitentscheidung`
                 : focusedEventRoute
                   ? focusedEventRoute
+                : kesselHeatActive
+                  ? `Schaden für beide +${kesselHeatPercent} %`
                 : speed === 1
                   ? "Lesemodus · Salven werden klar gestaffelt"
                   : `Beschleunigte Regie auf ${speed}×`}
@@ -3200,7 +3231,7 @@ export default function Game() {
                   type="button"
                   key={value}
                   className={speed === value ? "is-active" : ""}
-                  onClick={() => setSpeed(value)}
+                  onClick={() => updateCombatSpeed(value)}
                 >
                   {value}×{value === 1 ? <small>KLAR</small> : null}
                 </button>

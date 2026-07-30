@@ -19,9 +19,14 @@ const STEP_MS = 100;
 export const POISON_CAP = 12;
 export const POISON_DECAY_PER_TICK = 2;
 export const SHIELD_CAP_RATIO = 0.5;
+export const KESSEL_HEAT_START_MS = 15_000;
+export const KESSEL_HEAT_STEP_MS = 2_000;
+export const KESSEL_HEAT_DAMAGE_PER_STEP = 0.05;
+export const KESSEL_HEAT_MAX_MULTIPLIER = 1.25;
 
 export interface BattleSimulationOptions {
   combatLimitMs?: number;
+  enableKesselHeat?: boolean;
 }
 
 interface RuntimeItem {
@@ -55,10 +60,21 @@ interface World {
   events: CombatEvent[];
   bossRuleTriggered: boolean;
   bossRule: OpponentDefinition["bossRule"];
+  kesselHeatEnabled: boolean;
 }
 
 function roundAmount(value: number): number {
   return Math.max(0, Math.round(value));
+}
+
+export function getKesselHeatDamageMultiplier(timeMs: number): number {
+  if (timeMs < KESSEL_HEAT_START_MS) return 1;
+  const steps =
+    Math.floor((timeMs - KESSEL_HEAT_START_MS) / KESSEL_HEAT_STEP_MS) + 1;
+  return Math.min(
+    KESSEL_HEAT_MAX_MULTIPLIER,
+    1 + steps * KESSEL_HEAT_DAMAGE_PER_STEP,
+  );
 }
 
 function opponentOf(world: World, side: Side): Combatant {
@@ -118,7 +134,10 @@ function applyDamage(
   label: string,
   kind: "damage" | "poison" | "burn" = "damage",
 ): number {
-  const amount = roundAmount(rawAmount);
+  const heatMultiplier = world.kesselHeatEnabled
+    ? getKesselHeatDamageMultiplier(world.time)
+    : 1;
+  const amount = roundAmount(rawAmount * heatMultiplier);
   if (amount <= 0) return 0;
   const absorbed = Math.min(target.shield, amount);
   target.shield -= absorbed;
@@ -645,6 +664,7 @@ export function simulateBattle(
     events: [],
     bossRuleTriggered: false,
     bossRule: opponent.bossRule,
+    kesselHeatEnabled: options.enableKesselHeat ?? true,
   };
   addStartingSynergyShield(world, world.player);
   addStartingSynergyShield(world, world.enemy);

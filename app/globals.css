@@ -2405,6 +2405,25 @@ button.board-slot:active {
   box-shadow: 0 -14px 42px rgba(101, 200, 242, 0.11);
 }
 
+.arena.is-kessel-heated {
+  box-shadow: inset 0 0 64px rgba(255, 117, 69, 0.08);
+}
+
+.battle-controls.is-kessel-heated:not(.is-paused) {
+  border-top-color: rgba(255, 151, 75, 0.66);
+  box-shadow: 0 -14px 42px rgba(255, 117, 69, 0.14);
+}
+
+.battle-controls.is-kessel-heated:not(.is-paused) .battle-status strong {
+  color: #ffc078;
+}
+
+.battle-controls.is-kessel-heated:not(.is-paused) .live-dot {
+  background: #ffc15c;
+  box-shadow: 0 0 16px rgba(255, 117, 69, 0.92);
+  animation-duration: 650ms;
+}
+
 .battle-controls > *:not(.panel-backdrop) {
   position: relative;
   z-index: 2;

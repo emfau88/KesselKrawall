@@ -60,6 +60,7 @@ Build im Kampf verhält.
 - Shop, Verkauf, neue Angebote und lokale Spielstand-Speicherung
 - Feuer-, Gift- und Schutz-Synergien mit Nachbarschaftseffekten
 - deterministische Kampfsimulation mit klarer visueller Präsentation
+- ab Runde 2 standardmäßig 2× Kampftempo und sanfte Kesselhitze ab Sekunde 15
 - lesbare Kampfmeldungen, reaktive Lebensbalken und Itembeiträge nach der Runde
 - individuelle Projektilgrafiken, gestaffelte Merge-Inszenierung und
   responsive Layouts

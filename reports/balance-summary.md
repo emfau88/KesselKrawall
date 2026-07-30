@@ -17,12 +17,12 @@ Alle Strategien verwenden genau den kostenlosen Reroll und keine bezahlten Rerol
 
 | Strategie | Sieg | Timeout | Ø Simulation | Ø sichtbare 1×-Dauer | Käufe/Shop | Gold vor R8 übrig | Ersetzungen/Shop |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Buildstärke | 89.65 % | 48.83 % | 19.8 s | 41.1 s | 1.48 | 25.11 | 0.00 |
-| Merge-Fokus | 91.02 % | 45.70 % | 19.3 s | 40.9 s | 1.53 | 24.09 | 0.00 |
-| Feuer-Fokus | 93.36 % | 36.13 % | 17.5 s | 38.4 s | 1.48 | 25.31 | 0.00 |
-| Gift-Fokus | 74.80 % | 59.77 % | 21.4 s | 47.0 s | 1.52 | 22.48 | 0.00 |
-| Schutz-Fokus | 85.74 % | 61.72 % | 21.5 s | 42.9 s | 1.52 | 23.48 | 0.00 |
-| Matchup-Suche | 96.09 % | 27.15 % | 16.2 s | 37.6 s | 1.97 | 18.44 | 0.55 |
+| Buildstärke | 91.41 % | 44.14 % | 19.6 s | 38.6 s | 1.77 | 18.33 | 0.00 |
+| Merge-Fokus | 92.77 % | 41.80 % | 19.0 s | 38.2 s | 1.81 | 17.44 | 0.00 |
+| Feuer-Fokus | 92.97 % | 33.01 % | 17.3 s | 35.8 s | 1.78 | 17.38 | 0.00 |
+| Gift-Fokus | 75.59 % | 58.01 % | 21.5 s | 44.2 s | 1.79 | 14.84 | 0.00 |
+| Schutz-Fokus | 86.33 % | 58.40 % | 21.3 s | 40.4 s | 1.80 | 16.58 | 0.00 |
+| Matchup-Suche | 94.92 % | 22.66 % | 16.0 s | 35.0 s | 1.96 | 18.38 | 0.53 |
 
 ## Kampfzeit-Gegenprobe
 
@@ -30,22 +30,22 @@ Die 35/45-Sekunden-Werte verändern das Live-Spiel nicht. Sie simulieren dieselb
 
 | Grenze | Sieg | Niederlage | Remis | Timeout (95-%-Intervall) | Simulation Median/P90 | 1× Median/P90 | 2× Median |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 25 s | 88.44 % | 8.07 % | 3.48 % | 46.55 % (44.79–48.32 %) | 22.0 s / 25.0 s | 39.6 s / 57.2 s | 24.7 s |
-| 35 s | 84.18 % | 12.57 % | 3.26 % | 34.90 % (33.23–36.60 %) | 22.0 s / 35.0 s | 44.1 s / 66.3 s | 27.4 s |
-| 45 s | 84.54 % | 12.66 % | 2.80 % | 25.46 % (23.95–27.03 %) | 22.0 s / 45.0 s | 47.7 s / 73.6 s | 29.3 s |
+| 25 s | 89.00 % | 7.52 % | 3.48 % | 43.00 % (41.26–44.76 %) | 21.0 s / 25.0 s | 37.0 s / 53.0 s | 23.0 s |
+| 35 s | 85.42 % | 12.04 % | 2.54 % | 31.15 % (29.54–32.81 %) | 21.0 s / 35.0 s | 40.8 s / 60.2 s | 25.4 s |
+| 45 s | 85.42 % | 12.08 % | 2.51 % | 15.89 % (14.64–17.22 %) | 21.0 s / 45.0 s | 44.4 s / 65.9 s | 27.1 s |
 
 ## Rundenschwierigkeit
 
 | Runde | Sieg | Niederlage | Remis | Timeout 25 s | Timeout 35 s | Timeout 45 s | Siegspanne Strategien |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 94.01 % | 5.99 % | 0.00 % | 100.00 % | 100.00 % | 64.06 % | 64.06–100.00 % |
-| 2 | 100.00 % | 0.00 % | 0.00 % | 76.82 % | 38.54 % | 28.91 % | 100.00–100.00 % |
-| 3 | 84.90 % | 0.26 % | 14.84 % | 78.65 % | 63.80 % | 54.95 % | 71.88–98.44 % |
-| 4 | 100.00 % | 0.00 % | 0.00 % | 19.27 % | 12.24 % | 4.69 % | 100.00–100.00 % |
-| 5 | 99.48 % | 0.26 % | 0.26 % | 12.24 % | 6.25 % | 1.56 % | 96.88–100.00 % |
-| 6 | 90.63 % | 1.30 % | 8.07 % | 49.74 % | 40.10 % | 33.59 % | 75.00–100.00 % |
-| 7 | 79.95 % | 19.53 % | 0.52 % | 4.69 % | 0.26 % | 0.00 % | 53.13–95.31 % |
-| 8 | 58.59 % | 37.24 % | 4.17 % | 30.99 % | 17.97 % | 15.89 % | 21.88–75.00 % |
+| 1 | 94.01 % | 5.99 % | 0.00 % | 100.00 % | 100.00 % | 10.68 % | 64.06–100.00 % |
+| 2 | 100.00 % | 0.00 % | 0.00 % | 68.49 % | 32.55 % | 24.48 % | 100.00–100.00 % |
+| 3 | 86.98 % | 0.00 % | 13.02 % | 73.96 % | 57.55 % | 49.74 % | 75.00–98.44 % |
+| 4 | 100.00 % | 0.00 % | 0.00 % | 17.19 % | 5.99 % | 4.17 % | 100.00–100.00 % |
+| 5 | 99.48 % | 0.52 % | 0.00 % | 12.50 % | 5.73 % | 2.08 % | 96.88–100.00 % |
+| 6 | 90.36 % | 0.78 % | 8.85 % | 43.23 % | 32.55 % | 26.82 % | 75.00–100.00 % |
+| 7 | 79.95 % | 18.23 % | 1.82 % | 4.43 % | 0.00 % | 0.00 % | 50.00–90.63 % |
+| 8 | 61.20 % | 34.64 % | 4.17 % | 24.22 % | 14.84 % | 9.11 % | 26.56–71.88 % |
 
 ## Economy und volle Boards
 
@@ -53,12 +53,12 @@ Die 35/45-Sekunden-Werte verändern das Live-Spiel nicht. Sie simulieren dieselb
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | 1 | 0.00 % | 2.00 | 6.00 | 1.00 | 0.00 | 0.00 % | 0.00 % |
 | 2 | 0.00 % | 1.99 | 6.21 | 0.73 | 0.00 | 0.00 % | 0.00 % |
-| 3 | 0.00 % | 2.02 | 6.41 | 1.38 | 0.01 | 0.00 % | 0.26 % |
-| 4 | 15.36 % | 2.17 | 6.98 | 1.42 | 0.99 | 0.26 % | 39.58 % |
-| 5 | 73.44 % | 1.74 | 5.60 | 4.02 | 3.43 | 13.02 % | 83.33 % |
-| 6 | 91.41 % | 1.23 | 4.03 | 8.31 | 4.64 | 34.90 % | 85.94 % |
-| 7 | 97.92 % | 0.90 | 2.92 | 14.54 | 5.18 | 47.66 % | 88.80 % |
-| 8 | 99.22 % | 0.63 | 2.08 | 23.15 | 5.51 | 63.80 % | 93.23 % |
+| 3 | 0.00 % | 2.02 | 6.42 | 1.38 | 0.01 | 0.00 % | 0.26 % |
+| 4 | 14.84 % | 2.18 | 6.99 | 1.43 | 0.98 | 0.26 % | 39.32 % |
+| 5 | 73.44 % | 2.31 | 7.42 | 2.19 | 0.66 | 0.00 % | 28.91 % |
+| 6 | 88.80 % | 1.72 | 5.58 | 4.88 | 2.71 | 11.46 % | 61.20 % |
+| 7 | 94.53 % | 1.45 | 4.70 | 9.33 | 3.71 | 23.44 % | 72.40 % |
+| 8 | 98.44 % | 0.87 | 2.87 | 17.16 | 4.42 | 42.45 % | 78.39 % |
 
 ## Positionseinfluss
 
@@ -66,8 +66,8 @@ Als positionsrelevant gelten nur Boards mit Nachbar-Tempo oder Nachbar-Kraft. Ei
 
 | Stichprobe | Matchups | Anordnungen | Ergebnis ändert sich | direkter Siegerwechsel | deutliche LP-Verschiebung | Ø LP-Spanne |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| alle Boards | 2012 | 227440 | 3.68 % | 2.93 % | 14.71 % | 5.98 % |
-| nur positionsrelevante Boards | 983 | 115260 | 7.53 % | 6.00 % | 29.50 % | 11.96 % |
+| alle Boards | 2030 | 229240 | 2.91 % | 2.36 % | 13.84 % | 5.69 % |
+| nur positionsrelevante Boards | 982 | 115140 | 6.01 % | 4.89 % | 28.21 % | 11.59 % |
 
 ## Angebots- und Kaufdiagnose
 
@@ -75,70 +75,70 @@ Kaufquote wird nur gegen direkt kaufbare Angebote gerechnet. „Verbessert“ be
 
 | Zutat | angeboten | Kaufquote | sofort verbessert | voll blockiert | davon vorhandenes L2 | Siegquote bei Präsenz |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Chilischote | 2489 | 85.68 % | 92.51 % | 641 | 380 | 90.95 % |
-| Drachenzahn | 1310 | 84.14 % | 96.68 % | 611 | 149 | 94.71 % |
-| Glutkern | 1323 | 62.32 % | 83.85 % | 701 | 121 | 91.79 % |
-| Rußbeere | 1372 | 85.43 % | 83.70 % | 691 | 242 | 86.37 % |
-| Schleimpilz | 1642 | 43.82 % | 83.18 % | 548 | 124 | 79.03 % |
-| Nachtflügel | 1055 | 45.60 % | 81.60 % | 540 | 48 | 81.66 % |
-| Hexenauge | 1095 | 73.40 % | 86.22 % | 554 | 97 | 84.45 % |
-| Vipernknolle | 1054 | 47.91 % | 80.99 % | 520 | 78 | 79.80 % |
-| Eierschale | 2906 | 89.95 % | 56.61 % | 779 | 516 | 88.43 % |
-| Heilknolle | 1362 | 71.05 % | 10.77 % | 639 | 154 | 77.44 % |
-| Goldlöffel | 1466 | 67.15 % | 47.45 % | 709 | 160 | 87.90 % |
-| Mondsalz | 1358 | 84.21 % | 44.39 % | 655 | 196 | 82.96 % |
+| Chilischote | 2490 | 78.78 % | 80.98 % | 386 | 226 | 91.42 % |
+| Drachenzahn | 1333 | 64.10 % | 65.81 % | 394 | 75 | 94.27 % |
+| Glutkern | 1328 | 51.98 % | 54.68 % | 456 | 68 | 93.52 % |
+| Rußbeere | 1362 | 67.24 % | 54.86 % | 394 | 149 | 87.15 % |
+| Schleimpilz | 1643 | 42.52 % | 68.42 % | 329 | 71 | 80.45 % |
+| Nachtflügel | 1030 | 35.75 % | 49.52 % | 324 | 16 | 80.75 % |
+| Hexenauge | 1095 | 56.83 % | 55.31 % | 365 | 75 | 84.10 % |
+| Vipernknolle | 1079 | 37.83 % | 54.14 % | 332 | 38 | 80.41 % |
+| Eierschale | 2899 | 83.85 % | 50.71 % | 496 | 302 | 89.12 % |
+| Heilknolle | 1369 | 60.71 % | 7.25 % | 410 | 113 | 78.97 % |
+| Goldlöffel | 1450 | 53.62 % | 37.39 % | 464 | 73 | 89.25 % |
+| Mondsalz | 1354 | 68.32 % | 30.86 % | 444 | 146 | 83.39 % |
 
 ## Tatsächliche Kampfbeiträge
 
 | Zutat | Kämpfe | Trigger | LP-Schaden | Schildschaden | Heilung | Schild | Gift |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Chilischote | 2542 | 6.84 | 53.87 | 18.52 | 0.00 | 0.00 | 0.00 |
-| Drachenzahn | 718 | 3.17 | 67.22 | 10.11 | 0.00 | 0.00 | 0.00 |
-| Glutkern | 487 | 3.55 | 18.98 | 6.25 | 0.00 | 0.00 | 0.00 |
-| Rußbeere | 822 | 4.60 | 28.83 | 10.00 | 0.00 | 0.00 | 0.00 |
-| Schleimpilz | 763 | 6.95 | 22.13 | 10.83 | 0.00 | 0.00 | 22.96 |
-| Nachtflügel | 229 | 4.55 | 13.71 | 5.56 | 0.00 | 0.00 | 0.00 |
-| Hexenauge | 566 | 5.76 | 30.93 | 12.66 | 0.00 | 0.00 | 0.00 |
-| Vipernknolle | 297 | 5.08 | 26.20 | 11.57 | 0.00 | 0.00 | 11.44 |
-| Eierschale | 2991 | 5.84 | 0.00 | 0.00 | 0.00 | 66.15 | 0.00 |
-| Heilknolle | 656 | 0.24 | 0.00 | 0.00 | 7.36 | 0.00 | 0.00 |
-| Goldlöffel | 628 | 3.83 | 0.00 | 0.00 | 8.89 | 25.53 | 0.00 |
-| Mondsalz | 845 | 1.39 | 5.77 | 1.35 | 0.00 | 16.88 | 0.00 |
+| Chilischote | 2551 | 6.77 | 56.82 | 18.60 | 0.00 | 0.00 | 0.00 |
+| Drachenzahn | 715 | 3.15 | 67.02 | 10.05 | 0.00 | 0.00 | 0.00 |
+| Glutkern | 494 | 3.51 | 19.14 | 6.08 | 0.00 | 0.00 | 0.00 |
+| Rußbeere | 825 | 4.56 | 29.18 | 9.35 | 0.00 | 0.00 | 0.00 |
+| Schleimpilz | 762 | 6.88 | 23.08 | 11.21 | 0.00 | 0.00 | 22.70 |
+| Nachtflügel | 213 | 4.54 | 14.74 | 5.95 | 0.00 | 0.00 | 0.00 |
+| Hexenauge | 566 | 5.69 | 31.63 | 12.46 | 0.00 | 0.00 | 0.00 |
+| Vipernknolle | 296 | 5.19 | 27.49 | 12.86 | 0.00 | 0.00 | 11.66 |
+| Eierschale | 2995 | 5.80 | 0.00 | 0.00 | 0.00 | 67.20 | 0.00 |
+| Heilknolle | 661 | 0.23 | 0.00 | 0.00 | 7.51 | 0.00 | 0.00 |
+| Goldlöffel | 614 | 3.79 | 0.00 | 0.00 | 8.31 | 25.51 | 0.00 |
+| Mondsalz | 825 | 1.31 | 5.57 | 1.17 | 0.00 | 15.60 | 0.00 |
 
 ## Buildfamilien
 
 | Schwerpunkt | Kämpfe | Sieg | Timeout | Ø Simulation |
 | --- | ---: | ---: | ---: | ---: |
-| fire | 943 | 96.71 % | 13.15 % | 13.8 s |
-| poison | 301 | 76.08 % | 39.20 % | 19.2 s |
-| guard | 982 | 80.75 % | 57.64 % | 22.0 s |
-| hybrid | 846 | 92.55 % | 73.52 % | 22.3 s |
+| fire | 942 | 95.97 % | 7.43 % | 13.6 s |
+| poison | 296 | 76.35 % | 36.49 % | 19.2 s |
+| guard | 1001 | 81.62 % | 53.75 % | 21.6 s |
+| hybrid | 833 | 94.48 % | 72.63 % | 22.4 s |
 
-## Parkslot-Signal ab Runde 6
+## Restlicher Inventardruck ab Runde 6
 
-Gezählt werden Kampagnen, in denen bei vollem Board mindestens zweimal dieselbe bezahlbare Zutat blockiert wurde. Das zeigt Mergepotenzial, simuliert aber noch keinen Rucksack.
+Gezählt werden Kampagnen, in denen trotz der einzelnen Ablage mindestens zweimal dieselbe bezahlbare Zutat blockiert wurde. Die Ablage wird dabei durch die echte Spiellogik simuliert.
 
 | Strategie | Kampagnen mit Wiederholung | blockierte Paare |
 | --- | ---: | ---: |
-| Buildstärke | 100.00 % | 330 |
-| Merge-Fokus | 100.00 % | 325 |
-| Feuer-Fokus | 100.00 % | 331 |
-| Gift-Fokus | 100.00 % | 322 |
-| Schutz-Fokus | 100.00 % | 333 |
-| Matchup-Suche | 100.00 % | 256 |
+| Buildstärke | 98.44 % | 270 |
+| Merge-Fokus | 98.44 % | 256 |
+| Feuer-Fokus | 96.88 % | 261 |
+| Gift-Fokus | 96.88 % | 236 |
+| Schutz-Fokus | 100.00 % | 256 |
+| Matchup-Suche | 0.00 % | 0 |
 
-Blockierte bezahlbare Angebote in Runde 6–8: **5886**, davon passend zu einem vorhandenen Level-II-Item: **1908**.
+Blockierte bezahlbare Angebote in Runde 6–8: **4160**, davon passend zu einem vorhandenen Level-II-Item: **1248**.
 
 ## Grobe Buildstärke
 
 | Strategie | Pearson-Korrelation | Fehlerrate entscheidender Kämpfe |
 | --- | ---: | ---: |
-| Buildstärke | 0.492 | 12.05 % |
-| Merge-Fokus | 0.462 | 10.64 % |
-| Feuer-Fokus | 0.445 | 9.33 % |
-| Gift-Fokus | 0.458 | 24.49 % |
-| Schutz-Fokus | 0.458 | 11.44 % |
-| Matchup-Suche | 0.592 | 6.90 % |
+| Buildstärke | 0.472 | 10.24 % |
+| Merge-Fokus | 0.458 | 9.02 % |
+| Feuer-Fokus | 0.408 | 9.36 % |
+| Gift-Fokus | 0.417 | 24.49 % |
+| Schutz-Fokus | 0.413 | 11.18 % |
+| Matchup-Suche | 0.572 | 7.17 % |
 
 ## Reproduktion
 

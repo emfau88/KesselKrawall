@@ -104,9 +104,13 @@ damit ein schlechter Zufallsstart die Kampagne nicht entscheidet.
   Schaden und verliert danach zwei Stapel.
 - Brand tickt jede Sekunde pro Quelle in Höhe der verbleibenden Brandstapel
   und verliert danach einen Stapel.
+- Ab 15 Sekunden steigt der Schaden beider Kessel alle 2 Sekunden um 5 %,
+  maximal auf 125 %. Heilung, Schild und Cooldowns bleiben unverändert.
 - Nach 25 Sekunden gewinnt die höhere relative Lebensenergie. Bei Gleichstand
   entscheidet der tatsächlich verursachte LP-Schaden. Danach ist der Kampf
   unentschieden; Schild ist kein Siegkriterium.
+- Runde 1 startet zur Lesbarkeit mit 1× Wiedergabe. Ab Runde 2 ist 2× der
+  Standard; 1×, 2× und 4× bleiben jederzeit frei wählbar.
 - Gleichzeitiger K. O. ist ein Unentschieden.
 - Drachenzahn wächst mit jeder eigenen Aktivierung, Mondsalz kontert nach
   tatsächlichem LP-Schaden und Heilknolle heilt einmalig unter 35 % LP.
