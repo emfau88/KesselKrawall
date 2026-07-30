@@ -128,3 +128,9 @@ npm run build:pages
 Kessel-Krawall bleibt bewusst fokussiert: keine Figuren, kein Pathfinding,
 keine komplizierten Rezepte und kein Echtzeit-PvP – dafür ein verständlicher
 Loop mit möglichst viel Entscheidungstiefe pro Zutat.
+
+## Audio-Credits
+
+Musik von Fablefly Music und MintoDog sowie Sounds von ObsydianX, NSFRL und
+BMacZero. Quellen, Lizenzen und die vorgenommenen Bearbeitungen stehen in
+[`public/assets/audio/ATTRIBUTION.md`](public/assets/audio/ATTRIBUTION.md).

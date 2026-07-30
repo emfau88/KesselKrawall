@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
 } from "react";
 import {
   ArtSprite,
@@ -44,7 +45,14 @@ import {
   type FloatingCombatNumber,
   type FloatingCombatNumberType,
 } from "./combatFloatingNumbers";
-import { playGameSound, type GameSound } from "./audio";
+import {
+  playGameSound,
+  preloadGameAudio,
+  setGameAudioScene,
+  stopGameAudio,
+  type GameAudioScene,
+  type GameSound,
+} from "./audio";
 import { FAMILY_META, ITEM_BY_ID } from "./data";
 import {
   advancePresentationFrame,
@@ -710,6 +718,7 @@ function CauldronBoard({
               type="button"
               className={className}
               data-slot={slot}
+              data-audio="manual"
               onClick={() => onSlot?.(slot)}
               aria-label={slotLabel}
               aria-pressed={selectedSlot === slot}
@@ -772,6 +781,7 @@ function ReservePocket({
         onClick={onClick}
         aria-label={label}
         aria-pressed={selected}
+        data-audio="manual"
         data-testid="reserve-slot"
       >
         {definition ? (
@@ -1458,6 +1468,25 @@ export default function Game() {
   }, []);
 
   useEffect(() => {
+    preloadGameAudio();
+    return () => stopGameAudio();
+  }, []);
+
+  useEffect(() => {
+    const audioScene: GameAudioScene =
+      screen === "menu"
+        ? "menu"
+        : game.phase === "battle"
+          ? opponent.rank === "boss"
+            ? "boss"
+            : "battle"
+          : game.phase === "shop"
+            ? "shop"
+            : "result";
+    setGameAudioScene(audioScene);
+  }, [game.phase, opponent.rank, screen]);
+
+  useEffect(() => {
     speedRef.current = speed;
   }, [speed]);
 
@@ -1947,16 +1976,33 @@ export default function Game() {
     setFeedback(message);
   }
 
+  function announceActionError(message: string) {
+    playGameSound(message.toLocaleLowerCase("de").includes("voll") ? "cauldronFull" : "error");
+    announce(message);
+  }
+
+  function handleUiButtonClick(event: ReactMouseEvent<HTMLElement>) {
+    const button =
+      event.target instanceof Element ? event.target.closest("button") : null;
+    if (
+      !(button instanceof HTMLButtonElement) ||
+      button.disabled ||
+      button.dataset.audio === "manual"
+    ) {
+      return;
+    }
+    playGameSound("uiClick");
+  }
+
   function handleBuy(offerUid: string) {
     if (busy) return;
     const result = buyOffer(game, offerUid);
     if (result.error) {
-      announce(result.error);
+      announceActionError(result.error);
       return;
     }
     setReserveSelected(false);
     setGame(result.state);
-    playGameSound("purchase");
     if (result.merges?.length) {
       const powerBefore = getPowerValue(game.board);
       const powerAfter = getPowerValue(result.state.board);
@@ -1994,6 +2040,7 @@ export default function Game() {
       );
       setBusy(true);
     } else {
+      playGameSound("purchase");
       announce(
         result.purchaseLocation?.area === "reserve"
           ? "Zutat in der Ablage geparkt. Dort wirkt sie nicht im Kampf."
@@ -2005,7 +2052,7 @@ export default function Game() {
   function handleReroll() {
     if (busy) return;
     const result = rerollShop(game);
-    if (result.error) return announce(result.error);
+    if (result.error) return announceActionError(result.error);
     setGame(result.state);
     playGameSound("reroll");
     announce(game.rerollsUsed === 0 ? "Kostenlos neu gewürfelt." : "Shop neu gewürfelt.");
@@ -2015,15 +2062,17 @@ export default function Game() {
     if (busy) return;
     if (reserveSelected) {
       const result = swapSlotWithReserve(game, slot);
-      if (result.error) return announce(result.error);
+      if (result.error) return announceActionError(result.error);
       setReserveSelected(false);
       setGame(result.state);
+      playGameSound("uiSelect");
       announce("Zutat zwischen Kessel und Ablage verschoben.");
       return;
     }
     const wasSelected = game.selectedSlot;
     const result = selectOrSwapSlot(game, slot);
     setGame(result.state);
+    playGameSound("uiSelect");
     if (wasSelected === null && game.board[slot]) {
       announce("Zutat gewählt. Tippe einen zweiten Platz zum Tauschen.");
     } else if (wasSelected !== null && wasSelected !== slot) {
@@ -2035,17 +2084,19 @@ export default function Game() {
     if (busy || game.round < RESERVE_UNLOCK_ROUND) return;
     if (game.selectedSlot !== null) {
       const result = swapSlotWithReserve(game, game.selectedSlot);
-      if (result.error) return announce(result.error);
+      if (result.error) return announceActionError(result.error);
       setReserveSelected(false);
       setGame(result.state);
+      playGameSound("uiSelect");
       announce("Zutat zwischen Kessel und Ablage verschoben.");
       return;
     }
     if (!game.reserve) {
-      announce("Die Ablage ist leer. Wähle zuerst eine Zutat im Kessel.");
+      announceActionError("Die Ablage ist leer. Wähle zuerst eine Zutat im Kessel.");
       return;
     }
     setReserveSelected((current) => !current);
+    playGameSound("uiSelect");
     announce(
       reserveSelected
         ? "Auswahl aufgehoben."
@@ -2058,9 +2109,10 @@ export default function Game() {
     const result = reserveSelected
       ? sellReserve(game)
       : sellSlot(game, game.selectedSlot!);
-    if (result.error) return announce(result.error);
+    if (result.error) return announceActionError(result.error);
     setReserveSelected(false);
     setGame(result.state);
+    playGameSound("sell");
     announce(`Verkauft für ${result.goldDelta} Gold.`);
   }
 
@@ -2081,7 +2133,7 @@ export default function Game() {
   function handleFight() {
     if (busy) return;
     const result = beginBattle(game);
-    if (result.error) return announce(result.error);
+    if (result.error) return announceActionError(result.error);
     const battle = simulateBattle(game.board, opponent);
     const battleState = { ...result.state, pendingBattle: battle };
     persistGame(window.localStorage, battleState);
@@ -2343,6 +2395,7 @@ export default function Game() {
       <main
         className={`main-menu-shell ${fullscreenActive ? "is-fullscreen" : ""}`}
         ref={shellRef}
+        onClickCapture={handleUiButtonClick}
       >
         <BackdropImage backdrop="menu" className="main-menu-backdrop" />
         <div className="main-menu-shade" aria-hidden="true" />
@@ -2562,6 +2615,7 @@ export default function Game() {
     <main
       className={`game-shell phase-${game.phase} rank-${opponent.rank} ${fullscreenActive ? "is-fullscreen" : ""}`}
       ref={shellRef}
+      onClickCapture={handleUiButtonClick}
     >
       <header className="game-header">
         <div className="brand-lockup" aria-label="Kessel-Krawall">
@@ -2986,7 +3040,12 @@ export default function Game() {
                     )}
                   </small>
                 </div>
-                <button type="button" className="sell-button" onClick={handleSell}>
+                <button
+                  type="button"
+                  className="sell-button"
+                  onClick={handleSell}
+                  data-audio="manual"
+                >
                   Verkaufen <b>+{getSellValue(selectedItem)}</b>
                 </button>
               </div>
@@ -3018,11 +3077,7 @@ export default function Game() {
                   game.board.every(Boolean) &&
                   !directMatch &&
                   game.reserve === null;
-                const disabled =
-                  offer.bought ||
-                  game.gold < definition.cost ||
-                  !hasPurchaseSpace ||
-                  busy;
+                const disabled = offer.bought || busy;
                 return (
                   <button
                     type="button"
@@ -3034,6 +3089,7 @@ export default function Game() {
                     }`}
                     onClick={() => handleBuy(offer.uid)}
                     disabled={disabled}
+                    data-audio="manual"
                     data-testid={`offer-${offer.uid}`}
                   >
                     <span className="offer-family">
@@ -3091,7 +3147,8 @@ export default function Game() {
               type="button"
               className="secondary-button"
               onClick={handleReroll}
-              disabled={busy || (game.rerollsUsed > 0 && game.gold < 1)}
+              disabled={busy}
+              data-audio="manual"
             >
               <UiIcon asset="reroll" className="button-icon" />
               Neu würfeln
