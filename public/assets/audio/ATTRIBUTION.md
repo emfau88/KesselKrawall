@@ -34,3 +34,11 @@ asset directory.
   Source: <https://opengameart.org/content/bubble-sound-effects>  
   License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)  
   Used for the cauldron ambience.
+- **Basic Spell Impacts** — Lentikula
+  Source: <https://lentikula.itch.io/freecc0-basic-spell-impacts-sfx>
+  License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
+  Used for short fire, poison, shield, and generic combat impacts.
+- **Healing Spell Impacts** — Lentikula
+  Source: <https://lentikula.itch.io/healing-spell-impacts>
+  License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
+  Used for the short healing impact.

@@ -17,6 +17,17 @@ export type GameSound =
   | "defeat";
 
 export type GameAudioScene = "menu" | "shop" | "battle" | "boss" | "result";
+export type CombatSound = Extract<
+  GameSound,
+  "fire" | "poison" | "shield" | "heal" | "hit"
+>;
+export type CombatSoundTier = "hero" | "standard" | "ambient";
+
+export interface CombatSoundPlaybackPolicy {
+  minIntervalMs: number;
+  sameSoundIntervalMs: number;
+  maxVoices: number;
+}
 
 interface ToneStep {
   frequency: number;
@@ -50,6 +61,11 @@ const SOUND_FILES: Partial<Record<GameSound, AudioFile>> = {
   cauldronFull: { path: "sfx/cauldron-full.ogg", volume: 0.82 },
   merge2: { path: "sfx/merge-level-2.ogg", volume: 0.84 },
   merge3: { path: "sfx/merge-level-3.ogg", volume: 0.88 },
+  fire: { path: "combat/fire.ogg", volume: 0.46 },
+  poison: { path: "combat/poison.ogg", volume: 0.42 },
+  shield: { path: "combat/shield.ogg", volume: 0.46 },
+  heal: { path: "combat/heal.ogg", volume: 0.48 },
+  hit: { path: "combat/hit.ogg", volume: 0.46 },
   victory: { path: "sfx/result-victory.ogg", volume: 0.9 },
   defeat: { path: "sfx/result-defeat.ogg", volume: 0.86 },
 };
@@ -146,6 +162,9 @@ let currentAmbience: HTMLAudioElement | null = null;
 let activationListenersInstalled = false;
 const preloadedSounds = new Map<GameSound, HTMLAudioElement>();
 const activeOneShots = new Set<HTMLAudioElement>();
+const activeCombatOneShots = new Set<HTMLAudioElement>();
+const lastCombatSoundAt = new Map<CombatSound, number>();
+let lastAnyCombatSoundAt = Number.NEGATIVE_INFINITY;
 const fadeVersions = new WeakMap<HTMLMediaElement, number>();
 
 function assetUrl(path: string): string {
@@ -351,14 +370,19 @@ export function stopGameAudio(): void {
     sound.pause();
   }
   activeOneShots.clear();
+  activeCombatOneShots.clear();
+  lastCombatSoundAt.clear();
+  lastAnyCombatSoundAt = Number.NEGATIVE_INFINITY;
   currentMusic = null;
   currentMusicTrack = null;
   currentAmbience = null;
 }
 
-export function playGameSound(sound: GameSound): void {
-  if (typeof window === "undefined") return;
-  const file = SOUND_FILES[sound];
+function playFileSound(
+  sound: GameSound,
+  file: AudioFile,
+  combat = false,
+): void {
   if (!file) {
     playTone(sound);
     return;
@@ -370,7 +394,11 @@ export function playGameSound(sound: GameSound): void {
     : createMedia(file.path, false);
   media.volume = file.volume;
   activeOneShots.add(media);
-  const cleanup = () => activeOneShots.delete(media);
+  if (combat) activeCombatOneShots.add(media);
+  const cleanup = () => {
+    activeOneShots.delete(media);
+    activeCombatOneShots.delete(media);
+  };
   media.addEventListener("ended", cleanup, { once: true });
   media.addEventListener("error", cleanup, { once: true });
 
@@ -380,4 +408,87 @@ export function playGameSound(sound: GameSound): void {
     cleanup();
     playTone(sound);
   });
+}
+
+export function getCombatSoundPlaybackPolicy(
+  speed: number,
+  tier: CombatSoundTier,
+): CombatSoundPlaybackPolicy {
+  if (tier === "hero") {
+    return {
+      minIntervalMs: 120,
+      sameSoundIntervalMs: 260,
+      maxVoices: 2,
+    };
+  }
+  if (speed >= 4) {
+    return {
+      minIntervalMs: 320,
+      sameSoundIntervalMs: 760,
+      maxVoices: 1,
+    };
+  }
+  if (speed >= 2) {
+    return {
+      minIntervalMs: 240,
+      sameSoundIntervalMs: 600,
+      maxVoices: 2,
+    };
+  }
+  return {
+    minIntervalMs: 180,
+    sameSoundIntervalMs: 450,
+    maxVoices: 2,
+  };
+}
+
+export function playCombatSound(
+  sound: CombatSound,
+  speed: number,
+  tier: CombatSoundTier,
+): void {
+  if (typeof window === "undefined") return;
+  const file = SOUND_FILES[sound];
+  if (!file) {
+    playTone(sound);
+    return;
+  }
+
+  const now = performance.now();
+  const policy = getCombatSoundPlaybackPolicy(speed, tier);
+  const lastSameSoundAt =
+    lastCombatSoundAt.get(sound) ?? Number.NEGATIVE_INFINITY;
+
+  if (
+    tier !== "hero" &&
+    (now - lastAnyCombatSoundAt < policy.minIntervalMs ||
+      now - lastSameSoundAt < policy.sameSoundIntervalMs ||
+      activeCombatOneShots.size >= policy.maxVoices)
+  ) {
+    return;
+  }
+
+  if (tier === "hero" && activeCombatOneShots.size >= policy.maxVoices) {
+    const oldest = activeCombatOneShots.values().next().value;
+    if (oldest) {
+      oldest.pause();
+      oldest.currentTime = 0;
+      activeCombatOneShots.delete(oldest);
+      activeOneShots.delete(oldest);
+    }
+  }
+
+  lastAnyCombatSoundAt = now;
+  lastCombatSoundAt.set(sound, now);
+  playFileSound(sound, file, true);
+}
+
+export function playGameSound(sound: GameSound): void {
+  if (typeof window === "undefined") return;
+  const file = SOUND_FILES[sound];
+  if (!file) {
+    playTone(sound);
+    return;
+  }
+  playFileSound(sound, file);
 }

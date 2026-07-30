@@ -24,6 +24,7 @@ import {
 import {
   createCombatBeats,
   createEmptyCombatStatuses,
+  getCombatBeatSoundCue,
   getCombatBeatTiming,
   getImportantCombatMessage,
   isStatusTick,
@@ -46,12 +47,13 @@ import {
   type FloatingCombatNumberType,
 } from "./combatFloatingNumbers";
 import {
+  playCombatSound,
   playGameSound,
   preloadGameAudio,
   setGameAudioScene,
   stopGameAudio,
+  type CombatSound,
   type GameAudioScene,
-  type GameSound,
 } from "./audio";
 import { FAMILY_META, ITEM_BY_ID } from "./data";
 import {
@@ -234,7 +236,7 @@ function eventIcon(kind: CombatEventKind): UiAsset {
 function combatSound(
   event: CombatEvent,
   source: EventSource | null,
-): GameSound {
+): CombatSound {
   if (event.kind === "poison" || event.kind === "poisonBurst") return "poison";
   if (event.kind === "heal") return "heal";
   if (
@@ -1752,6 +1754,7 @@ export default function Game() {
           speedRef.current,
         );
         const firstContribution = nextBeat.contributions[0] ?? null;
+        const soundCue = getCombatBeatSoundCue(nextBeat);
         visibleSimulationTimeMs = nextBeat.time;
         beatIndex += 1;
         beatVisible = true;
@@ -1813,16 +1816,20 @@ export default function Game() {
             );
             setFloatingNumbers(activeFloatingNumbers);
           }
-          playGameSound(
-            combatSound(
-              contribution.event,
-              findEventSource(
-                contribution.event,
-                game.board,
-                opponent.board,
+          if (soundCue?.contributionId === contribution.id) {
+            playCombatSound(
+              combatSound(
+                soundCue.event,
+                findEventSource(
+                  soundCue.event,
+                  game.board,
+                  opponent.board,
+                ),
               ),
-            ),
-          );
+              speedRef.current,
+              nextBeat.tier,
+            );
+          }
           setBattleView((current) => {
             if (current?.beatId !== nextBeat.id) return current;
             const landedContributionIds = [

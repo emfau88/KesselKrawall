@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createCombatBeats,
+  getCombatBeatSoundCue,
   getCombatBeatTiming,
   getImportantCombatMessage,
   isStatusTick,
 } from "../app/game/combatPresentation";
+import { getCombatSoundPlaybackPolicy } from "../app/game/audio";
 import {
   createCombatActivationTimeline,
   getCombatCooldownState,
@@ -1307,6 +1309,65 @@ test("combat director keeps volleys causal and status ticks separate", () => {
       assert.ok(beat.events.every((event) => !isStatusTick(event)));
     }
   }
+});
+
+test("combat audio selects at most one cue per beat and skips status ticks", () => {
+  const events = [
+    combatEvent({
+      time: 500,
+      sourceUid: "first",
+    }),
+    combatEvent({
+      time: 600,
+      sourceUid: "second",
+      amount: 8,
+    }),
+    combatEvent({
+      time: 1_000,
+      sourceUid: "first",
+    }),
+    combatEvent({
+      time: 1_100,
+      sourceUid: "second",
+      amount: 8,
+    }),
+    combatEvent({
+      time: 2_000,
+      kind: "poison",
+      sourceUid: "poison",
+      label: "Gift tickt",
+      amount: 3,
+    }),
+  ];
+  const beats = createCombatBeats(events);
+  const attackBeat = beats.find((beat) => beat.tier === "standard");
+  const statusBeat = beats.find((beat) => beat.tier === "ambient");
+
+  assert.ok(attackBeat);
+  assert.equal(attackBeat.contributions.length, 2);
+  const cue = getCombatBeatSoundCue(attackBeat);
+  assert.ok(cue);
+  assert.ok(
+    attackBeat.contributions.some(
+      (contribution) => contribution.id === cue.contributionId,
+    ),
+  );
+  assert.ok(statusBeat);
+  assert.equal(getCombatBeatSoundCue(statusBeat), null);
+});
+
+test("combat audio becomes more restrictive at higher playback speeds", () => {
+  const normal = getCombatSoundPlaybackPolicy(1, "standard");
+  const fast = getCombatSoundPlaybackPolicy(2, "standard");
+  const fastest = getCombatSoundPlaybackPolicy(4, "standard");
+  const hero = getCombatSoundPlaybackPolicy(4, "hero");
+
+  assert.ok(normal.minIntervalMs < fast.minIntervalMs);
+  assert.ok(fast.minIntervalMs < fastest.minIntervalMs);
+  assert.ok(normal.sameSoundIntervalMs < fast.sameSoundIntervalMs);
+  assert.ok(fast.sameSoundIntervalMs < fastest.sameSoundIntervalMs);
+  assert.equal(fastest.maxVoices, 1);
+  assert.equal(hero.maxVoices, 2);
 });
 
 test("floating combat numbers represent impacts but not status application", () => {

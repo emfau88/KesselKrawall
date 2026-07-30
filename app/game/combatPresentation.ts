@@ -49,6 +49,11 @@ export interface CombatBeat {
   statuses: CombatStatusSnapshot;
 }
 
+export interface CombatSoundCue {
+  event: CombatEvent;
+  contributionId: string;
+}
+
 interface MutableSideStatus {
   poison: number;
   burn: Map<string, number>;
@@ -507,6 +512,21 @@ function mergeCompactBeats(beats: AtomicCombatBeat[]): CombatBeat[] {
 
 export function createCombatBeats(events: CombatEvent[]): CombatBeat[] {
   return mergeCompactBeats(createAtomicCombatBeats(events));
+}
+
+export function getCombatBeatSoundCue(
+  beat: CombatBeat,
+): CombatSoundCue | null {
+  if (isStatusTick(beat.event)) return null;
+  const contribution =
+    beat.contributions.find((candidate) =>
+      candidate.events.includes(beat.event),
+    ) ?? beat.contributions[0];
+  if (!contribution) return null;
+  return {
+    event: beat.event,
+    contributionId: contribution.id,
+  };
 }
 
 export function getCombatBeatTiming(
