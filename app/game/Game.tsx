@@ -47,9 +47,11 @@ import {
   type FloatingCombatNumberType,
 } from "./combatFloatingNumbers";
 import {
+  activateGameAudio,
   playCombatSound,
   playGameSound,
   preloadGameAudio,
+  setCombatSoundsEnabled as setCombatSoundsPlaybackEnabled,
   setGameAudioScene,
   stopGameAudio,
   type CombatSound,
@@ -108,6 +110,7 @@ import type {
 
 const ROMAN_LEVEL = ["", "I", "II", "III"] as const;
 const BUILD_HASH = process.env.NEXT_PUBLIC_BUILD_SHA ?? "local";
+const COMBAT_SOUNDS_STORAGE_KEY = "kessel-krawall:combat-sounds";
 const COMBAT_VFX_ASSETS = [
   "vfx-fire",
   "vfx-fire-projectile",
@@ -1377,6 +1380,18 @@ export default function Game() {
   const [hydrated, setHydrated] = useState(false);
   const [hasStoredRun, setHasStoredRun] = useState(false);
   const [confirmNewRun, setConfirmNewRun] = useState(false);
+  const [showAudioSettings, setShowAudioSettings] = useState(false);
+  const [audioActivated, setAudioActivated] = useState(false);
+  const [combatSoundsEnabled, setCombatSoundsEnabled] = useState(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      return (
+        window.localStorage.getItem(COMBAT_SOUNDS_STORAGE_KEY) !== "off"
+      );
+    } catch {
+      return true;
+    }
+  });
   const [feedback, setFeedback] = useState("Bereite deinen Kessel vor.");
   const [mergeNotices, setMergeNotices] = useState<MergeNotice[]>([]);
   const [busy, setBusy] = useState(false);
@@ -1472,6 +1487,24 @@ export default function Game() {
   useEffect(() => {
     preloadGameAudio();
     return () => stopGameAudio();
+  }, []);
+
+  useEffect(() => {
+    setCombatSoundsPlaybackEnabled(combatSoundsEnabled);
+  }, [combatSoundsEnabled]);
+
+  useEffect(() => {
+    const markAudioActivated = () => {
+      setAudioActivated(true);
+      document.removeEventListener("pointerdown", markAudioActivated);
+      document.removeEventListener("keydown", markAudioActivated);
+    };
+    document.addEventListener("pointerdown", markAudioActivated);
+    document.addEventListener("keydown", markAudioActivated);
+    return () => {
+      document.removeEventListener("pointerdown", markAudioActivated);
+      document.removeEventListener("keydown", markAudioActivated);
+    };
   }, []);
 
   useEffect(() => {
@@ -1589,6 +1622,15 @@ export default function Game() {
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
   }, [confirmNewRun]);
+
+  useEffect(() => {
+    if (!showAudioSettings) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowAudioSettings(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [showAudioSettings]);
 
   useEffect(() => {
     if (screen !== "game" || game.phase !== "battle" || !combat) return;
@@ -2240,6 +2282,27 @@ export default function Game() {
     setScreen("menu");
   }
 
+  function handleOpenAudioSettings() {
+    activateGameAudio();
+    setAudioActivated(true);
+    setConfirmNewRun(false);
+    setShowAudioSettings(true);
+  }
+
+  function handleCombatSoundsToggle() {
+    const enabled = !combatSoundsEnabled;
+    setCombatSoundsEnabled(enabled);
+    setCombatSoundsPlaybackEnabled(enabled);
+    try {
+      window.localStorage.setItem(
+        COMBAT_SOUNDS_STORAGE_KEY,
+        enabled ? "on" : "off",
+      );
+    } catch {
+      // Audio preferences remain active for the current session.
+    }
+  }
+
   async function handleFullscreen() {
     const fullscreenDocument = document as WebkitFullscreenDocument;
     const fullscreenElement =
@@ -2384,6 +2447,60 @@ export default function Game() {
     : isFullscreen
       ? "Vollbild verlassen"
       : "Vollbild aktivieren";
+  const audioSettingsLabel = audioActivated
+    ? "Audio"
+    : "Ton aktivieren";
+  const audioSettingsDialog = showAudioSettings ? (
+    <div
+      className="audio-settings-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) setShowAudioSettings(false);
+      }}
+    >
+      <section
+        className="audio-settings-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="audio-settings-title"
+        aria-describedby="audio-settings-description"
+      >
+        <button
+          type="button"
+          className="audio-settings-close"
+          onClick={() => setShowAudioSettings(false)}
+          aria-label="Audio-Einstellungen schließen"
+        >
+          ×
+        </button>
+        <span className="eyebrow">TON &amp; ATMOSPHÄRE</span>
+        <h2 id="audio-settings-title">Audio-Einstellungen</h2>
+        <p id="audio-settings-description">
+          Der Ton ist aktiviert. Kampfeffekte kannst du unabhängig von Musik,
+          Menü- und Ergebnissounds einstellen.
+        </p>
+        <button
+          type="button"
+          className="audio-setting-row"
+          role="switch"
+          aria-checked={combatSoundsEnabled}
+          onClick={handleCombatSoundsToggle}
+        >
+          <span className="audio-setting-copy">
+            <strong>Kampfsounds</strong>
+            <small>Feuer, Gift, Schild, Heilung und Treffer</small>
+          </span>
+          <span className="audio-switch" aria-hidden="true">
+            <i />
+          </span>
+          <b>{combatSoundsEnabled ? "AN" : "AUS"}</b>
+        </button>
+        <small className="audio-settings-note">
+          Die Auswahl wird auf diesem Gerät gespeichert.
+        </small>
+      </section>
+    </div>
+  ) : null;
 
   if (screen === "menu") {
     const menuOpponent = getCurrentOpponent(game);
@@ -2422,6 +2539,24 @@ export default function Game() {
                 {runStateLabel}
               </span>
             )}
+            <button
+              type="button"
+              className={`audio-settings-button ${
+                audioActivated ? "" : "needs-activation"
+              }`}
+              onClick={handleOpenAudioSettings}
+              aria-label={
+                audioActivated
+                  ? "Audio-Einstellungen öffnen"
+                  : "Ton aktivieren und Einstellungen öffnen"
+              }
+              aria-haspopup="dialog"
+              aria-expanded={showAudioSettings}
+              title={audioSettingsLabel}
+            >
+              <span className="audio-button-glyph" aria-hidden="true">♪</span>
+              <span>{audioSettingsLabel}</span>
+            </button>
             <button
               type="button"
               className="menu-fullscreen-button"
@@ -2614,6 +2749,7 @@ export default function Game() {
             </section>
           </div>
         )}
+        {audioSettingsDialog}
       </main>
     );
   }
@@ -2684,6 +2820,17 @@ export default function Game() {
           </button>
           <button
             type="button"
+            className="audio-settings-button is-compact"
+            onClick={handleOpenAudioSettings}
+            aria-label="Audio-Einstellungen öffnen"
+            aria-haspopup="dialog"
+            aria-expanded={showAudioSettings}
+            title="Audio-Einstellungen"
+          >
+            <span className="audio-button-glyph" aria-hidden="true">♪</span>
+          </button>
+          <button
+            type="button"
             className="fullscreen-button"
             onClick={handleFullscreen}
             aria-label={fullscreenLabel}
@@ -2698,6 +2845,7 @@ export default function Game() {
           </button>
         </div>
       </header>
+      {audioSettingsDialog}
 
       {game.phase !== "shop" && (
         <section

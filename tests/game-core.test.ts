@@ -7,7 +7,11 @@ import {
   getImportantCombatMessage,
   isStatusTick,
 } from "../app/game/combatPresentation";
-import { getCombatSoundPlaybackPolicy } from "../app/game/audio";
+import {
+  getCombatSoundPlaybackPolicy,
+  getCombatSoundsEnabled,
+  setCombatSoundsEnabled,
+} from "../app/game/audio";
 import {
   createCombatActivationTimeline,
   getCombatCooldownState,
@@ -1368,6 +1372,13 @@ test("combat audio becomes more restrictive at higher playback speeds", () => {
   assert.ok(fast.sameSoundIntervalMs < fastest.sameSoundIntervalMs);
   assert.equal(fastest.maxVoices, 1);
   assert.equal(hero.maxVoices, 2);
+});
+
+test("combat sounds can be disabled independently", () => {
+  setCombatSoundsEnabled(false);
+  assert.equal(getCombatSoundsEnabled(), false);
+  setCombatSoundsEnabled(true);
+  assert.equal(getCombatSoundsEnabled(), true);
 });
 
 test("floating combat numbers represent impacts but not status application", () => {

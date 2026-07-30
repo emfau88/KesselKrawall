@@ -61,11 +61,11 @@ const SOUND_FILES: Partial<Record<GameSound, AudioFile>> = {
   cauldronFull: { path: "sfx/cauldron-full.ogg", volume: 0.82 },
   merge2: { path: "sfx/merge-level-2.ogg", volume: 0.84 },
   merge3: { path: "sfx/merge-level-3.ogg", volume: 0.88 },
-  fire: { path: "combat/fire.ogg", volume: 0.46 },
-  poison: { path: "combat/poison.ogg", volume: 0.42 },
-  shield: { path: "combat/shield.ogg", volume: 0.46 },
-  heal: { path: "combat/heal.ogg", volume: 0.48 },
-  hit: { path: "combat/hit.ogg", volume: 0.46 },
+  fire: { path: "combat/fire.ogg", volume: 0.53 },
+  poison: { path: "combat/poison.ogg", volume: 0.48 },
+  shield: { path: "combat/shield.ogg", volume: 0.53 },
+  heal: { path: "combat/heal.ogg", volume: 0.55 },
+  hit: { path: "combat/hit.ogg", volume: 0.53 },
   victory: { path: "sfx/result-victory.ogg", volume: 0.9 },
   defeat: { path: "sfx/result-defeat.ogg", volume: 0.86 },
 };
@@ -160,6 +160,7 @@ let currentMusicTrack: MusicTrack | null = null;
 let currentMusic: HTMLAudioElement | null = null;
 let currentAmbience: HTMLAudioElement | null = null;
 let activationListenersInstalled = false;
+let combatSoundsEnabled = true;
 const preloadedSounds = new Map<GameSound, HTMLAudioElement>();
 const activeOneShots = new Set<HTMLAudioElement>();
 const activeCombatOneShots = new Set<HTMLAudioElement>();
@@ -208,7 +209,10 @@ function fadeMedia(
 
   const update = (now: number) => {
     if (fadeVersions.get(media) !== version) return;
-    const progress = Math.min(1, (now - startedAt) / durationMs);
+    const progress = Math.max(
+      0,
+      Math.min(1, (now - startedAt) / durationMs),
+    );
     media.volume = startVolume + (targetVolume - startVolume) * progress;
     if (progress < 1) {
       window.requestAnimationFrame(update);
@@ -356,6 +360,28 @@ export function setGameAudioScene(scene: GameAudioScene): void {
   applyDesiredScene();
 }
 
+export function activateGameAudio(): void {
+  if (typeof window === "undefined") return;
+  handleUserActivation();
+}
+
+export function setCombatSoundsEnabled(enabled: boolean): void {
+  combatSoundsEnabled = enabled;
+  lastCombatSoundAt.clear();
+  lastAnyCombatSoundAt = Number.NEGATIVE_INFINITY;
+  if (enabled) return;
+  for (const sound of activeCombatOneShots) {
+    sound.pause();
+    sound.currentTime = 0;
+    activeOneShots.delete(sound);
+  }
+  activeCombatOneShots.clear();
+}
+
+export function getCombatSoundsEnabled(): boolean {
+  return combatSoundsEnabled;
+}
+
 export function stopGameAudio(): void {
   removeActivationListeners();
   if (currentMusic) {
@@ -447,7 +473,7 @@ export function playCombatSound(
   speed: number,
   tier: CombatSoundTier,
 ): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || !combatSoundsEnabled) return;
   const file = SOUND_FILES[sound];
   if (!file) {
     playTone(sound);
