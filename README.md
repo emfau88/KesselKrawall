@@ -29,11 +29,12 @@ dem Gerät gespeichert.
 
 1. **Einkaufen:** Wähle im Hexenmarkt aus drei angebotenen Zutaten.
 2. **Aufbauen:** Belege fünf Plätze und ordne deinen Kessel per Tap um.
-3. **Mergen:** Drei gleiche Zutaten verschmelzen automatisch bis Level III.
-4. **Synergien bilden:** Kombiniere Feuer, Gift und Schutz sowie
+3. **Mergen:** Zwei gleiche Zutaten verschmelzen automatisch bis Level III.
+4. **Parken:** Ab Runde 5 hält eine passive Ablage genau eine Zutat für später.
+5. **Synergien bilden:** Kombiniere Feuer, Gift und Schutz sowie
    Nachbarschaftseffekte.
-5. **Kämpfen:** Dein Aufbau tritt automatisch gegen den nächsten Kessel an.
-6. **Anpassen:** Nutze Ergebnis und Itemstatistiken für die nächste Runde.
+6. **Kämpfen:** Dein Aufbau tritt automatisch gegen den nächsten Kessel an.
+7. **Anpassen:** Nutze Ergebnis und Itemstatistiken für die nächste Runde.
 
 Eine Kampagne führt über sieben Gegner zum Großkessel als finalem Boss. Drei
 Schutzsiegel verzeihen Fehler, aber nicht unbegrenzt.
@@ -55,6 +56,7 @@ Build im Kampf verhält.
 - vollständige Kampagne mit acht Kämpfen und Bossregel „Kesselzorn“
 - zwölf Zutaten in drei Familien, Merge-Kaskaden bis Level III
 - fünf per Tap umsortierbare Zutatenplätze
+- eine passive, ab Runde 5 freigeschaltete Ablage für genau eine Zutat
 - Shop, Verkauf, neue Angebote und lokale Spielstand-Speicherung
 - Feuer-, Gift- und Schutz-Synergien mit Nachbarschaftseffekten
 - deterministische Kampfsimulation mit klarer visueller Präsentation

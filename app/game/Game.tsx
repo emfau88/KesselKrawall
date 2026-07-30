@@ -66,11 +66,14 @@ import {
   getRoundReward,
   getSellValue,
   MAX_ROUNDS,
+  RESERVE_UNLOCK_ROUND,
   rerollShop,
   resetRun,
   selectOrSwapSlot,
+  sellReserve,
   sellSlot,
   showBattleResult,
+  swapSlotWithReserve,
 } from "./state";
 import { loadStoredGame, persistGame } from "./storage";
 import type {
@@ -145,6 +148,7 @@ interface MergeNotice {
   powerBefore: number;
   powerAfter: number;
   bonus: string | null;
+  targetArea: "board" | "reserve";
   step: number;
   total: number;
 }
@@ -724,6 +728,57 @@ function CauldronBoard({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function ReservePocket({
+  item,
+  selected,
+  onClick,
+}: {
+  item: GameState["reserve"];
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const definition = item ? ITEM_BY_ID[item.itemId] : null;
+  const label = definition
+    ? `Ablage: ${definition.name}, Level ${item!.level}. Passiv, zählt nicht für Kampf oder Synergie.`
+    : "Ablage: leer. Hier kann eine Zutat passiv aufbewahrt werden.";
+
+  return (
+    <div className="reserve-pocket">
+      <span className="reserve-pocket-label" aria-hidden="true">
+        ABLAGE
+        <small>PASSIV</small>
+      </span>
+      <button
+        type="button"
+        className={[
+          "board-slot",
+          "reserve-slot",
+          item ? "is-filled" : "is-empty",
+          selected ? "is-selected" : "",
+          definition ? familyClass(definition.family) : "",
+        ].join(" ")}
+        onClick={onClick}
+        aria-label={label}
+        aria-pressed={selected}
+        data-testid="reserve-slot"
+      >
+        {definition ? (
+          <>
+            <ArtSprite
+              asset={ITEM_ART[definition.id]}
+              className="item-icon"
+            />
+            <span className="item-level">{ROMAN_LEVEL[item!.level]}</span>
+            <span className={`item-family-dot ${familyClass(definition.family)}`} />
+          </>
+        ) : (
+          <span className="empty-plus" aria-hidden="true">+</span>
+        )}
+      </button>
     </div>
   );
 }
@@ -1312,6 +1367,7 @@ export default function Game() {
   const [combatPaused, setCombatPaused] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [showPowerHelp, setShowPowerHelp] = useState(false);
+  const [reserveSelected, setReserveSelected] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const combatPausedRef = useRef(combatPaused);
@@ -1336,8 +1392,11 @@ export default function Game() {
     }),
     [combat, game.board, opponent.board],
   );
-  const selectedItem =
-    game.selectedSlot === null ? null : game.board[game.selectedSlot];
+  const selectedItem = reserveSelected
+    ? game.reserve
+    : game.selectedSlot === null
+      ? null
+      : game.board[game.selectedSlot];
   const selectedDefinition = selectedItem
     ? ITEM_BY_ID[selectedItem.itemId]
     : null;
@@ -1881,6 +1940,7 @@ export default function Game() {
       announce(result.error);
       return;
     }
+    setReserveSelected(false);
     setGame(result.state);
     playGameSound("purchase");
     if (result.merges?.length) {
@@ -1903,6 +1963,7 @@ export default function Game() {
           powerBefore,
           powerAfter,
           bonus: mergeBonusLabel(definition, merge.toLevel),
+          targetArea: merge.target.area,
           step: index + 1,
           total,
         };
@@ -1911,11 +1972,19 @@ export default function Game() {
       announce(
         total > 1
           ? `${total}-stufige Merge-Kaskade!`
-          : `${notices[0].label} ist verschmolzen.`,
+          : `${notices[0].label} ist ${
+              notices[0].targetArea === "reserve"
+                ? "in der Ablage "
+                : ""
+            }verschmolzen.`,
       );
       setBusy(true);
     } else {
-      announce("Zutat gekauft.");
+      announce(
+        result.purchaseLocation?.area === "reserve"
+          ? "Zutat in der Ablage geparkt. Dort wirkt sie nicht im Kampf."
+          : "Zutat gekauft.",
+      );
     }
   }
 
@@ -1930,6 +1999,14 @@ export default function Game() {
 
   function handleSlot(slot: number) {
     if (busy) return;
+    if (reserveSelected) {
+      const result = swapSlotWithReserve(game, slot);
+      if (result.error) return announce(result.error);
+      setReserveSelected(false);
+      setGame(result.state);
+      announce("Zutat zwischen Kessel und Ablage verschoben.");
+      return;
+    }
     const wasSelected = game.selectedSlot;
     const result = selectOrSwapSlot(game, slot);
     setGame(result.state);
@@ -1940,10 +2017,35 @@ export default function Game() {
     }
   }
 
+  function handleReserve() {
+    if (busy || game.round < RESERVE_UNLOCK_ROUND) return;
+    if (game.selectedSlot !== null) {
+      const result = swapSlotWithReserve(game, game.selectedSlot);
+      if (result.error) return announce(result.error);
+      setReserveSelected(false);
+      setGame(result.state);
+      announce("Zutat zwischen Kessel und Ablage verschoben.");
+      return;
+    }
+    if (!game.reserve) {
+      announce("Die Ablage ist leer. Wähle zuerst eine Zutat im Kessel.");
+      return;
+    }
+    setReserveSelected((current) => !current);
+    announce(
+      reserveSelected
+        ? "Auswahl aufgehoben."
+        : "Ablage gewählt. Tippe einen Kesselplatz zum Tauschen.",
+    );
+  }
+
   function handleSell() {
-    if (game.selectedSlot === null) return;
-    const result = sellSlot(game, game.selectedSlot);
+    if (!reserveSelected && game.selectedSlot === null) return;
+    const result = reserveSelected
+      ? sellReserve(game)
+      : sellSlot(game, game.selectedSlot!);
     if (result.error) return announce(result.error);
+    setReserveSelected(false);
     setGame(result.state);
     announce(`Verkauft für ${result.goldDelta} Gold.`);
   }
@@ -1964,6 +2066,7 @@ export default function Game() {
     const battle = simulateBattle(game.board, opponent);
     const battleState = { ...result.state, pendingBattle: battle };
     persistGame(window.localStorage, battleState);
+    setReserveSelected(false);
     updateCombatPause(false);
     setCombat(battle);
     setBattleClock(0);
@@ -1977,6 +2080,7 @@ export default function Game() {
     if (!combat) return;
     const outcome = combat.winner;
     updateCombatPause(false);
+    setReserveSelected(false);
     setGame((current) => advanceAfterBattle(current, outcome));
     setCombat(null);
     setBattleView(null);
@@ -1992,11 +2096,13 @@ export default function Game() {
       );
     } else {
       announce(
-        outcome === "player"
-          ? "Siegbonus erhalten. Nächster Gegner!"
-          : outcome === "draw"
-            ? "Unentschieden: kein Siegelverlust, kein Siegbonus."
-            : "Ein Siegel ist gebrochen.",
+        game.round + 1 === RESERVE_UNLOCK_ROUND
+          ? "Ablage freigeschaltet! Dort kannst du eine Zutat passiv parken."
+          : outcome === "player"
+            ? "Siegbonus erhalten. Nächster Gegner!"
+            : outcome === "draw"
+              ? "Unentschieden: kein Siegelverlust, kein Siegbonus."
+              : "Ein Siegel ist gebrochen.",
       );
     }
   }
@@ -2010,6 +2116,7 @@ export default function Game() {
     setBattleClock(0);
     setBattleEnding(null);
     setMergeNotices([]);
+    setReserveSelected(false);
     setBusy(false);
     announce("Ein neuer Kessel betritt den Wettstreit.");
   }
@@ -2044,6 +2151,7 @@ export default function Game() {
       setBattleEnding(null);
     }
     setMergeNotices([]);
+    setReserveSelected(false);
     setBusy(false);
     setShowPowerHelp(false);
     setHasStoredRun(true);
@@ -2791,17 +2899,30 @@ export default function Game() {
                   </p>
                 </div>
               )}
-              <CauldronBoard
-                board={game.board}
-                side="player"
-                cauldronAsset="cauldron-player"
-                selectedSlot={game.selectedSlot}
-                activeUids={[]}
-                hitKind={null}
-                interactive
-                showCauldron={false}
-                onSlot={handleSlot}
-              />
+              <div
+                className={`workbench-inventory-row ${
+                  game.round >= RESERVE_UNLOCK_ROUND ? "has-reserve" : ""
+                }`}
+              >
+                <CauldronBoard
+                  board={game.board}
+                  side="player"
+                  cauldronAsset="cauldron-player"
+                  selectedSlot={game.selectedSlot}
+                  activeUids={[]}
+                  hitKind={null}
+                  interactive
+                  showCauldron={false}
+                  onSlot={handleSlot}
+                />
+                {game.round >= RESERVE_UNLOCK_ROUND && (
+                  <ReservePocket
+                    item={game.reserve}
+                    selected={reserveSelected}
+                    onClick={handleReserve}
+                  />
+                )}
+              </div>
               <SynergyStrip board={game.board} />
             </section>
           </div>
@@ -2826,8 +2947,14 @@ export default function Game() {
                   <strong>{selectedDefinition.name} {ROMAN_LEVEL[selectedItem.level]}</strong>
                   <p>{selectedDefinition.descriptions[selectedItem.level - 1]}</p>
                   <small className="inspector-synergy">
-                    {FAMILY_META[selectedDefinition.family].name} · zählt{" "}
-                    {2 ** (selectedItem.level - 1)} für die 3er-Synergie
+                    {reserveSelected ? (
+                      <>Ablage · passiv · zählt nicht für Kampf oder Synergie</>
+                    ) : (
+                      <>
+                        {FAMILY_META[selectedDefinition.family].name} · zählt{" "}
+                        {2 ** (selectedItem.level - 1)} für die 3er-Synergie
+                      </>
+                    )}
                   </small>
                 </div>
                 <button type="button" className="sell-button" onClick={handleSell}>
@@ -2839,18 +2966,43 @@ export default function Game() {
             <div className="offer-grid">
               {game.offers.map((offer) => {
                 const definition = ITEM_BY_ID[offer.itemId];
+                const reserveUnlocked =
+                  game.round >= RESERVE_UNLOCK_ROUND;
                 const mergePreview = offer.bought
                   ? null
-                  : getPurchaseMergePreview(game.board, offer.itemId);
+                  : getPurchaseMergePreview(
+                      game.board,
+                      offer.itemId,
+                      game.reserve,
+                      reserveUnlocked,
+                    );
+                const directMatch = [...game.board, game.reserve].some(
+                  (item) =>
+                    item?.itemId === offer.itemId && item.level === 1,
+                );
+                const hasPurchaseSpace =
+                  game.board.some((item) => item === null) ||
+                  directMatch ||
+                  (reserveUnlocked && game.reserve === null);
+                const parksInReserve =
+                  reserveUnlocked &&
+                  game.board.every(Boolean) &&
+                  !directMatch &&
+                  game.reserve === null;
                 const disabled =
                   offer.bought ||
                   game.gold < definition.cost ||
+                  !hasPurchaseSpace ||
                   busy;
                 return (
                   <button
                     type="button"
                     key={offer.uid}
-                    className={`shop-card ${familyClass(definition.family)} ${offer.bought ? "is-bought" : ""}`}
+                    className={`shop-card ${familyClass(definition.family)} ${
+                      offer.bought ? "is-bought" : ""
+                    } ${
+                      !offer.bought && !hasPurchaseSpace ? "is-blocked" : ""
+                    }`}
                     onClick={() => handleBuy(offer.uid)}
                     disabled={disabled}
                     data-testid={`offer-${offer.uid}`}
@@ -2875,14 +3027,23 @@ export default function Game() {
                     </span>
                     {mergePreview && (
                       <span className="offer-merge-target">
-                        Merge bleibt auf Slot {mergePreview.targetSlot + 1}
+                        {mergePreview.target.area === "board"
+                          ? `Merge bleibt auf Platz ${mergePreview.target.slot + 1}`
+                          : "Merge in der Ablage"}
                         {" · "}
                         {ROMAN_LEVEL[mergePreview.resultLevel]}
+                      </span>
+                    )}
+                    {!mergePreview && parksInReserve && (
+                      <span className="offer-merge-target is-reserve-target">
+                        Landet passiv in der Ablage
                       </span>
                     )}
                     <span className="offer-price">
                       {offer.bought ? (
                         "GEKAUFT"
+                      ) : !hasPurchaseSpace ? (
+                        "VOLL"
                       ) : (
                         <>
                           <UiIcon asset="coin" className="price-icon" />
@@ -3213,16 +3374,21 @@ export default function Game() {
           {mergeNotice.bonus && (
             <div className="merge-bonus">{mergeNotice.bonus}</div>
           )}
-          {mergeNotice.step === mergeNotice.total && (
-            <div className="merge-power">
-              <UiIcon asset="power" className="merge-power-icon" />
-              <span>MACHT</span>
-              <b>{mergeNotice.powerBefore}</b>
-              <i aria-hidden="true">→</i>
-              <strong>{mergeNotice.powerAfter}</strong>
-              <em>+{mergeNotice.powerAfter - mergeNotice.powerBefore}</em>
-            </div>
-          )}
+          {mergeNotice.step === mergeNotice.total &&
+            (mergeNotice.targetArea === "reserve" ? (
+              <div className="merge-bonus">
+                In der Ablage · wirkt erst im Kessel
+              </div>
+            ) : (
+              <div className="merge-power">
+                <UiIcon asset="power" className="merge-power-icon" />
+                <span>MACHT</span>
+                <b>{mergeNotice.powerBefore}</b>
+                <i aria-hidden="true">→</i>
+                <strong>{mergeNotice.powerAfter}</strong>
+                <em>+{mergeNotice.powerAfter - mergeNotice.powerBefore}</em>
+              </div>
+            ))}
         </div>
       )}
 

@@ -19,6 +19,7 @@ Online-Systeme.
 - acht Kämpfe: sieben reguläre Gegner und ein Boss
 - zwölf Zutaten: je vier aus Feuer, Gift und Schutz
 - maximal fünf belegte Kesselplätze
+- ab Runde 5 ein passiver Ablageplatz außerhalb des aktiven Aufbaus
 - drei Merge-Stufen
 - eine Synergieschwelle bei drei Familienpunkten
 - drei Schutzsiegel; ab Runde 2 verbraucht eine Niederlage ein Siegel
@@ -56,8 +57,8 @@ angekündigt.
 - Nicht ausgegebenes Gold bleibt erhalten.
 - Verkaufswert: 50 % der investierten Basiskosten, abgerundet, mindestens
   1 Gold. Level I/II/III gelten als 1/2/4 investierte Kopien.
-- Ein Kauf bei vollem Board ist erlaubt, wenn das neue Level-I-Item sofort mit
-  einer vorhandenen Level-I-Kopie verschmilzt.
+- Ein Kauf bei vollem Kessel ist erlaubt, wenn das neue Level-I-Item sofort
+  verschmilzt oder die ab Runde 5 verfügbare Ablage frei ist.
 
 Die ersten Angebote sind verlässlich Chilischote, Schleimpilz und Eierschale
 und decken damit alle drei Familien ab. In den ersten Runden enthält
@@ -71,7 +72,12 @@ damit ein schlechter Zufallsstart die Kampagne nicht entscheidet.
 - In der Kaufphase wird ein Item angetippt und anschließend durch Tap auf einen
   zweiten Slot kostenlos getauscht.
 - Im Kampf ist die Anordnung gesperrt.
+- Ab Runde 5 steht eine einzelne Ablage zur Verfügung. Das dort geparkte Item
+  kämpft nicht, zählt nicht für Synergien oder Macht und kann in der Kaufphase
+  mit einem Kesselplatz getauscht oder verkauft werden.
 - Zwei gleiche Items derselben Stufe verschmelzen automatisch.
+- Merges berücksichtigen Kessel und Ablage gemeinsam. Wenn eine Kaskade ein
+  passendes Item im Kessel erreicht, bleibt das Ergebnis im aktiven Kessel.
 - Bei einer Kauf-Kaskade bleibt immer die bereits vorhandene, durch den Kauf
   aufgewertete Zutat an ihrem Slot. Das Merge-Ziel wird vor dem Kauf angezeigt.
 - Level III ist die Maximalstufe.

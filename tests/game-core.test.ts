@@ -39,7 +39,10 @@ import {
   getCurrentOpponent,
   getSellValue,
   isSynergyActive,
+  RESERVE_UNLOCK_ROUND,
   sanitizeStoredState,
+  sellReserve,
+  swapSlotWithReserve,
 } from "../app/game/state";
 import { loadStoredGame, persistGame } from "../app/game/storage";
 import type {
@@ -120,8 +123,8 @@ test("full board purchase performs an immediate merge and cascade", () => {
   assert.equal(result.error, undefined);
   assert.equal(result.merges?.length, 2);
   assert.deepEqual(
-    result.merges?.map((merge) => merge.consumedSlot),
-    [null, 1],
+    result.merges?.map((merge) => merge.consumed),
+    [null, { area: "board", slot: 1 }],
   );
   assert.equal(result.state.board[0]?.itemId, "chili");
   assert.equal(result.state.board[0]?.level, 3);
@@ -146,7 +149,7 @@ test("purchase merge keeps the existing target slot through a cascade", () => {
 
   const preview = getPurchaseMergePreview(state.board, "chili");
   assert.deepEqual(preview, {
-    targetSlot: 4,
+    target: { area: "board", slot: 4 },
     resultLevel: 3,
     mergeCount: 2,
   });
@@ -155,7 +158,125 @@ test("purchase merge keeps the existing target slot through a cascade", () => {
   assert.equal(result.state.board[4]?.uid, "chili-one");
   assert.equal(result.state.board[4]?.level, 3);
   assert.equal(result.state.board[1], null);
-  assert.ok(result.merges?.every((merge) => merge.slot === 4));
+  assert.ok(
+    result.merges?.every(
+      (merge) =>
+        merge.target.area === "board" && merge.target.slot === 4,
+    ),
+  );
+});
+
+test("the passive reserve accepts one purchase from round five", () => {
+  const base = createInitialState(12);
+  const board = [
+    item("fire", "chili"),
+    item("poison", "slime-shroom"),
+    item("guard", "egg-shell"),
+    item("spoon", "gold-spoon"),
+    item("tuber", "healing-tuber"),
+  ];
+  const state: GameState = {
+    ...base,
+    round: RESERVE_UNLOCK_ROUND,
+    gold: 20,
+    board,
+    offers: [
+      { uid: "offer-tooth", itemId: "dragon-tooth", bought: false },
+    ],
+  };
+
+  const powerBefore = getPowerValue(state.board);
+  const result = buyOffer(state, "offer-tooth");
+
+  assert.equal(result.error, undefined);
+  assert.deepEqual(result.purchaseLocation, { area: "reserve" });
+  assert.equal(result.state.reserve?.itemId, "dragon-tooth");
+  assert.deepEqual(result.state.board, board);
+  assert.equal(getPowerValue(result.state.board), powerBefore);
+});
+
+test("the reserve stays locked before round five", () => {
+  const base = createInitialState(13);
+  const state: GameState = {
+    ...base,
+    round: RESERVE_UNLOCK_ROUND - 1,
+    gold: 20,
+    board: [
+      item("fire", "chili"),
+      item("poison", "slime-shroom"),
+      item("guard", "egg-shell"),
+      item("spoon", "gold-spoon"),
+      item("tuber", "healing-tuber"),
+    ],
+    offers: [
+      { uid: "offer-tooth", itemId: "dragon-tooth", bought: false },
+    ],
+  };
+
+  const result = buyOffer(state, "offer-tooth");
+  assert.match(result.error ?? "", /Kessel ist voll/);
+  assert.equal(result.state.reserve, null);
+  assert.equal(result.state.gold, state.gold);
+});
+
+test("a reserve merge cascades back into the active board", () => {
+  const base = createInitialState(14);
+  const state: GameState = {
+    ...base,
+    round: RESERVE_UNLOCK_ROUND,
+    gold: 20,
+    board: [
+      item("chili-two", "chili", 2),
+      item("poison", "slime-shroom"),
+      item("guard", "egg-shell"),
+      item("spoon", "gold-spoon"),
+      item("tuber", "healing-tuber"),
+    ],
+    reserve: item("chili-one", "chili"),
+    offers: [{ uid: "offer-chili", itemId: "chili", bought: false }],
+  };
+
+  const preview = getPurchaseMergePreview(
+    state.board,
+    "chili",
+    state.reserve,
+    true,
+  );
+  assert.deepEqual(preview, {
+    target: { area: "board", slot: 0 },
+    resultLevel: 3,
+    mergeCount: 2,
+  });
+
+  const result = buyOffer(state, "offer-chili");
+  assert.equal(result.state.board[0]?.level, 3);
+  assert.equal(result.state.reserve, null);
+  assert.deepEqual(result.merges?.[0].target, { area: "reserve" });
+  assert.deepEqual(result.merges?.[1], {
+    itemId: "chili",
+    fromLevel: 2,
+    toLevel: 3,
+    target: { area: "board", slot: 0 },
+    consumed: { area: "reserve" },
+  });
+});
+
+test("board and reserve can be swapped and the reserve item sold", () => {
+  const base = createInitialState(15);
+  const state: GameState = {
+    ...base,
+    round: RESERVE_UNLOCK_ROUND,
+    board: [item("chili", "chili"), null, null, null, null],
+    reserve: item("guard", "egg-shell"),
+  };
+
+  const swapped = swapSlotWithReserve(state, 0);
+  assert.equal(swapped.state.board[0]?.uid, "guard");
+  assert.equal(swapped.state.reserve?.uid, "chili");
+
+  const sold = sellReserve(swapped.state);
+  assert.equal(sold.state.reserve, null);
+  assert.equal(sold.state.gold, swapped.state.gold + 1);
 });
 
 test("family weight preserves invested copies through merges", () => {
@@ -644,6 +765,16 @@ test("stored runs validate ids, levels, counters, and pending battles deeply", (
   );
 });
 
+test("version three saves migrate to an empty version four reserve", () => {
+  const legacy = JSON.parse(JSON.stringify(createInitialState(48)));
+  legacy.version = 3;
+  delete legacy.reserve;
+
+  const migrated = sanitizeStoredState(legacy);
+  assert.equal(migrated?.version, 4);
+  assert.equal(migrated?.reserve, null);
+});
+
 test("an active battle round-trips through the atomic save record", () => {
   const records = new Map<string, string>();
   const storage = {
@@ -662,12 +793,14 @@ test("an active battle round-trips through the atomic save record", () => {
     ...base,
     phase: "battle",
     board,
+    reserve: item("reserve-guard", "egg-shell"),
     pendingBattle: battle,
   };
 
   assert.equal(persistGame(storage, active), true);
   const restored = loadStoredGame(storage);
   assert.equal(restored?.phase, "battle");
+  assert.equal(restored?.reserve?.uid, "reserve-guard");
   assert.deepEqual(restored?.pendingBattle, battle);
 });
 

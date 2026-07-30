@@ -85,18 +85,23 @@ export interface MergeStep {
   itemId: string;
   fromLevel: ItemLevel;
   toLevel: ItemLevel;
-  slot: number;
-  consumedSlot: number | null;
+  target: ItemLocation;
+  consumed: ItemLocation | null;
 }
 
+export type ItemLocation =
+  | { area: "board"; slot: number }
+  | { area: "reserve" };
+
 export interface GameState {
-  version: 3;
+  version: 4;
   phase: GamePhase;
   round: number;
   gold: number;
   seals: number;
   victories: number;
   board: Board;
+  reserve: ItemInstance | null;
   offers: ShopOffer[];
   rerollsUsed: number;
   selectedSlot: number | null;

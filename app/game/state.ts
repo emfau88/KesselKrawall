@@ -6,6 +6,7 @@ import type {
   Family,
   GamePhase,
   GameState,
+  ItemLocation,
   ItemInstance,
   ItemLevel,
   MergeStep,
@@ -15,8 +16,12 @@ import type {
 export const BOARD_SIZE = 5;
 export const SYNERGY_THRESHOLD = 3;
 export const MAX_ROUNDS = CAMPAIGN_OPPONENTS.length;
-export const STORAGE_KEY = "kessel-krawall-run-v3";
-export const LEGACY_STORAGE_KEY = "kessel-krawall-run-v2";
+export const RESERVE_UNLOCK_ROUND = 5;
+export const STORAGE_KEY = "kessel-krawall-run-v4";
+export const LEGACY_STORAGE_KEYS = [
+  "kessel-krawall-run-v3",
+  "kessel-krawall-run-v2",
+] as const;
 const OPENING_ITEM_IDS = ["chili", "slime-shroom", "egg-shell"] as const;
 
 export interface ActionResult {
@@ -24,10 +29,11 @@ export interface ActionResult {
   error?: string;
   merges?: MergeStep[];
   goldDelta?: number;
+  purchaseLocation?: ItemLocation;
 }
 
 export interface PurchaseMergePreview {
-  targetSlot: number;
+  target: ItemLocation;
   resultLevel: ItemLevel;
   mergeCount: number;
 }
@@ -71,11 +77,11 @@ function chooseWeightedItem(
   random: number,
   duplicateCounts: Record<string, number>,
 ): string {
-  const boardItems = state.board.filter(
+  const inventoryItems = [...state.board, state.reserve].filter(
     (item): item is ItemInstance => item !== null,
   );
   const familyWeights = getFamilyWeights(state.board);
-  const ownedIds = new Set(boardItems.map((item) => item.itemId));
+  const ownedIds = new Set(inventoryItems.map((item) => item.itemId));
   const weighted = ITEMS.map((item) => {
     let weight = 1;
     weight += familyWeights[item.family] * 0.16;
@@ -127,13 +133,14 @@ function rollOffers(
 
 export function createInitialState(seed = 0x4b4b2026): GameState {
   const base: GameState = {
-    version: 3,
+    version: 4,
     phase: "shop",
     round: 1,
     gold: 7,
     seals: 3,
     victories: 0,
     board: Array.from({ length: BOARD_SIZE }, () => null),
+    reserve: null,
     offers: [],
     rerollsUsed: 0,
     selectedSlot: null,
@@ -194,73 +201,165 @@ export function getPowerValue(board: Board): number {
   return getPowerBreakdown(board).total;
 }
 
+interface MutableInventory {
+  board: Board;
+  reserve: ItemInstance | null;
+}
+
+interface InventoryMergeResult extends MutableInventory {
+  merges: MergeStep[];
+  location: ItemLocation | null;
+}
+
+function itemAt(
+  inventory: MutableInventory,
+  location: ItemLocation,
+): ItemInstance | null {
+  return location.area === "board"
+    ? inventory.board[location.slot] ?? null
+    : inventory.reserve;
+}
+
+function setItemAt(
+  inventory: MutableInventory,
+  location: ItemLocation,
+  item: ItemInstance | null,
+): void {
+  if (location.area === "board") inventory.board[location.slot] = item;
+  else inventory.reserve = item;
+}
+
+function sameLocation(left: ItemLocation, right: ItemLocation): boolean {
+  return (
+    left.area === right.area &&
+    (left.area === "reserve" ||
+      (right.area === "board" && left.slot === right.slot))
+  );
+}
+
+function matchingLocations(
+  inventory: MutableInventory,
+  itemId: string,
+  level: ItemLevel,
+): ItemLocation[] {
+  const locations: ItemLocation[] = [];
+  inventory.board.forEach((item, slot) => {
+    if (item?.itemId === itemId && item.level === level) {
+      locations.push({ area: "board", slot });
+    }
+  });
+  if (
+    inventory.reserve?.itemId === itemId &&
+    inventory.reserve.level === level
+  ) {
+    locations.push({ area: "reserve" });
+  }
+  return locations;
+}
+
+function chooseMergeSurvivor(
+  upgraded: ItemLocation,
+  other: ItemLocation,
+): [ItemLocation, ItemLocation] {
+  if (upgraded.area === "reserve" && other.area === "board") {
+    return [other, upgraded];
+  }
+  return [upgraded, other];
+}
+
 function mergePurchasedItem(
   board: Board,
+  reserve: ItemInstance | null,
   itemId: string,
   purchasedUid: string,
-): { board: Board; merges: MergeStep[] } {
-  const next = board.map((item) => (item ? { ...item } : null));
+  allowReserve: boolean,
+): InventoryMergeResult {
+  const inventory: MutableInventory = {
+    board: board.map((item) => (item ? { ...item } : null)),
+    reserve: reserve ? { ...reserve } : null,
+  };
   const merges: MergeStep[] = [];
-  const targetSlot = next.findIndex(
-    (item) => item?.itemId === itemId && item.level === 1,
-  );
+  let currentLocation: ItemLocation | null =
+    matchingLocations(inventory, itemId, 1)[0] ?? null;
 
-  if (targetSlot < 0) {
-    const emptySlot = next.findIndex((item) => item === null);
-    if (emptySlot >= 0) {
-      next[emptySlot] = { uid: purchasedUid, itemId, level: 1 };
+  if (!currentLocation) {
+    const emptySlot = inventory.board.findIndex((item) => item === null);
+    currentLocation =
+      emptySlot >= 0
+        ? { area: "board", slot: emptySlot }
+        : allowReserve && !inventory.reserve
+          ? { area: "reserve" }
+          : null;
+    if (currentLocation) {
+      setItemAt(inventory, currentLocation, {
+        uid: purchasedUid,
+        itemId,
+        level: 1,
+      });
     }
-    return { board: next, merges };
+    return { ...inventory, merges, location: currentLocation };
   }
 
-  const target = next[targetSlot]!;
-  next[targetSlot] = { ...target, level: 2 };
+  const levelOne = itemAt(inventory, currentLocation)!;
+  setItemAt(inventory, currentLocation, { ...levelOne, level: 2 });
   merges.push({
     itemId,
     fromLevel: 1,
     toLevel: 2,
-    slot: targetSlot,
-    consumedSlot: null,
+    target: currentLocation,
+    consumed: null,
   });
 
-  while (next[targetSlot] && next[targetSlot]!.level < 3) {
-    const current: ItemInstance = next[targetSlot]!;
-    const consumedSlot = next.findIndex(
-      (candidate, index) =>
-        index !== targetSlot &&
-        candidate?.itemId === itemId &&
-        candidate.level === current.level,
+  while (true) {
+    const mergeLocation = currentLocation;
+    const current = itemAt(inventory, mergeLocation);
+    if (!current || current.level >= 3) break;
+    const otherLocation = matchingLocations(
+      inventory,
+      itemId,
+      current.level,
+    ).find((location) => !sameLocation(location, mergeLocation));
+    if (!otherLocation) break;
+
+    const [survivor, consumed] = chooseMergeSurvivor(
+      mergeLocation,
+      otherLocation,
     );
-    if (consumedSlot < 0) break;
-    const fromLevel = current.level;
+    const survivorItem = itemAt(inventory, survivor)!;
+    const fromLevel = survivorItem.level;
     const toLevel = (fromLevel + 1) as ItemLevel;
-    next[targetSlot] = { ...current, level: toLevel };
-    next[consumedSlot] = null;
+    setItemAt(inventory, survivor, { ...survivorItem, level: toLevel });
+    setItemAt(inventory, consumed, null);
+    currentLocation = survivor;
     merges.push({
       itemId,
       fromLevel,
       toLevel,
-      slot: targetSlot,
-      consumedSlot,
+      target: survivor,
+      consumed,
     });
   }
 
-  return { board: next, merges };
+  return { ...inventory, merges, location: currentLocation };
 }
 
 export function getPurchaseMergePreview(
   board: Board,
   itemId: string,
+  reserve: ItemInstance | null = null,
+  allowReserve = false,
 ): PurchaseMergePreview | null {
-  const targetSlot = board.findIndex(
-    (item) => item?.itemId === itemId && item.level === 1,
+  const merged = mergePurchasedItem(
+    board,
+    reserve,
+    itemId,
+    "preview",
+    allowReserve,
   );
-  if (targetSlot < 0) return null;
-  const merged = mergePurchasedItem(board, itemId, "preview");
   const last = merged.merges.at(-1);
   return last
     ? {
-        targetSlot,
+        target: last.target,
         resultLevel: last.toLevel,
         mergeCount: merged.merges.length,
       }
@@ -278,24 +377,29 @@ export function buyOffer(state: GameState, offerUid: string): ActionResult {
     return { state, error: "Nicht genug Gold." };
   }
 
-  const emptySlot = state.board.findIndex((item) => item === null);
-  const immediateMatch = state.board.findIndex(
-    (item) => item?.itemId === offer.itemId && item.level === 1,
-  );
-  if (emptySlot < 0 && immediateMatch < 0) {
-    return {
-      state,
-      error: "Der Kessel ist voll – dieser Kauf würde nicht mergen.",
-    };
-  }
-
   let working = { ...state, gold: state.gold - definition.cost };
   const [uid, stateWithId] = nextId(working, "item");
   working = stateWithId;
-  const merged = mergePurchasedItem(working.board, offer.itemId, uid);
+  const merged = mergePurchasedItem(
+    working.board,
+    working.reserve,
+    offer.itemId,
+    uid,
+    working.round >= RESERVE_UNLOCK_ROUND,
+  );
+  if (!merged.location) {
+    return {
+      state,
+      error:
+        working.round >= RESERVE_UNLOCK_ROUND
+          ? "Kessel und Ablage sind voll – dieser Kauf würde nicht mergen."
+          : "Der Kessel ist voll – dieser Kauf würde nicht mergen.",
+    };
+  }
   working = {
     ...working,
     board: merged.board,
+    reserve: merged.reserve,
     offers: working.offers.map((entry) =>
       entry.uid === offerUid ? { ...entry, bought: true } : entry,
     ),
@@ -306,6 +410,7 @@ export function buyOffer(state: GameState, offerUid: string): ActionResult {
     state: working,
     merges: merged.merges,
     goldDelta: -definition.cost,
+    purchaseLocation: merged.location,
   };
 }
 
@@ -330,6 +435,50 @@ export function sellSlot(state: GameState, slot: number): ActionResult {
       selectedSlot: null,
     },
     goldDelta: value,
+  };
+}
+
+export function sellReserve(state: GameState): ActionResult {
+  if (state.phase !== "shop") {
+    return { state, error: "Im Kampf wird nichts verkauft." };
+  }
+  if (state.round < RESERVE_UNLOCK_ROUND) {
+    return { state, error: "Die Ablage ist noch nicht freigeschaltet." };
+  }
+  if (!state.reserve) return { state, error: "Die Ablage ist leer." };
+  const value = getSellValue(state.reserve);
+  return {
+    state: {
+      ...state,
+      reserve: null,
+      selectedSlot: null,
+      gold: state.gold + value,
+    },
+    goldDelta: value,
+  };
+}
+
+export function swapSlotWithReserve(
+  state: GameState,
+  slot: number,
+): ActionResult {
+  if (state.phase !== "shop") {
+    return { state, error: "Im Kampf wird nichts umgestellt." };
+  }
+  if (state.round < RESERVE_UNLOCK_ROUND) {
+    return { state, error: "Die Ablage ist noch nicht freigeschaltet." };
+  }
+  if (slot < 0 || slot >= BOARD_SIZE) return { state };
+  const board = [...state.board];
+  const boardItem = board[slot];
+  board[slot] = state.reserve;
+  return {
+    state: {
+      ...state,
+      board,
+      reserve: boardItem,
+      selectedSlot: null,
+    },
   };
 }
 
@@ -475,12 +624,19 @@ export function getRoundReward(
 export function sanitizeStoredState(value: unknown): GameState | null {
   if (!isRecord(value)) return null;
   const version = value.version;
-  if (version !== 2 && version !== 3) return null;
+  if (version !== 2 && version !== 3 && version !== 4) return null;
 
   const board = sanitizeBoard(value.board);
   const offers = sanitizeOffers(value.offers);
   const phase = sanitizePhase(value.phase);
   if (!board || !offers || !phase) return null;
+  const reserve =
+    version === 4
+      ? value.reserve === null
+        ? null
+        : sanitizeItemInstance(value.reserve)
+      : null;
+  if (version === 4 && value.reserve !== null && !reserve) return null;
 
   const round = safeInteger(value.round, 1, MAX_ROUNDS);
   const gold = safeInteger(value.gold, 0, 999);
@@ -508,13 +664,14 @@ export function sanitizeStoredState(value: unknown): GameState | null {
 
   const uids = [
     ...board.flatMap((item) => (item ? [item.uid] : [])),
+    ...(reserve ? [reserve.uid] : []),
     ...offers.map((offer) => offer.uid),
   ];
   if (new Set(uids).size !== uids.length) return null;
 
   if (version === 2) {
     return {
-      version: 3,
+      version: 4,
       phase:
         phase === "battle" || phase === "result" ? "shop" : phase,
       round,
@@ -522,6 +679,7 @@ export function sanitizeStoredState(value: unknown): GameState | null {
       seals,
       victories,
       board,
+      reserve: null,
       offers,
       rerollsUsed,
       selectedSlot: null,
@@ -546,13 +704,14 @@ export function sanitizeStoredState(value: unknown): GameState | null {
   }
 
   return {
-    version: 3,
+    version: 4,
     phase,
     round,
     gold,
     seals,
     victories,
     board,
+    reserve,
     offers,
     rerollsUsed,
     selectedSlot,
@@ -605,14 +764,20 @@ function sanitizeBoard(value: unknown): Board | null {
       board.push(null);
       continue;
     }
-    if (!isRecord(entry)) return null;
-    const uid = safeText(entry.uid, 80);
-    const itemId = safeText(entry.itemId, 80);
-    const level = safeInteger(entry.level, 1, 3);
-    if (!uid || !itemId || !ITEM_BY_ID[itemId] || level === null) return null;
-    board.push({ uid, itemId, level: level as ItemLevel });
+    const item = sanitizeItemInstance(entry);
+    if (!item) return null;
+    board.push(item);
   }
   return board;
+}
+
+function sanitizeItemInstance(value: unknown): ItemInstance | null {
+  if (!isRecord(value)) return null;
+  const uid = safeText(value.uid, 80);
+  const itemId = safeText(value.itemId, 80);
+  const level = safeInteger(value.level, 1, 3);
+  if (!uid || !itemId || !ITEM_BY_ID[itemId] || level === null) return null;
+  return { uid, itemId, level: level as ItemLevel };
 }
 
 function sanitizeOffers(value: unknown): ShopOffer[] | null {

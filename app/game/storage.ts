@@ -1,19 +1,19 @@
 import {
-  LEGACY_STORAGE_KEY,
+  LEGACY_STORAGE_KEYS,
   sanitizeStoredState,
   STORAGE_KEY,
 } from "./state";
 import type { GameState } from "./types";
 
 export function loadStoredGame(storage: Storage): GameState | null {
-  for (const key of [STORAGE_KEY, LEGACY_STORAGE_KEY]) {
+  for (const key of [STORAGE_KEY, ...LEGACY_STORAGE_KEYS]) {
     const saved = storage.getItem(key);
     if (!saved) continue;
     const parsed = sanitizeStoredState(JSON.parse(saved));
     if (!parsed) continue;
-    if (key === LEGACY_STORAGE_KEY) {
+    if (key !== STORAGE_KEY) {
       storage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-      storage.removeItem(LEGACY_STORAGE_KEY);
+      storage.removeItem(key);
     }
     return parsed;
   }

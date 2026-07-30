@@ -4638,6 +4638,69 @@ button.board-slot:active {
   cursor: help;
 }
 
+.workbench-inventory-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+}
+
+.workbench-inventory-row.has-reserve {
+  grid-template-columns: minmax(0, 1fr) 50px;
+}
+
+.workbench-inventory-row .cauldron-board {
+  min-width: 0;
+}
+
+.reserve-pocket {
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 3px;
+}
+
+.reserve-pocket-label {
+  display: grid;
+  color: var(--gold);
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  line-height: 0.95;
+  text-align: center;
+}
+
+.reserve-pocket-label small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 7px;
+  letter-spacing: 0.04em;
+}
+
+.reserve-slot {
+  --slot-size: 46px;
+  border-color: rgba(245, 197, 91, 0.38);
+  background:
+    linear-gradient(145deg, rgba(53, 37, 63, 0.96), rgba(20, 15, 27, 0.98));
+  box-shadow:
+    0 0 0 1px rgba(245, 197, 91, 0.28),
+    inset 0 0 16px rgba(245, 197, 91, 0.06),
+    0 6px 12px rgba(0, 0, 0, 0.34);
+}
+
+.reserve-slot.is-empty {
+  border-color: rgba(245, 197, 91, 0.26);
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(245, 197, 91, 0.025) 0 5px,
+      transparent 5px 10px
+    ),
+    rgba(21, 16, 28, 0.7);
+}
+
 .prep-power-explainer {
   top: 39px;
   right: 7px;
@@ -4792,6 +4855,16 @@ button.board-slot:active {
   color: #fff0b5;
 }
 
+.phase-shop .offer-merge-target.is-reserve-target {
+  color: #e8cf91;
+}
+
+.phase-shop .shop-card.is-blocked .offer-price {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+
 .phase-shop .offer-price {
   position: static;
   grid-column: 3;
@@ -4905,6 +4978,27 @@ button.board-slot:active {
     margin-top: -1px;
   }
 
+  .workbench-inventory-row.has-reserve {
+    grid-template-columns: minmax(0, 1fr) 43px;
+    gap: 4px;
+  }
+
+  .reserve-pocket {
+    gap: 2px;
+  }
+
+  .reserve-pocket-label {
+    font-size: 7px;
+  }
+
+  .reserve-pocket-label small {
+    font-size: 6px;
+  }
+
+  .reserve-slot {
+    --slot-size: 40px;
+  }
+
   .player-workbench .synergy-pill {
     min-height: 27px;
     padding-top: 3px;
@@ -5013,6 +5107,26 @@ button.board-slot:active {
     --board-height: 166px;
     --arc-rise: 24px;
     width: min(100%, 380px);
+  }
+
+  .phase-shop .workbench-inventory-row.has-reserve {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 7px;
+  }
+
+  .phase-shop .reserve-pocket {
+    grid-template-columns: auto 52px;
+    justify-content: center;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .phase-shop .reserve-pocket-label {
+    text-align: right;
+  }
+
+  .phase-shop .reserve-slot {
+    --slot-size: 52px;
   }
 
   .phase-shop .player-workbench .synergy-pill {
