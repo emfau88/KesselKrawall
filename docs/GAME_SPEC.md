@@ -101,7 +101,9 @@ damit ein schlechter Zufallsstart die Kampagne nicht entscheidet.
   Lebenspunkten kann nicht mehr geheilt werden.
 - Gift ist ein gemeinsamer Status mit maximal 12 Stapeln. Es tickt alle
   2 Sekunden, verursacht die aufgerundete Hälfte der aktuellen Stapel als
-  Schaden und verliert danach zwei Stapel.
+  Schaden und verliert danach zwei Stapel. Erreicht eine Giftanwendung
+  mindestens 10 Stapel, verbraucht ein klar benannter **Toxinschock** alle
+  Stapel und verursacht sofort 150 % ihrer Menge als Schaden.
 - Brand tickt jede Sekunde pro Quelle in Höhe der verbleibenden Brandstapel
   und verliert danach einen Stapel.
 - Ab 15 Sekunden steigt der Schaden beider Kessel alle 2 Sekunden um 5 %,
@@ -112,8 +114,10 @@ damit ein schlechter Zufallsstart die Kampagne nicht entscheidet.
 - Runde 1 startet zur Lesbarkeit mit 1× Wiedergabe. Ab Runde 2 ist 2× der
   Standard; 1×, 2× und 4× bleiben jederzeit frei wählbar.
 - Gleichzeitiger K. O. ist ein Unentschieden.
-- Drachenzahn wächst mit jeder eigenen Aktivierung, Mondsalz kontert nach
-  tatsächlichem LP-Schaden und Heilknolle heilt einmalig unter 35 % LP.
+- Drachenzahn wächst mit jeder eigenen Aktivierung. Mondsalz kontert
+  abgefangene oder ungeschützte Treffer nur gemäß seiner Abklingzeit.
+  Heilknolle heilt einmalig unter 50 % LP mit einem kleineren Multiplikator,
+  damit sie häufiger sichtbar wird, ohne Kämpfe unnötig zu verlängern.
 
 ## Synergien
 

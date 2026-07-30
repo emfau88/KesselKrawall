@@ -44,8 +44,8 @@ Schutzsiegel verzeihen Fehler, aber nicht unbegrenzt.
 | Familie | Spielidee |
 | --- | --- |
 | **Feuer** | Direkter Schaden, Brand und aggressive Kettenreaktionen |
-| **Gift** | Stapelbare Vergiftung, anhaltender Druck und Verstärkung gegen vergiftete Ziele |
-| **Schutz** | Schilde, Heilung, Konter und kontrollierte Gegenangriffe |
+| **Gift** | Stapelbarer Druck; ab 10 Gift wird alles als sofortiger Toxinschock entladen |
+| **Schutz** | Schilde, frühere Notfallheilung und begrenzte Trefferkonter über Mondsalz |
 
 Die zwölf Zutaten sind datengetrieben definiert. Position, Merge-Stufe,
 Familiengewicht und gegenseitige Auslöser entscheiden darüber, wie sich ein

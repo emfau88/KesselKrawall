@@ -840,6 +840,7 @@ function sanitizeCombatResult(value: unknown): CombatResult | null | undefined {
   const validKinds = new Set([
     "damage",
     "poison",
+    "poisonBurst",
     "burn",
     "heal",
     "shield",

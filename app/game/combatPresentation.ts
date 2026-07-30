@@ -110,6 +110,7 @@ export interface ImportantCombatMessage {
 
 function importantMessagePriority(event: CombatEvent): number {
   if (event.kind === "boss") return 3;
+  if (event.kind === "poisonBurst") return 2;
   if (event.kind === "synergy") return 2;
   if (event.kind === "cleanse") return 1;
   return 0;
@@ -148,7 +149,10 @@ function summarizeEventAmounts(events: CombatEvent[]): string {
     let key = "damage";
     let format = (amount: number) => `−${amount} LP`;
 
-    if (event.kind === "heal") {
+    if (event.kind === "poisonBurst") {
+      key = "poisonBurst";
+      format = (amount) => `−${amount} LP`;
+    } else if (event.kind === "heal") {
       key = "heal";
       format = (amount) => `+${amount} LP`;
     } else if (event.kind === "shield" || event.kind === "synergy") {
@@ -236,6 +240,8 @@ function applyStatusEvent(
       POISON_CAP,
       targetStatus.poison + event.amount,
     );
+  } else if (event.kind === "poisonBurst") {
+    targetStatus.poison = 0;
   } else if (event.kind === "burn") {
     targetStatus.burn.set(
       event.sourceUid,
@@ -305,7 +311,9 @@ function eventPriority(event: CombatEvent): number {
   if (event.kind === "boss") return 10_000;
   if (event.playerHp <= 0 || event.enemyHp <= 0) return 9_000;
   if (event.kind === "synergy") return 8_000;
-  if (event.kind === "damage") return 5_000 + event.amount;
+  if (event.kind === "damage" || event.kind === "poisonBurst") {
+    return 5_000 + event.amount;
+  }
   if (event.kind === "heal" || event.kind === "shield") {
     return 4_000 + event.amount;
   }

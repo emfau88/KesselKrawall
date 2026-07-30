@@ -48,7 +48,7 @@ export interface ItemDefinition {
   scalesWithFamily?: Family;
   trigger?:
     | { type: "ramp"; growthPerActivation: number }
-    | { type: "onHpDamage" }
+    | { type: "onGuardedHit" }
     | { type: "emergency"; threshold: number; multiplier: number };
 }
 
@@ -127,6 +127,7 @@ export interface ItemCombatStats {
 export type CombatEventKind =
   | "damage"
   | "poison"
+  | "poisonBurst"
   | "burn"
   | "heal"
   | "shield"

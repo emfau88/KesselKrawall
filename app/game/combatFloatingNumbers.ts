@@ -28,6 +28,7 @@ function getFloatingNumberType(
   event: CombatEvent,
 ): FloatingCombatNumberType | null {
   if (event.kind === "damage") return "damage";
+  if (event.kind === "poisonBurst") return "poison";
   if (event.kind === "heal") return "heal";
   if (event.kind === "shield" || event.kind === "synergy") return "shield";
   if (!isStatusTick(event)) return null;

@@ -21,7 +21,8 @@ import {
   getItemCooldownMs,
   getKesselHeatDamageMultiplier,
   KESSEL_HEAT_START_MS,
-  POISON_CAP,
+  POISON_BURST_DAMAGE_MULTIPLIER,
+  POISON_BURST_THRESHOLD,
   SHIELD_CAP_RATIO,
   simulateBattle,
 } from "../app/game/simulation";
@@ -562,7 +563,7 @@ test("a timeout keeps both health bars and resolves by relative health", () => {
   assert.equal(battle.winner, playerRatio > enemyRatio ? "player" : "enemy");
 });
 
-test("shared poison is capped, ticks once, and decays by two stacks", () => {
+test("shared poison ticks, decays, and ends in a readable tox shock", () => {
   const single = simulateBattle(
     [item("slime", "slime-shroom"), null, null, null, null],
     opponent([null, null, null, null, null]),
@@ -589,24 +590,24 @@ test("shared poison is capped, ticks once, and decays by two stacks", () => {
     ],
     opponent([null, null, null, null, null]),
   );
-  const firstApplicationTime = multiple.events.find(
-    (event) => event.kind === "poison" && event.label !== "Gift tickt",
-  )?.time;
-  const firstApplications = multiple.events.filter(
-    (event) =>
-      event.kind === "poison" &&
-      event.label !== "Gift tickt" &&
-      event.time === firstApplicationTime,
+  const bursts = multiple.events.filter(
+    (event) => event.kind === "poisonBurst",
+  );
+  assert.ok(bursts.length >= 2);
+  const consumed = Number(bursts[0].label.match(/(\d+) Gift$/)?.[1]);
+  assert.ok(consumed >= POISON_BURST_THRESHOLD);
+  assert.equal(
+    bursts[0].amount,
+    Math.round(consumed * POISON_BURST_DAMAGE_MULTIPLIER),
   );
   assert.equal(
-    firstApplications.reduce((sum, event) => sum + event.amount, 0),
-    POISON_CAP,
-  );
-  assert.equal(
-    multiple.events.find(
-      (event) => event.kind === "poison" && event.label === "Gift tickt",
-    )?.amount,
-    6,
+    multiple.events.some(
+      (event) =>
+        event.kind === "poison" &&
+        event.label === "Gift tickt" &&
+        event.time === 4_000,
+    ),
+    false,
   );
 });
 
@@ -808,6 +809,55 @@ test("stored runs validate ids, levels, counters, and pending battles deeply", (
   );
 });
 
+test("moon salt counters a fully blocked hit without becoming a free attack", () => {
+  const battle = simulateBattle(
+    [
+      item("salt", "moon-salt"),
+      item("shell", "egg-shell"),
+      item("spoon", "gold-spoon"),
+      null,
+      null,
+    ],
+    opponent([
+      item("enemy-chili", "chili"),
+      null,
+      null,
+      null,
+      null,
+    ]),
+  );
+  const firstCounter = battle.events.find(
+    (event) => event.sourceUid === "salt",
+  );
+  assert.equal(firstCounter?.time, 3_200);
+  assert.equal(firstCounter?.kind, "shield");
+  assert.equal(
+    battle.events.some(
+      (event) => event.sourceUid === "salt" && event.time < 3_200,
+    ),
+    false,
+  );
+});
+
+test("healing tuber triggers once below half health with a smaller heal", () => {
+  const battle = simulateBattle(
+    [item("heal", "healing-tuber"), null, null, null, null],
+    opponent([
+      item("enemy-1", "dragon-tooth", 3),
+      item("enemy-2", "dragon-tooth", 3),
+      null,
+      null,
+      null,
+    ]),
+  );
+  const heals = battle.events.filter(
+    (event) => event.sourceUid === "heal" && event.kind === "heal",
+  );
+  assert.equal(heals.length, 1);
+  assert.equal(heals[0].amount, 9);
+  assert.ok(heals[0].playerHp <= 59);
+});
+
 test("version three saves migrate to an empty version four reserve", () => {
   const legacy = JSON.parse(JSON.stringify(createInitialState(48)));
   legacy.version = 3;
@@ -970,6 +1020,31 @@ test("important combat messages are singular and exclude ordinary hits", () => {
   assert.equal(message?.event.kind, "boss");
   assert.equal(message?.label, "Kesselzorn entfacht");
   assert.equal(message?.amountLabel, "+25%");
+});
+
+test("tox shock clears presented poison and receives a readable callout", () => {
+  const events = [
+    combatEvent({
+      time: 3_000,
+      kind: "poison",
+      label: "Schleimpilz",
+      amount: 10,
+    }),
+    combatEvent({
+      time: 3_000,
+      kind: "poisonBurst",
+      label: "Toxinschock · 10 Gift",
+      amount: 15,
+      enemyHp: 85,
+    }),
+  ];
+  const beat = createCombatBeats(events)[0];
+  const message = getImportantCombatMessage(beat.events);
+
+  assert.equal(beat.statuses.enemy.poison.stacks, 0);
+  assert.equal(message?.event.kind, "poisonBurst");
+  assert.equal(message?.label, "Toxinschock · 10 Gift");
+  assert.equal(message?.amountLabel, "−15 LP");
 });
 
 test("combat presentation spotlights first item uses and compresses repeats", () => {

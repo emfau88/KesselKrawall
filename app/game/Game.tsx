@@ -56,6 +56,7 @@ import {
   getItemCooldownMs,
   getKesselHeatDamageMultiplier,
   KESSEL_HEAT_START_MS,
+  POISON_BURST_THRESHOLD,
   simulateBattle,
 } from "./simulation";
 import {
@@ -205,6 +206,7 @@ const FAMILY_ICON: Record<Family, UiAsset> = {
 function eventIcon(kind: CombatEventKind): UiAsset {
   switch (kind) {
     case "poison":
+    case "poisonBurst":
       return "status-poison";
     case "burn":
       return "status-burn";
@@ -225,7 +227,7 @@ function combatSound(
   event: CombatEvent,
   source: EventSource | null,
 ): GameSound {
-  if (event.kind === "poison") return "poison";
+  if (event.kind === "poison" || event.kind === "poisonBurst") return "poison";
   if (event.kind === "heal") return "heal";
   if (
     event.kind === "shield" ||
@@ -290,8 +292,8 @@ function findEventSource(
     slot,
     side: event.actor,
     cadenceLabel:
-      definition.trigger?.type === "onHpDamage"
-        ? `Konter nach LP-Schaden · ${formatCooldown(getItemCooldownMs(board, slot))} Sperre`
+      definition.trigger?.type === "onGuardedHit"
+        ? `Trefferkonter · ${formatCooldown(getItemCooldownMs(board, slot))} Sperre`
         : definition.trigger?.type === "emergency"
           ? `einmal unter ${Math.round(definition.trigger.threshold * 100)} % LP`
           : definition.trigger?.type === "ramp"
@@ -340,6 +342,7 @@ function TimedStatusBadge({
   const description =
     label === "Gift"
       ? `Gift: ${status.stacks} gemeinsame Stapel von maximal 12. ` +
+        `Bei ${POISON_BURST_THRESHOLD} Stapeln entsteht ein Toxinschock. ` +
         `Nächster Tick verursacht ${Math.ceil(status.stacks / 2)} Schaden, ` +
         `danach verfallen 2 Stapel. Tick in ${formatEffectDuration(untilTick)}`
       : `${label}: ${status.stacks} Stapel, noch etwa ${formatEffectDuration(remaining)}, ` +
@@ -610,7 +613,7 @@ function CauldronBoard({
             battleTime: combatTime,
             activationTimes,
             fallbackCooldown: cooldown,
-            startsReady: trigger?.type === "onHpDamage",
+            startsReady: trigger?.type === "onGuardedHit",
           });
           const emergencyUsed =
             trigger?.type === "emergency" &&
@@ -620,8 +623,8 @@ function CauldronBoard({
               ? 0
               : cooldownState.progress;
           const cadenceLabel =
-            trigger?.type === "onHpDamage"
-              ? `Konter nach LP-Schaden, ${formatCooldown(cooldown)} Sperre`
+            trigger?.type === "onGuardedHit"
+              ? `Konter nach abgefangenem oder ungeschütztem Treffer, ${formatCooldown(cooldown)} Sperre`
               : trigger?.type === "emergency"
                 ? `einmal unter ${Math.round(trigger.threshold * 100)} Prozent Leben${
                     emergencyUsed ? ", bereits ausgelöst" : ""
@@ -644,10 +647,10 @@ function CauldronBoard({
                   />
                   <span className="item-level">{ROMAN_LEVEL[instance!.level]}</span>
                   <span className={`item-family-dot ${familyClass(definition.family)}`} />
-                  {combatActive && trigger?.type === "onHpDamage" && (
+                  {combatActive && trigger?.type === "onGuardedHit" && (
                     <span
                       className="slot-trigger-badge is-reactive"
-                      title={`Konter nach LP-Schaden · ${formatCooldown(cooldown)} Sperre`}
+                      title={`Trefferkonter · ${formatCooldown(cooldown)} Sperre`}
                       aria-hidden="true"
                     >
                       <UiIcon asset="speed" className="slot-trigger-icon" />
@@ -1100,7 +1103,10 @@ function BattleVfx({
   const sourceSlot = source?.slot;
   const isSelfEffect = event.actor === event.target;
   const statusTick = isStatusTick(event);
-  const poisonEffect = event.kind === "poison" || sourceFamily === "poison";
+  const poisonEffect =
+    event.kind === "poison" ||
+    event.kind === "poisonBurst" ||
+    sourceFamily === "poison";
   const defensiveEffect =
     event.kind === "shield" ||
     event.kind === "synergy" ||

@@ -18,6 +18,8 @@ export const DEFAULT_COMBAT_LIMIT_MS = 25_000;
 const STEP_MS = 100;
 export const POISON_CAP = 12;
 export const POISON_DECAY_PER_TICK = 2;
+export const POISON_BURST_THRESHOLD = 10;
+export const POISON_BURST_DAMAGE_MULTIPLIER = 1.5;
 export const SHIELD_CAP_RATIO = 0.5;
 export const KESSEL_HEAT_START_MS = 15_000;
 export const KESSEL_HEAT_STEP_MS = 2_000;
@@ -132,7 +134,7 @@ function applyDamage(
   sourceUid: string,
   rawAmount: number,
   label: string,
-  kind: "damage" | "poison" | "burn" = "damage",
+  kind: "damage" | "poison" | "poisonBurst" | "burn" = "damage",
 ): number {
   const heatMultiplier = world.kesselHeatEnabled
     ? getKesselHeatDamageMultiplier(world.time)
@@ -151,8 +153,8 @@ function applyDamage(
   stats.totalDamage += applied;
   actor.hpDamageDealt += hpDamage;
   pushEvent(world, kind, actor.side, target.side, sourceUid, label, applied);
-  if (hpDamage > 0 && target.hp > 0) {
-    triggerHpDamageReactions(world, target, actor);
+  if (target.hp > 0) {
+    triggerDamageReactions(world, target, actor, absorbed > 0 || hpDamage > 0);
   }
   return applied;
 }
@@ -292,7 +294,7 @@ function createCombatant(
       slot,
       cooldown,
       nextAt:
-        trigger?.type === "onHpDamage"
+        trigger?.type === "onGuardedHit"
           ? 0
           : trigger?.type === "emergency"
           ? Number.POSITIVE_INFINITY
@@ -366,6 +368,21 @@ function addPoison(
     label,
     stacks,
   );
+
+  if (target.poison >= POISON_BURST_THRESHOLD) {
+    const consumed = target.poison;
+    target.poison = 0;
+    target.poisonSourceUid = null;
+    applyDamage(
+      world,
+      actor,
+      target,
+      sourceUid,
+      consumed * POISON_BURST_DAMAGE_MULTIPLIER,
+      `Toxinschock · ${consumed} Gift`,
+      "poisonBurst",
+    );
+  }
 }
 
 function addBurn(
@@ -539,10 +556,11 @@ function activateItem(
   }
 }
 
-function triggerHpDamageReactions(
+function triggerDamageReactions(
   world: World,
   actor: Combatant,
   target: Combatant,
+  tookDamage: boolean,
 ): void {
   for (const runtime of actor.runtimes) {
     const definition = ITEM_BY_ID[runtime.instance.itemId];
@@ -559,7 +577,11 @@ function triggerHpDamageReactions(
       continue;
     }
 
-    if (trigger.type === "onHpDamage" && runtime.nextAt <= world.time) {
+    if (
+      trigger.type === "onGuardedHit" &&
+      tookDamage &&
+      runtime.nextAt <= world.time
+    ) {
       runtime.nextAt =
         world.time + Math.round(runtime.cooldown / STEP_MS) * STEP_MS;
       activateItem(world, actor, target, runtime);
@@ -717,7 +739,7 @@ export function simulateBattle(
       for (const item of world.player.runtimes) {
         const trigger = ITEM_BY_ID[item.instance.itemId].trigger;
         if (
-          trigger?.type !== "onHpDamage" &&
+          trigger?.type !== "onGuardedHit" &&
           trigger?.type !== "emergency" &&
           item.nextAt <= time
         ) {
@@ -730,7 +752,7 @@ export function simulateBattle(
       for (const item of world.enemy.runtimes) {
         const trigger = ITEM_BY_ID[item.instance.itemId].trigger;
         if (
-          trigger?.type !== "onHpDamage" &&
+          trigger?.type !== "onGuardedHit" &&
           trigger?.type !== "emergency" &&
           item.nextAt <= time
         ) {
