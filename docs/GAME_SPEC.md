@@ -107,8 +107,10 @@ damit ein schlechter Zufallsstart die Kampagne nicht entscheidet.
 - Brand tickt jede Sekunde pro Quelle in Höhe der verbleibenden Brandstapel
   und verliert danach einen Stapel.
 - Ab 15 Sekunden steigt der Schaden beider Kessel alle 2 Sekunden um 5 %,
-  maximal auf 125 %. Heilung, Schild und Cooldowns bleiben unverändert.
-- Nach 25 Sekunden gewinnt die höhere relative Lebensenergie. Bei Gleichstand
+  zunächst maximal auf 125 %. Ab Sekunde 25 beschleunigt die Schlussphase
+  den Bonus alle 2 Sekunden um weitere 15 %, maximal auf 170 %. Heilung,
+  Schild und Cooldowns bleiben unverändert.
+- Nach 30 Sekunden gewinnt die höhere relative Lebensenergie. Bei Gleichstand
   entscheidet der tatsächlich verursachte LP-Schaden. Danach ist der Kampf
   unentschieden; Schild ist kein Siegkriterium.
 - Runde 1 startet zur Lesbarkeit mit 1× Wiedergabe. Ab Runde 2 ist 2× der

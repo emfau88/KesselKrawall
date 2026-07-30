@@ -266,7 +266,7 @@ export const CAMPAIGN_OPPONENTS: readonly OpponentDefinition[] = [
     quote: "Das wird gleich angenehm ungemütlich.",
     threat: "Klare Feuerangriffe, aber keinerlei Schutz",
     rank: "regular",
-    baseHp: 65,
+    baseHp: 20,
     board: [
       enemyItem("zischbert", 0, "chili", 1),
       enemyItem("zischbert", 1, "cinder-berry", 1),

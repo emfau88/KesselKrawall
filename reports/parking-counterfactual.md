@@ -13,25 +13,25 @@ Je 20 gepaarte Kampagnen mit einem und zwei Parkslots. Der vorhandene 64-Seed-Me
 
 ## Vorhandene Referenz
 
-Merge-Fokus, 64 Kampagnen: 91.02 % Siege, 45.70 % Timeouts, 1.53 Käufe/Shop, 4.78 Kaufgold/Shop und 24.09 Gold vor Runde 8 übrig.
+Merge-Fokus, 64 Kampagnen: 87.50 % Siege, 12.89 % Timeouts, 1.83 Käufe/Shop, 5.71 Kaufgold/Shop und 16.42 Gold vor Runde 8 übrig.
 
 ## Ergebnis
 
-| Parkslots | Sieg 25 s | Timeout 25 s | Timeout 35 s | Käufe/Shop | Kaufgold/Shop | Merges/Shop | Gold vor R8 | blockierte Angebote |
+| Parkslots | Sieg 30 s | Timeout 30 s | Timeout 35 s | Käufe/Shop | Kaufgold/Shop | Merges/Shop | Gold vor R8 | blockierte Angebote |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 91.88 % | 43.75 % | 33.75 % | 1.87 | 5.77 | 1.13 | 16.25 | 284 |
-| 2 | 93.13 % | 43.75 % | 33.75 % | 2.17 | 6.70 | 1.35 | 8.80 | 182 |
+| 1 | 87.50 % | 12.50 % | 11.25 % | 1.89 | 5.84 | 1.16 | 15.30 | 276 |
+| 2 | 88.13 % | 12.50 % | 11.25 % | 2.18 | 6.72 | 1.36 | 8.30 | 177 |
 
 ## Runde 6–8
 
 | Parkslots | Runde | Käufe | Kaufgold | Restgold | Merges | belegte Parkplätze | blockiert/Shop |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 6 | 2.55 | 7.80 | 4.80 | 1.70 | 0.75 | 1.05 |
-| 1 | 7 | 1.45 | 4.50 | 9.20 | 1.40 | 0.80 | 3.70 |
-| 1 | 8 | 1.15 | 3.65 | 16.25 | 1.05 | 0.90 | 4.65 |
-| 2 | 6 | 2.95 | 9.05 | 3.55 | 1.85 | 1.00 | 0.35 |
-| 2 | 7 | 2.35 | 7.20 | 5.25 | 2.05 | 1.30 | 1.55 |
-| 2 | 8 | 2.30 | 7.15 | 8.80 | 2.00 | 1.65 | 2.40 |
+| 1 | 6 | 2.60 | 7.95 | 4.85 | 1.75 | 0.75 | 0.85 |
+| 1 | 7 | 1.50 | 4.65 | 9.00 | 1.50 | 0.75 | 3.55 |
+| 1 | 8 | 1.40 | 4.40 | 15.30 | 1.25 | 0.90 | 4.35 |
+| 2 | 6 | 2.85 | 8.75 | 4.05 | 1.75 | 1.00 | 0.15 |
+| 2 | 7 | 2.45 | 7.50 | 5.35 | 2.10 | 1.35 | 1.30 |
+| 2 | 8 | 2.50 | 7.75 | 8.30 | 2.25 | 1.60 | 2.35 |
 
 Die zwei Varianten verwenden dieselben 20 Seeds. Unterschiede zwischen einem und zwei Slots sind daher direkt vergleichbar; die 64-Seed-Referenz dient nur als Richtungsanker.
 

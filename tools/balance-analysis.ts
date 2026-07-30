@@ -38,7 +38,7 @@ const DEFAULT_SEED_COUNT = 64;
 const BASE_SEED = 0x4b4b0000;
 const SEED_STRIDE = 0x9e3779b9;
 const ROUND_COUNT = 8;
-const COMBAT_LIMITS = [25_000, 35_000, 45_000] as const;
+const COMBAT_LIMITS = [30_000, 35_000, 45_000] as const;
 const MEANINGFUL_MARGIN_SHIFT = 0.15;
 
 type StrategyMode = "power" | "merge" | "family" | "lookahead";
@@ -1515,7 +1515,7 @@ async function main(): Promise<void> {
     "",
     "## Rundenschwierigkeit",
     "",
-    "| Runde | Sieg | Niederlage | Remis | Timeout 25 s | Timeout 35 s | Timeout 45 s | Siegspanne Strategien |",
+    "| Runde | Sieg | Niederlage | Remis | Timeout 30 s | Timeout 35 s | Timeout 45 s | Siegspanne Strategien |",
     "| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ...difficultyTable,
     "",

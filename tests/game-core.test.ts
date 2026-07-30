@@ -18,8 +18,11 @@ import {
 } from "../app/game/combatFloatingNumbers";
 import { CAMPAIGN_OPPONENTS, ITEM_BY_ID } from "../app/game/data";
 import {
+  DEFAULT_COMBAT_LIMIT_MS,
   getItemCooldownMs,
   getKesselHeatDamageMultiplier,
+  KESSEL_FINISHER_MAX_MULTIPLIER,
+  KESSEL_FINISHER_START_MS,
   KESSEL_HEAT_START_MS,
   POISON_BURST_DAMAGE_MULTIPLIER,
   POISON_BURST_THRESHOLD,
@@ -329,11 +332,11 @@ test("battle simulation is deterministic and produces item statistics", () => {
   assert.deepEqual(first, second);
   assert.ok(first.events.length > 0);
   assert.ok(first.events.every((event) => event.amount > 0));
-  assert.ok(first.duration <= 25_000);
+  assert.ok(first.duration <= DEFAULT_COMBAT_LIMIT_MS);
   assert.ok(first.playerStats.some((entry) => entry.triggers > 0));
 });
 
-test("kessel heat starts late and rises in small capped steps", () => {
+test("kessel heat stays gentle before the final combat phase", () => {
   assert.equal(getKesselHeatDamageMultiplier(KESSEL_HEAT_START_MS - 1), 1);
   assert.equal(getKesselHeatDamageMultiplier(KESSEL_HEAT_START_MS), 1.05);
   assert.equal(
@@ -341,8 +344,17 @@ test("kessel heat starts late and rises in small capped steps", () => {
     1.15,
   );
   assert.equal(
-    getKesselHeatDamageMultiplier(KESSEL_HEAT_START_MS + 20_000),
+    getKesselHeatDamageMultiplier(KESSEL_FINISHER_START_MS - 1),
     1.25,
+  );
+  assert.equal(getKesselHeatDamageMultiplier(KESSEL_FINISHER_START_MS), 1.4);
+  assert.equal(
+    getKesselHeatDamageMultiplier(KESSEL_FINISHER_START_MS + 4_000),
+    KESSEL_FINISHER_MAX_MULTIPLIER,
+  );
+  assert.equal(
+    getKesselHeatDamageMultiplier(KESSEL_FINISHER_START_MS + 20_000),
+    KESSEL_FINISHER_MAX_MULTIPLIER,
   );
 });
 
@@ -554,7 +566,10 @@ test("a knockout ends with the defeated health bar at zero", () => {
 
 test("a timeout keeps both health bars and resolves by relative health", () => {
   const board = [item("p1", "chili"), null, null, null, null];
-  const battle = simulateBattle(board, CAMPAIGN_OPPONENTS[0]);
+  const battle = simulateBattle(
+    board,
+    opponent([null, null, null, null, null], 1_000),
+  );
   assert.equal(battle.reason, "timeout");
   assert.ok(battle.finalPlayerHp > 0);
   assert.ok(battle.finalEnemyHp > 0);
@@ -664,7 +679,7 @@ test("shield is capped and never decides an otherwise tied timeout", () => {
   assert.equal(battle.finalPlayerShield, 100 * SHIELD_CAP_RATIO);
   assert.equal(battle.winner, "draw");
   assert.equal(battle.reason, "timeout");
-  assert.equal(battle.duration, 25_000);
+  assert.equal(battle.duration, DEFAULT_COMBAT_LIMIT_MS);
 
   const extendedAnalysis = simulateBattle(board, target, {
     combatLimitMs: 35_000,
@@ -983,6 +998,31 @@ test("combat presentation preserves every simulated event and final snapshot", (
   );
   assert.equal(beats.at(-1)?.snapshot.playerHp, battle.finalPlayerHp);
   assert.equal(beats.at(-1)?.snapshot.enemyHp, battle.finalEnemyHp);
+});
+
+test("the weakest representative opening knocks out Zischbert in time", () => {
+  const zischbert = CAMPAIGN_OPPONENTS[0];
+  const opening = [
+    item("opening-poison", "slime-shroom"),
+    item("opening-guard", "egg-shell"),
+    null,
+    null,
+    null,
+  ];
+
+  for (const board of [
+    zischbert.board,
+    ...(zischbert.boardVariants ?? []),
+  ]) {
+    const battle = simulateBattle(opening, {
+      ...zischbert,
+      board,
+      boardVariants: undefined,
+    });
+    assert.equal(battle.winner, "player");
+    assert.equal(battle.reason, "knockout");
+    assert.ok(battle.duration < DEFAULT_COMBAT_LIMIT_MS);
+  }
 });
 
 test("important combat messages are singular and exclude ordinary hits", () => {

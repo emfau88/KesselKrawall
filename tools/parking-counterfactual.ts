@@ -55,7 +55,7 @@ interface ShopMetrics {
 }
 
 interface RoundSnapshot extends ShopMetrics {
-  result25: CombatResult;
+  result30: CombatResult;
   result35: CombatResult;
   endGold: number;
   occupiedParking: number;
@@ -64,10 +64,10 @@ interface RoundSnapshot extends ShopMetrics {
 
 interface RoundAccumulator extends ShopMetrics {
   shops: number;
-  wins25: number;
-  losses25: number;
-  draws25: number;
-  timeouts25: number;
+  wins30: number;
+  losses30: number;
+  draws30: number;
+  timeouts30: number;
   wins35: number;
   losses35: number;
   draws35: number;
@@ -102,10 +102,10 @@ function emptyRound(): RoundAccumulator {
   return {
     ...emptyShopMetrics(),
     shops: 0,
-    wins25: 0,
-    losses25: 0,
-    draws25: 0,
-    timeouts25: 0,
+    wins30: 0,
+    losses30: 0,
+    draws30: 0,
+    timeouts30: 0,
     wins35: 0,
     losses35: 0,
     draws35: 0,
@@ -407,14 +407,14 @@ function processRound(
     parking,
   );
   const opponent = getCurrentOpponent(shop.state);
-  const result25 = simulateBattle(shop.state.board, opponent);
+  const result30 = simulateBattle(shop.state.board, opponent);
   const result35 = simulateBattle(shop.state.board, opponent, {
     combatLimitMs: 35_000,
   });
   const nextState =
     stateInput.round < 8
       ? {
-          ...advanceAfterBattle(shop.state, result25.winner),
+          ...advanceAfterBattle(shop.state, result30.winner),
           seals: 99,
         }
       : shop.state;
@@ -423,7 +423,7 @@ function processRound(
     parking: shop.parking,
     snapshot: {
       ...shop.metrics,
-      result25,
+      result30,
       result35,
       endGold: shop.state.gold,
       occupiedParking: shop.parking.filter(Boolean).length,
@@ -435,7 +435,7 @@ function processRound(
 function recordOutcome(
   result: CombatResult,
   round: RoundAccumulator,
-  suffix: "25" | "35",
+  suffix: "30" | "35",
 ): void {
   if (result.winner === "player") round[`wins${suffix}`] += 1;
   else if (result.winner === "enemy") {
@@ -462,7 +462,7 @@ function recordSnapshot(
   ] as const) {
     target[key] += snapshot[key];
   }
-  recordOutcome(snapshot.result25, target, "25");
+  recordOutcome(snapshot.result30, target, "30");
   recordOutcome(snapshot.result35, target, "35");
 }
 
@@ -489,10 +489,10 @@ function summarizeVariant(variant: VariantAccumulator) {
     (accumulator, round) => {
       for (const key of [
         "shops",
-        "wins25",
-        "losses25",
-        "draws25",
-        "timeouts25",
+        "wins30",
+        "losses30",
+        "draws30",
+        "timeouts30",
         "wins35",
         "losses35",
         "draws35",
@@ -510,10 +510,10 @@ function summarizeVariant(variant: VariantAccumulator) {
     },
     {
       shops: 0,
-      wins25: 0,
-      losses25: 0,
-      draws25: 0,
-      timeouts25: 0,
+      wins30: 0,
+      losses30: 0,
+      draws30: 0,
+      timeouts30: 0,
       wins35: 0,
       losses35: 0,
       draws35: 0,
@@ -531,10 +531,10 @@ function summarizeVariant(variant: VariantAccumulator) {
     parkingSlots: variant.capacity,
     campaigns: RUNS_PER_VARIANT,
     battles,
-    win25Percent: percent(ratio(total.wins25, battles)),
-    loss25Percent: percent(ratio(total.losses25, battles)),
-    draw25Percent: percent(ratio(total.draws25, battles)),
-    timeout25Percent: percent(ratio(total.timeouts25, battles)),
+    win30Percent: percent(ratio(total.wins30, battles)),
+    loss30Percent: percent(ratio(total.losses30, battles)),
+    draw30Percent: percent(ratio(total.draws30, battles)),
+    timeout30Percent: percent(ratio(total.timeouts30, battles)),
     win35Percent: percent(ratio(total.wins35, battles)),
     loss35Percent: percent(ratio(total.losses35, battles)),
     draw35Percent: percent(ratio(total.draws35, battles)),
@@ -566,8 +566,8 @@ function summarizeVariant(variant: VariantAccumulator) {
         round.blockedAffordableOffers,
         round.shops,
       ),
-      timeout25Percent: percent(
-        ratio(round.timeouts25, round.shops),
+      timeout30Percent: percent(
+        ratio(round.timeouts30, round.shops),
       ),
       timeout35Percent: percent(
         ratio(round.timeouts35, round.shops),
@@ -661,7 +661,7 @@ async function main(): Promise<void> {
       parkingUnlockRound: PARKING_UNLOCK_ROUND,
       parkingHasCombatEffects: false,
       activeBoardSlots: 5,
-      durationScenarios: [25_000, 35_000],
+      durationScenarios: [30_000, 35_000],
       note:
         "Die Referenz stammt aus dem vorhandenen 64-Seed-Lauf. Sie wird nicht erneut simuliert.",
     },
@@ -674,7 +674,7 @@ async function main(): Promise<void> {
 
   const variantRows = summaries.map(
     (variant) =>
-      `| ${variant.parkingSlots} | ${variant.win25Percent.toFixed(2)} % | ${variant.timeout25Percent.toFixed(2)} % | ${variant.timeout35Percent.toFixed(2)} % | ${variant.averagePurchasesPerShop.toFixed(2)} | ${variant.averagePurchaseGoldPerShop.toFixed(2)} | ${variant.averageMergesPerShop.toFixed(2)} | ${variant.roundEightAverageGold.toFixed(2)} | ${variant.blockedAffordableOffers} |`,
+      `| ${variant.parkingSlots} | ${variant.win30Percent.toFixed(2)} % | ${variant.timeout30Percent.toFixed(2)} % | ${variant.timeout35Percent.toFixed(2)} % | ${variant.averagePurchasesPerShop.toFixed(2)} | ${variant.averagePurchaseGoldPerShop.toFixed(2)} | ${variant.averageMergesPerShop.toFixed(2)} | ${variant.roundEightAverageGold.toFixed(2)} | ${variant.blockedAffordableOffers} |`,
   );
   const lateRows = summaries.flatMap((variant) =>
     variant.lateRounds.map(
@@ -702,7 +702,7 @@ async function main(): Promise<void> {
     "",
     "## Ergebnis",
     "",
-    "| Parkslots | Sieg 25 s | Timeout 25 s | Timeout 35 s | Käufe/Shop | Kaufgold/Shop | Merges/Shop | Gold vor R8 | blockierte Angebote |",
+    "| Parkslots | Sieg 30 s | Timeout 30 s | Timeout 35 s | Käufe/Shop | Kaufgold/Shop | Merges/Shop | Gold vor R8 | blockierte Angebote |",
     "| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ...variantRows,
     "",

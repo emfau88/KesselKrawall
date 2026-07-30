@@ -14,7 +14,7 @@ import type {
 } from "./types";
 
 const PLAYER_MAX_HP = 100;
-export const DEFAULT_COMBAT_LIMIT_MS = 25_000;
+export const DEFAULT_COMBAT_LIMIT_MS = 30_000;
 const STEP_MS = 100;
 export const POISON_CAP = 12;
 export const POISON_DECAY_PER_TICK = 2;
@@ -25,6 +25,10 @@ export const KESSEL_HEAT_START_MS = 15_000;
 export const KESSEL_HEAT_STEP_MS = 2_000;
 export const KESSEL_HEAT_DAMAGE_PER_STEP = 0.05;
 export const KESSEL_HEAT_MAX_MULTIPLIER = 1.25;
+export const KESSEL_FINISHER_START_MS = 25_000;
+export const KESSEL_FINISHER_STEP_MS = 2_000;
+export const KESSEL_FINISHER_DAMAGE_PER_STEP = 0.15;
+export const KESSEL_FINISHER_MAX_MULTIPLIER = 1.7;
 
 export interface BattleSimulationOptions {
   combatLimitMs?: number;
@@ -73,9 +77,19 @@ export function getKesselHeatDamageMultiplier(timeMs: number): number {
   if (timeMs < KESSEL_HEAT_START_MS) return 1;
   const steps =
     Math.floor((timeMs - KESSEL_HEAT_START_MS) / KESSEL_HEAT_STEP_MS) + 1;
-  return Math.min(
+  const heatMultiplier = Math.min(
     KESSEL_HEAT_MAX_MULTIPLIER,
     1 + steps * KESSEL_HEAT_DAMAGE_PER_STEP,
+  );
+  if (timeMs < KESSEL_FINISHER_START_MS) return heatMultiplier;
+  const finisherSteps =
+    Math.floor(
+      (timeMs - KESSEL_FINISHER_START_MS) / KESSEL_FINISHER_STEP_MS,
+    ) + 1;
+  return Math.min(
+    KESSEL_FINISHER_MAX_MULTIPLIER,
+    heatMultiplier +
+      finisherSteps * KESSEL_FINISHER_DAMAGE_PER_STEP,
   );
 }
 

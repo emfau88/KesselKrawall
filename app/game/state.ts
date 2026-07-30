@@ -812,7 +812,7 @@ function sanitizeCombatResult(value: unknown): CombatResult | null | undefined {
     value.reason === "knockout" || value.reason === "timeout"
       ? value.reason
       : null;
-  const duration = safeInteger(value.duration, 0, 25_000);
+  const duration = safeInteger(value.duration, 0, 30_000);
   const playerMaxHp = safeInteger(value.playerMaxHp, 1, 10_000);
   const enemyMaxHp = safeInteger(value.enemyMaxHp, 1, 10_000);
   const finalPlayerHp = safeInteger(value.finalPlayerHp, 0, 10_000);
@@ -850,7 +850,7 @@ function sanitizeCombatResult(value: unknown): CombatResult | null | undefined {
   ]);
   const events = value.events.map((event) => {
     if (!isRecord(event)) return null;
-    const time = safeInteger(event.time, 0, 25_000);
+    const time = safeInteger(event.time, 0, 30_000);
     const amount = safeInteger(event.amount, 1, 100_000);
     const playerHp = safeInteger(event.playerHp, 0, 10_000);
     const playerShield = safeInteger(event.playerShield, 0, 10_000);
