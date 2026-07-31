@@ -2818,17 +2818,19 @@ export default function Game() {
             <span className="menu-return-glyph" aria-hidden="true" />
             <small>MENÜ</small>
           </button>
-          <button
-            type="button"
-            className="audio-settings-button is-compact"
-            onClick={handleOpenAudioSettings}
-            aria-label="Audio-Einstellungen öffnen"
-            aria-haspopup="dialog"
-            aria-expanded={showAudioSettings}
-            title="Audio-Einstellungen"
-          >
-            <span className="audio-button-glyph" aria-hidden="true">♪</span>
-          </button>
+          {game.phase !== "battle" && (
+            <button
+              type="button"
+              className="audio-settings-button is-compact"
+              onClick={handleOpenAudioSettings}
+              aria-label="Audio-Einstellungen öffnen"
+              aria-haspopup="dialog"
+              aria-expanded={showAudioSettings}
+              title="Audio-Einstellungen"
+            >
+              <span className="audio-button-glyph" aria-hidden="true">♪</span>
+            </button>
+          )}
           <button
             type="button"
             className="fullscreen-button"
