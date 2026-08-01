@@ -44,6 +44,8 @@ import {
   advanceAfterBattle,
   buyOffer,
   createInitialState,
+  enterOpeningShop,
+  getBattleReward,
   getFamilyWeights,
   getPowerBreakdown,
   getPowerValue,
@@ -108,16 +110,23 @@ function combatEvent(
   };
 }
 
-test("opening shop contains one offer from every family", () => {
+function createShopState(seed: number): GameState {
+  return enterOpeningShop(createInitialState(seed));
+}
+
+test("a new run introduces the arena before opening its curated shop", () => {
   const state = createInitialState(1234);
+  assert.equal(state.phase, "intro");
+  const shop = enterOpeningShop(state);
+  assert.equal(shop.phase, "shop");
   const families = new Set(
-    state.offers.map((offer) => ITEM_BY_ID[offer.itemId].family),
+    shop.offers.map((offer) => ITEM_BY_ID[offer.itemId].family),
   );
   assert.deepEqual([...families].sort(), ["fire", "guard", "poison"]);
 });
 
 test("full board purchase performs an immediate merge and cascade", () => {
-  const base = createInitialState(10);
+  const base = createShopState(10);
   const state: GameState = {
     ...base,
     gold: 20,
@@ -145,7 +154,7 @@ test("full board purchase performs an immediate merge and cascade", () => {
 });
 
 test("purchase merge keeps the existing target slot through a cascade", () => {
-  const base = createInitialState(11);
+  const base = createShopState(11);
   const state: GameState = {
     ...base,
     gold: 20,
@@ -179,7 +188,7 @@ test("purchase merge keeps the existing target slot through a cascade", () => {
 });
 
 test("the passive reserve accepts one purchase from round five", () => {
-  const base = createInitialState(12);
+  const base = createShopState(12);
   const board = [
     item("fire", "chili"),
     item("poison", "slime-shroom"),
@@ -208,7 +217,7 @@ test("the passive reserve accepts one purchase from round five", () => {
 });
 
 test("the reserve stays locked before round five", () => {
-  const base = createInitialState(13);
+  const base = createShopState(13);
   const state: GameState = {
     ...base,
     round: RESERVE_UNLOCK_ROUND - 1,
@@ -232,7 +241,7 @@ test("the reserve stays locked before round five", () => {
 });
 
 test("a reserve merge cascades back into the active board", () => {
-  const base = createInitialState(14);
+  const base = createShopState(14);
   const state: GameState = {
     ...base,
     round: RESERVE_UNLOCK_ROUND,
@@ -274,7 +283,7 @@ test("a reserve merge cascades back into the active board", () => {
 });
 
 test("board and reserve can be swapped and the reserve item sold", () => {
-  const base = createInitialState(15);
+  const base = createShopState(15);
   const state: GameState = {
     ...base,
     round: RESERVE_UNLOCK_ROUND,
@@ -788,12 +797,20 @@ test("emergency healing never revives a knocked-out cauldron", () => {
   );
 });
 
-test("a draw advances without seal loss or victory reward", () => {
-  const state = createInitialState(45);
+test("a draw keeps the same opponent without seal loss or farmable gold", () => {
+  const state = createShopState(45);
   const next = advanceAfterBattle(state, "draw");
   assert.equal(next.seals, state.seals);
   assert.equal(next.victories, state.victories);
-  assert.equal(next.round, 2);
+  assert.equal(next.round, state.round);
+  assert.equal(next.opponentVariant, state.opponentVariant);
+  assert.equal(next.gold, state.gold);
+  assert.equal(next.openingProtectionUsed, false);
+  assert.equal(getBattleReward(state, "draw"), 0);
+
+  const protectedAfterDraw = advanceAfterBattle(next, "enemy");
+  assert.equal(protectedAfterDraw.seals, state.seals);
+  assert.equal(protectedAfterDraw.openingProtectionUsed, true);
 });
 
 test("stored runs validate ids, levels, counters, and pending battles deeply", () => {
@@ -879,14 +896,16 @@ test("healing tuber triggers once below half health with a smaller heal", () => 
   assert.ok(heals[0].playerHp <= 59);
 });
 
-test("version three saves migrate to an empty version four reserve", () => {
+test("version three saves migrate to an empty version five reserve", () => {
   const legacy = JSON.parse(JSON.stringify(createInitialState(48)));
   legacy.version = 3;
   delete legacy.reserve;
+  delete legacy.openingProtectionUsed;
 
   const migrated = sanitizeStoredState(legacy);
-  assert.equal(migrated?.version, 4);
+  assert.equal(migrated?.version, 5);
   assert.equal(migrated?.reserve, null);
+  assert.equal(migrated?.openingProtectionUsed, false);
 });
 
 test("an active battle round-trips through the atomic save record", () => {
@@ -919,15 +938,21 @@ test("an active battle round-trips through the atomic save record", () => {
 });
 
 test("the first defeat is protected, later defeats consume one seal", () => {
-  const state = createInitialState(42);
+  const state = createShopState(42);
+  const variant = state.opponentVariant;
   const protectedNext = advanceAfterBattle(state, "enemy");
   assert.equal(protectedNext.seals, 3);
-  assert.equal(protectedNext.round, 2);
+  assert.equal(protectedNext.round, 1);
   assert.equal(protectedNext.phase, "shop");
+  assert.equal(protectedNext.openingProtectionUsed, true);
+  assert.equal(protectedNext.opponentVariant, variant);
+  assert.equal(protectedNext.gold, state.gold + 3);
 
   const next = advanceAfterBattle(protectedNext, "enemy");
   assert.equal(next.seals, 2);
-  assert.equal(next.round, 3);
+  assert.equal(next.round, 1);
+  assert.equal(next.opponentVariant, variant);
+  assert.equal(next.gold, protectedNext.gold + 3);
 });
 
 test("campaign contains seven opponents and one final boss", () => {
@@ -957,17 +982,25 @@ test("winning the eighth fight completes the campaign", () => {
   assert.equal(completed.round, 8);
 });
 
-test("losing to the boss ends the run even with seals remaining", () => {
+test("losing to the boss allows a same-variant retry while a seal remains", () => {
   const state = {
-    ...createInitialState(44),
+    ...createShopState(44),
     round: 8,
     seals: 3,
     victories: 6,
+    openingProtectionUsed: true,
   };
-  const completed = advanceAfterBattle(state, "enemy");
-  assert.equal(completed.phase, "gameover");
-  assert.equal(completed.seals, 2);
-  assert.equal(completed.round, 8);
+  const retry = advanceAfterBattle(state, "enemy");
+  assert.equal(retry.phase, "shop");
+  assert.equal(retry.seals, 2);
+  assert.equal(retry.round, 8);
+  assert.equal(retry.opponentVariant, state.opponentVariant);
+  assert.equal(retry.gold, state.gold + 3);
+
+  const finalLoss = advanceAfterBattle({ ...retry, seals: 1 }, "enemy");
+  assert.equal(finalLoss.phase, "gameover");
+  assert.equal(finalLoss.seals, 0);
+  assert.equal(finalLoss.gold, retry.gold);
 });
 
 test("the boss visibly triggers Kesselzorn below half health", () => {

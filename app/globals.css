@@ -1837,6 +1837,12 @@ button.board-slot:active {
 }
 
 .battle-projectile {
+  --projectile-size: 72px;
+  --projectile-offset: -36px;
+  width: var(--projectile-size);
+  height: var(--projectile-size);
+  margin: var(--projectile-offset) 0 0 var(--projectile-offset);
+  object-fit: contain;
   backface-visibility: hidden;
   will-change: translate, transform, opacity;
 }
@@ -1848,54 +1854,20 @@ button.board-slot:active {
     calc(var(--shot-delay) + var(--charge-duration)) both;
 }
 
-.battle-projectile.projectile-fire,
-.battle-projectile.projectile-poison {
-  width: 82px;
-  height: 42px;
-  margin: -21px 0 0 -41px;
-  object-fit: contain;
-}
-
-.battle-projectile.projectile-ward {
-  width: 78px;
-  height: 78px;
-  margin: -39px 0 0 -39px;
-  object-fit: contain;
-}
-
 .battle-projectile.projectile-guard {
   --projectile-angle-offset: 45deg;
-  width: 58px;
-  height: 58px;
-  margin: -29px 0 0 -29px;
-  object-fit: contain;
-}
-
-.battle-projectile.projectile-item {
-  width: 78px;
-  height: 48px;
-  margin: -24px 0 0 -39px;
-  object-fit: contain;
-}
-
-.battle-projectile.projectile-item-dragon-tooth {
-  width: 70px;
-  height: 43px;
-  margin: -21.5px 0 0 -35px;
 }
 
 .battle-projectile.projectile-item-nightwing {
   --projectile-angle-offset: 90deg;
-  width: 48px;
-  height: 62px;
-  margin: -31px 0 0 -24px;
 }
 
 .battle-projectile.projectile-item-gold-spoon {
   --vfx-color: var(--gold);
-  width: 64px;
-  height: 64px;
-  margin: -32px 0 0 -32px;
+}
+
+.battle-projectile.projectile-item-dragon-tooth {
+  scale: 0.84;
 }
 
 .is-self-effect .battle-projectile {
@@ -1950,56 +1922,11 @@ button.board-slot:active {
 }
 
 .arena-vfx.tier-standard .battle-projectile {
-  width: 48px;
-  height: 48px;
-  margin: -24px 0 0 -24px;
+  --projectile-size: 56px;
+  --projectile-offset: -28px;
   filter:
     drop-shadow(0 0 5px var(--vfx-color))
     drop-shadow(0 3px 3px rgba(0, 0, 0, 0.42));
-}
-
-.arena-vfx.tier-standard .battle-projectile.projectile-fire,
-.arena-vfx.tier-standard .battle-projectile.projectile-poison {
-  width: 68px;
-  height: 34px;
-  margin: -17px 0 0 -34px;
-}
-
-.arena-vfx.tier-standard .battle-projectile.projectile-ward {
-  width: 64px;
-  height: 64px;
-  margin: -32px 0 0 -32px;
-}
-
-.arena-vfx.tier-standard .battle-projectile.projectile-guard {
-  width: 50px;
-  height: 50px;
-  margin: -25px 0 0 -25px;
-}
-
-.arena-vfx.tier-standard .battle-projectile.projectile-item {
-  width: 60px;
-  height: 38px;
-  margin: -19px 0 0 -30px;
-}
-
-.arena-vfx.tier-standard
-  .battle-projectile.projectile-item-dragon-tooth {
-  width: 54px;
-  height: 34px;
-  margin: -17px 0 0 -27px;
-}
-
-.arena-vfx.tier-standard .battle-projectile.projectile-item-nightwing {
-  width: 42px;
-  height: 54px;
-  margin: -27px 0 0 -21px;
-}
-
-.arena-vfx.tier-standard .battle-projectile.projectile-item-gold-spoon {
-  width: 56px;
-  height: 56px;
-  margin: -28px 0 0 -28px;
 }
 
 .arena-vfx.tier-standard .battle-impact {
@@ -2015,9 +1942,8 @@ button.board-slot:active {
 }
 
 .arena-vfx.tier-ambient .battle-projectile {
-  width: 34px;
-  height: 34px;
-  margin: -17px 0 0 -17px;
+  --projectile-size: 34px;
+  --projectile-offset: -17px;
   filter: drop-shadow(0 0 5px var(--vfx-color));
 }
 
@@ -2093,88 +2019,19 @@ button.board-slot:active {
 }
 
 @media (max-width: 430px) {
-  .arena-vfx.is-projectile .battle-projectile.projectile-fire,
-  .arena-vfx.is-projectile .battle-projectile.projectile-poison {
-    width: 74px;
-    height: 38px;
-    margin: -19px 0 0 -37px;
+  .arena-vfx.is-projectile .battle-projectile {
+    --projectile-size: 64px;
+    --projectile-offset: -32px;
   }
 
-  .arena-vfx.is-projectile .battle-projectile.projectile-guard {
-    width: 52px;
-    height: 52px;
-    margin: -26px 0 0 -26px;
+  .arena-vfx.is-projectile.tier-standard .battle-projectile {
+    --projectile-size: 50px;
+    --projectile-offset: -25px;
   }
 
-  .arena-vfx.is-projectile .battle-projectile.projectile-item {
-    width: 70px;
-    height: 43px;
-    margin: -21.5px 0 0 -35px;
-  }
-
-  .arena-vfx.is-projectile
-    .battle-projectile.projectile-item-nightwing {
-    width: 43px;
-    height: 56px;
-    margin: -28px 0 0 -21.5px;
-  }
-
-  .arena-vfx.is-projectile
-    .battle-projectile.projectile-item-dragon-tooth {
-    width: 63px;
-    height: 39px;
-    margin: -19.5px 0 0 -31.5px;
-  }
-
-  .arena-vfx.is-projectile
-    .battle-projectile.projectile-item-moon-salt {
-    width: 74px;
-    height: 46px;
-    margin: -23px 0 0 -37px;
-  }
-
-  .arena-vfx.is-projectile.tier-standard
-    .battle-projectile.projectile-fire,
-  .arena-vfx.is-projectile.tier-standard
-    .battle-projectile.projectile-poison {
-    width: 61px;
-    height: 31px;
-    margin: -15.5px 0 0 -30.5px;
-  }
-
-  .arena-vfx.is-projectile.tier-standard
-    .battle-projectile.projectile-guard {
-    width: 45px;
-    height: 45px;
-    margin: -22.5px 0 0 -22.5px;
-  }
-
-  .arena-vfx.is-projectile.tier-standard
-    .battle-projectile.projectile-item {
-    width: 54px;
-    height: 34px;
-    margin: -17px 0 0 -27px;
-  }
-
-  .arena-vfx.is-projectile.tier-standard
-    .battle-projectile.projectile-item-nightwing {
-    width: 38px;
-    height: 49px;
-    margin: -24.5px 0 0 -19px;
-  }
-
-  .arena-vfx.is-projectile.tier-standard
-    .battle-projectile.projectile-item-dragon-tooth {
-    width: 49px;
-    height: 31px;
-    margin: -15.5px 0 0 -24.5px;
-  }
-
-  .arena-vfx.is-projectile.tier-standard
-    .battle-projectile.projectile-item-moon-salt {
-    width: 57px;
-    height: 36px;
-    margin: -18px 0 0 -28.5px;
+  .arena-vfx.is-projectile.tier-ambient .battle-projectile {
+    --projectile-size: 32px;
+    --projectile-offset: -16px;
   }
 }
 
@@ -2364,6 +2221,7 @@ button.board-slot:active {
 }
 
 .shop-sheet,
+.intro-sheet,
 .result-sheet,
 .gameover-sheet,
 .battle-controls {
@@ -2374,6 +2232,91 @@ button.board-slot:active {
     linear-gradient(180deg, rgba(47, 31, 54, 0.98), rgba(24, 17, 31, 0.99));
   box-shadow: 0 -14px 38px rgba(0, 0, 0, 0.44);
   backdrop-filter: blur(18px);
+}
+
+.intro-sheet {
+  max-height: 42dvh;
+  padding: 18px 18px var(--safe-bottom);
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  overflow-y: auto;
+  border-radius: 22px 22px 0 0;
+}
+
+.intro-sheet h2 {
+  margin: 0;
+  color: var(--gold);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 24px;
+  line-height: 1.05;
+}
+
+.intro-sheet p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.intro-sheet p strong {
+  color: var(--ink);
+}
+
+.intro-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.intro-facts span {
+  min-width: 0;
+  padding: 7px 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(245, 197, 91, 0.18);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+  color: #dfd5c1;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.intro-facts b {
+  width: 19px;
+  height: 19px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: rgba(245, 197, 91, 0.16);
+  color: var(--gold);
+}
+
+.intro-button {
+  min-height: 56px;
+  padding: 9px 14px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(245, 197, 91, 0.66);
+  border-radius: 13px;
+  background:
+    linear-gradient(180deg, #b95d35, #7b3026),
+    var(--fire);
+  color: #fff8df;
+  font-size: 14px;
+  font-weight: 950;
+  letter-spacing: 0.06em;
+  box-shadow: 0 8px 24px rgba(126, 43, 25, 0.34);
+  cursor: pointer;
+}
+
+.intro-button span {
+  color: #ffdca3;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0;
 }
 
 .panel-backdrop {
@@ -3051,6 +2994,18 @@ button.board-slot:active {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   border-radius: 22px 22px 0 0;
+}
+
+@media (max-width: 699px) and (min-height: 761px) {
+  .game-shell.phase-result {
+    grid-template-rows: auto 600px auto;
+    overflow-y: auto;
+  }
+
+  .phase-result .result-sheet {
+    max-height: none;
+    overflow: visible;
+  }
 }
 
 .result-heading {
@@ -5007,6 +4962,7 @@ button.board-slot:active {
   }
 
   .shop-sheet,
+  .intro-sheet,
   .result-sheet,
   .gameover-sheet,
   .battle-controls {
@@ -5016,6 +4972,30 @@ button.board-slot:active {
     border-top: 0;
     border-left: 1px solid var(--line);
     border-radius: 0;
+  }
+
+  .intro-sheet {
+    padding: 28px 24px;
+    align-content: center;
+    gap: 14px;
+  }
+
+  .intro-sheet h2 {
+    font-size: 32px;
+  }
+
+  .intro-sheet p {
+    font-size: 14px;
+  }
+
+  .intro-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .intro-facts span {
+    min-height: 42px;
+    padding: 8px 10px;
+    font-size: 12px;
   }
 
   .shop-sheet {

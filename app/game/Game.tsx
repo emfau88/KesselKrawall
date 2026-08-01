@@ -77,6 +77,8 @@ import {
   beginBattle,
   buyOffer,
   createInitialState,
+  enterOpeningShop,
+  getBattleReward,
   getCurrentOpponent,
   getFamilyWeights,
   getPowerBreakdown,
@@ -84,6 +86,7 @@ import {
   getPurchaseMergePreview,
   getRoundReward,
   getSellValue,
+  isOpeningDefeatProtected,
   MAX_ROUNDS,
   RESERVE_UNLOCK_ROUND,
   rerollShop,
@@ -1552,7 +1555,7 @@ export default function Game() {
           ? opponent.rank === "boss"
             ? "boss"
             : "battle"
-          : game.phase === "shop"
+          : game.phase === "shop" || game.phase === "intro"
             ? "shop"
             : "result";
     setGameAudioScene(audioScene);
@@ -2236,35 +2239,42 @@ export default function Game() {
   function handleContinue() {
     if (!combat) return;
     const outcome = combat.winner;
+    const openingLossProtected = isOpeningDefeatProtected(game, outcome);
+    const nextGame = advanceAfterBattle(game, outcome);
     updateCombatPause(false);
     if (game.round === 1 && speedRef.current === 1) {
       updateCombatSpeed(2);
     }
     setReserveSelected(false);
-    setGame((current) => advanceAfterBattle(current, outcome));
+    setGame(nextGame);
     setCombat(null);
     setBattleView(null);
     setBattleClock(0);
     setBattleEnding(null);
-    if (game.round >= MAX_ROUNDS) {
+    if (nextGame.phase === "victory") {
+      announce("Der Großkessel fällt. Du gewinnst das Kesselturnier!");
+    } else if (nextGame.phase === "gameover") {
+      announce("Das letzte Siegel ist gebrochen. Die Kampagne endet.");
+    } else if (outcome === "player") {
       announce(
-        outcome === "player"
-          ? "Der Großkessel fällt. Du gewinnst das Kesselturnier!"
-          : outcome === "draw"
-            ? "Unentschieden – der Großkessel wartet auf die Revanche."
-            : "Der Großkessel verteidigt seinen Titel.",
+        nextGame.round === RESERVE_UNLOCK_ROUND
+          ? "Ablage freigeschaltet! Dort kannst du eine Zutat passiv parken."
+          : "Siegbonus erhalten. Nächster Gegner!",
       );
+    } else if (outcome === "draw") {
+      announce(`Unentschieden. ${opponent.name} wartet auf die Revanche.`);
     } else {
       announce(
-        game.round + 1 === RESERVE_UNLOCK_ROUND
-          ? "Ablage freigeschaltet! Dort kannst du eine Zutat passiv parken."
-          : outcome === "player"
-            ? "Siegbonus erhalten. Nächster Gegner!"
-            : outcome === "draw"
-              ? "Unentschieden: kein Siegelverlust, kein Siegbonus."
-              : "Ein Siegel ist gebrochen.",
+        openingLossProtected
+          ? `Der erste Fehlversuch ist geschützt. Revanche gegen ${opponent.name}!`
+          : `Ein Siegel ist gebrochen. Revanche gegen ${opponent.name}!`,
       );
     }
+  }
+
+  function handleEnterOpeningShop() {
+    setGame((current) => enterOpeningShop(current));
+    announce("Wähle jetzt deine ersten Zutaten für den Kessel.");
   }
 
   function handleReset() {
@@ -2708,9 +2718,10 @@ export default function Game() {
                 <div>
                   <h2>Siegel &amp; Niederlagen</h2>
                   <p>
-                    Drei Siegel schützen deine Kampagne. Runde 1 ist geschützt;
-                    danach bricht eine Niederlage ein Siegel. Ohne Siegel endet
-                    die Kampagne.
+                    Drei Siegel schützen deine Kampagne. Die erste Niederlage
+                    in Runde 1 ist geschützt;
+                    danach bricht eine Niederlage ein Siegel. Du bereitest
+                    anschließend die Revanche gegen denselben Gegner vor.
                   </p>
                 </div>
               </article>
@@ -3036,19 +3047,21 @@ export default function Game() {
           <div className="player-heading">
             <div className="power-heading-wrap">
               <span className="eyebrow">DEIN ZAUBERKESSEL</span>
-              <h2>
-                <button
-                  type="button"
-                  className="power-title-button"
-                  onClick={() => setShowPowerHelp((current) => !current)}
-                  aria-expanded={showPowerHelp}
-                  aria-controls="power-explainer"
-                >
-                  Buildstärke ≈ {playerPower}
-                  <i aria-hidden="true">i</i>
-                </button>
-              </h2>
-              {showPowerHelp && (
+              {!isCombatPhase && (
+                <h2>
+                  <button
+                    type="button"
+                    className="power-title-button"
+                    onClick={() => setShowPowerHelp((current) => !current)}
+                    aria-expanded={showPowerHelp}
+                    aria-controls="power-explainer"
+                  >
+                    Buildstärke ≈ {playerPower}
+                    <i aria-hidden="true">i</i>
+                  </button>
+                </h2>
+              )}
+              {!isCombatPhase && showPowerHelp && (
                 <div className="power-explainer" id="power-explainer">
                   <strong>Buildstärke ist eine grobe Schätzung</strong>
                   <p>
@@ -3077,17 +3090,19 @@ export default function Game() {
                 </div>
               )}
             </div>
-            <button
-              type="button"
-              className="power-compare"
-              onClick={() => setShowPowerHelp((current) => !current)}
-              aria-label={`Gegnerische grobe Buildstärke ungefähr ${enemyPower}. Erklärung öffnen`}
-              aria-expanded={showPowerHelp}
-              aria-controls="power-explainer"
-            >
-              <UiIcon asset="power" className="compare-icon" />
-              Gegner ≈ {enemyPower}
-            </button>
+            {!isCombatPhase && (
+              <button
+                type="button"
+                className="power-compare"
+                onClick={() => setShowPowerHelp((current) => !current)}
+                aria-label={`Gegnerische grobe Buildstärke ungefähr ${enemyPower}. Erklärung öffnen`}
+                aria-expanded={showPowerHelp}
+                aria-controls="power-explainer"
+              >
+                <UiIcon asset="power" className="compare-icon" />
+                Gegner ≈ {enemyPower}
+              </button>
+            )}
           </div>
           <CauldronBoard
             board={game.board}
@@ -3119,6 +3134,31 @@ export default function Game() {
             showStatuses={isCombatPhase}
           />
         </article>
+        </section>
+      )}
+
+      {game.phase === "intro" && (
+        <section className="intro-sheet" aria-labelledby="run-intro-title">
+          <span className="eyebrow">DEINE ERSTE RUNDE</span>
+          <h2 id="run-intro-title">Erst orientieren. Dann brauen.</h2>
+          <p>
+            Oben wartet <strong>{opponent.name}</strong> mit seinem fertigen
+            Kessel. Unten steht dein noch leerer Kessel. Auf dem Hexenmarkt
+            stellst du gleich fünf Zutaten für den automatischen Kampf zusammen.
+          </p>
+          <div className="intro-facts" aria-label="Ablauf der ersten Runde">
+            <span><b>1</b> Zutaten wählen</span>
+            <span><b>2</b> Synergien bauen</span>
+            <span><b>3</b> Kampf starten</span>
+          </div>
+          <button
+            type="button"
+            className="intro-button"
+            onClick={handleEnterOpeningShop}
+          >
+            ZUM HEXENMARKT
+            <span>7 Gold · drei Startzutaten zur Auswahl →</span>
+          </button>
         </section>
       )}
 
@@ -3514,7 +3554,11 @@ export default function Game() {
                   ? "Kessel-Sieg!"
                   : combat.winner === "draw"
                     ? "Unentschieden"
-                    : "Siegelbruch"}
+                    : isOpeningDefeatProtected(game, combat.winner)
+                      ? "Noch geschützt!"
+                      : game.seals <= 1
+                        ? "Letztes Siegel gebrochen"
+                        : "Siegelbruch"}
               </h2>
               <p>
                 {combat.winner === "player"
@@ -3522,12 +3566,12 @@ export default function Game() {
                     ? "Der Titel des Kesselturniers gehört dir."
                     : `+${getRoundReward(game, true)} Gold in der nächsten Runde`
                   : combat.winner === "draw"
-                    ? game.round >= MAX_ROUNDS
-                      ? "Kein Siegelverlust. Fordere den Großkessel erneut."
-                      : "Kein Siegelverlust und kein Siegbonus."
-                    : game.round >= MAX_ROUNDS
-                      ? `${opponent.name} verteidigt den Turniertitel.`
-                      : `${opponent.name} war diesmal stärker. Deine Kampagne geht weiter.`}
+                    ? `Kein Siegelverlust und kein Gold. ${opponent.name} wartet erneut.`
+                    : isOpeningDefeatProtected(game, combat.winner)
+                      ? `Der erste Fehlversuch kostet kein Siegel. +${getBattleReward(game, combat.winner)} Trostgold für die Revanche.`
+                      : game.seals <= 1
+                        ? `${opponent.name} war diesmal stärker. Deine Kampagne endet.`
+                        : `${opponent.name} war diesmal stärker. +${getBattleReward(game, combat.winner)} Trostgold für die Revanche.`}
               </p>
               {combat.reason === "timeout" && (
                 <div className="decision-result" aria-label="Relative Lebensenergie bei Zeitablauf">
@@ -3545,21 +3589,25 @@ export default function Game() {
           </div>
           <StatsList stats={combat.playerStats} />
           <button type="button" className="continue-button" onClick={handleContinue}>
-            {game.round >= MAX_ROUNDS
-              ? combat.winner === "draw"
+            {combat.winner === "player"
+              ? game.round >= MAX_ROUNDS
+                ? "TURNIER ABSCHLIESSEN"
+                : `BELOHNUNG NEHMEN · +${getBattleReward(game, combat.winner)} GOLD`
+              : combat.winner === "draw"
                 ? "REVANCHE VORBEREITEN"
-                : "TURNIER ABSCHLIESSEN"
-              : combat.winner === "player"
-                ? "BELOHNUNG NEHMEN"
-                : combat.winner === "draw"
-                  ? "OHNE VERLUST WEITER"
-                  : "WEITERKÄMPFEN"}
+                : !isOpeningDefeatProtected(game, combat.winner) && game.seals <= 1
+                  ? "KAMPAGNE ABSCHLIESSEN"
+                  : `REVANCHE VORBEREITEN · +${getBattleReward(game, combat.winner)} GOLD`}
             <span>
-              {game.round >= MAX_ROUNDS
-                ? combat.winner === "draw"
-                  ? "Bossrunde erneut vorbereiten →"
-                  : "Kampagnenergebnis ansehen →"
-                : `Runde ${game.round + 1} vorbereiten →`}
+              {combat.winner === "player"
+                ? game.round >= MAX_ROUNDS
+                  ? "Kampagnenergebnis ansehen →"
+                  : `Runde ${game.round + 1} vorbereiten →`
+                : combat.winner === "enemy" &&
+                    !isOpeningDefeatProtected(game, combat.winner) &&
+                    game.seals <= 1
+                  ? "Kampagnenergebnis ansehen →"
+                  : `${opponent.name} erneut herausfordern →`}
             </span>
           </button>
         </section>

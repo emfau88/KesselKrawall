@@ -1,6 +1,7 @@
 export type Family = "fire" | "poison" | "guard";
 export type ItemLevel = 1 | 2 | 3;
 export type GamePhase =
+  | "intro"
   | "shop"
   | "battle"
   | "result"
@@ -94,7 +95,7 @@ export type ItemLocation =
   | { area: "reserve" };
 
 export interface GameState {
-  version: 4;
+  version: 5;
   phase: GamePhase;
   round: number;
   gold: number;
@@ -108,6 +109,7 @@ export interface GameState {
   rngState: number;
   idCounter: number;
   opponentVariant: number;
+  openingProtectionUsed: boolean;
   pendingBattle: CombatResult | null;
 }
 

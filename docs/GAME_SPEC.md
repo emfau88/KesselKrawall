@@ -22,7 +22,7 @@ Online-Systeme.
 - ab Runde 5 ein passiver Ablageplatz außerhalb des aktiven Aufbaus
 - drei Merge-Stufen
 - eine Synergieschwelle bei drei Familienpunkten
-- drei Schutzsiegel; ab Runde 2 verbraucht eine Niederlage ein Siegel
+- drei Schutzsiegel; nur die erste Niederlage in Runde 1 ist geschützt
 - Hochformat ist vollständig unterstützt; mobiles Querformat fordert zum
   Drehen auf, Desktop-Querformat bleibt funktional
 - keine Meta-Progression, vierte Familie oder Online-Funktion
@@ -32,6 +32,9 @@ Benutzeroberfläche und eine
 abgeschlossene Acht-Runden-Kampagne.
 
 ## Kampagnendramaturgie
+
+Eine neue Kampagne zeigt vor dem ersten Einkauf einmalig die Kampfarena mit
+Gegner- und Spielerkessel. Erst danach führt ein klarer Einstieg zum Hexenmarkt.
 
 1. **Zischbert:** verständlicher Feuerstart ohne Schutz
 2. **Moor-Martha:** erster sichtbarer Giftaufbau
@@ -52,8 +55,10 @@ angekündigt.
 - Der Shop zeigt drei Angebote.
 - Ein gekauftes Angebot bleibt bis zum nächsten Reroll als gekauft markiert.
 - Der erste Reroll jeder Runde ist kostenlos, weitere kosten je 1 Gold.
-- Nach einem Kampf erhält der Spieler 5 Gold plus 1 Gold alle zwei Runden.
-- Ein Sieg gewährt zusätzlich 1 Gold.
+- Nach einem Sieg erhält der Spieler 5 Gold plus 1 Gold alle zwei Runden.
+- Ein Sieg gewährt zusätzlich 1 Gold; Elite-Bonusgold kommt darauf.
+- Eine Niederlage mit verbleibender Kampagne gewährt 3 Trostgold.
+- Ein Unentschieden gewährt kein Gold, damit Wiederholungen nicht farmbar sind.
 - Nicht ausgegebenes Gold bleibt erhalten.
 - Verkaufswert: 50 % der investierten Basiskosten, abgerundet, mindestens
   1 Gold. Level I/II/III gelten als 1/2/4 investierte Kopien.
@@ -130,12 +135,14 @@ damit ein schlechter Zufallsstart die Kampagne nicht entscheidet.
 
 ## Niederlage und Fortschritt
 
-- Ab Runde 2 verbraucht eine Niederlage ein Schutzsiegel.
-- Die nächste Runde beginnt trotzdem; es gibt keine Wiederholung desselben
-  Gegners.
+- Die erste Niederlage in Runde 1 verbraucht kein Schutzsiegel. Jede weitere
+  Niederlage verbraucht eines.
+- Nur ein Sieg schaltet den nächsten Gegner frei. Nach Niederlage oder
+  Unentschieden bleibt derselbe Gegner samt Kesselvariante bestehen und der
+  Spieler bereitet eine Revanche mit neuen Angeboten vor.
 - Bei null Siegeln endet die Kampagne.
-- Ein Unentschieden kostet kein Siegel und gewährt keinen Siegbonus.
-- Nach dem Bosskampf endet der Vertical Slice mit Sieg oder Niederlage.
+- Ein Unentschieden kostet kein Siegel und gewährt kein Gold.
+- Der Boss kann erneut herausgefordert werden, solange noch ein Siegel bleibt.
 - Kampf-Lebenspunkte und Schutzsiegel sind getrennte Ressourcen.
 
 ## Technische Leitplanken

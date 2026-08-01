@@ -17,11 +17,13 @@ export const BOARD_SIZE = 5;
 export const SYNERGY_THRESHOLD = 3;
 export const MAX_ROUNDS = CAMPAIGN_OPPONENTS.length;
 export const RESERVE_UNLOCK_ROUND = 5;
-export const STORAGE_KEY = "kessel-krawall-run-v4";
+export const STORAGE_KEY = "kessel-krawall-run-v5";
 export const LEGACY_STORAGE_KEYS = [
+  "kessel-krawall-run-v4",
   "kessel-krawall-run-v3",
   "kessel-krawall-run-v2",
 ] as const;
+export const DEFEAT_RECOVERY_GOLD = 3;
 const OPENING_ITEM_IDS = ["chili", "slime-shroom", "egg-shell"] as const;
 
 export interface ActionResult {
@@ -133,8 +135,8 @@ function rollOffers(
 
 export function createInitialState(seed = 0x4b4b2026): GameState {
   const base: GameState = {
-    version: 4,
-    phase: "shop",
+    version: 5,
+    phase: "intro",
     round: 1,
     gold: 7,
     seals: 3,
@@ -147,6 +149,7 @@ export function createInitialState(seed = 0x4b4b2026): GameState {
     rngState: seed >>> 0,
     idCounter: 1,
     opponentVariant: (seed >>> 0) % opponentVariantCount(1),
+    openingProtectionUsed: false,
     pendingBattle: null,
   };
   const rolled = rollOffers(base, true);
@@ -530,6 +533,10 @@ export function beginBattle(state: GameState): ActionResult {
   };
 }
 
+export function enterOpeningShop(state: GameState): GameState {
+  return state.phase === "intro" ? { ...state, phase: "shop" } : state;
+}
+
 export function showBattleResult(state: GameState): GameState {
   return { ...state, phase: "result" };
 }
@@ -540,43 +547,35 @@ export function advanceAfterBattle(
 ): GameState {
   const playerWon = outcome === "player";
   const playerLost = outcome === "enemy";
+  const openingLossProtected = isOpeningDefeatProtected(state, outcome);
   const seals =
-    playerLost && state.round > 1 ? state.seals - 1 : state.seals;
+    playerLost && !openingLossProtected ? state.seals - 1 : state.seals;
   const victories = state.victories + (playerWon ? 1 : 0);
-  if (state.round >= MAX_ROUNDS) {
-    if (outcome === "draw") {
-      const base = {
-        ...state,
-        phase: "shop" as const,
-        gold: state.gold + getRoundReward(state, false),
-        rerollsUsed: 0,
-        selectedSlot: null,
-        pendingBattle: null,
-      };
-      const withOpponent = rollOpponentVariant(base, state.round);
-      const rolled = rollOffers(withOpponent, false);
-      return { ...rolled.state, offers: rolled.offers };
-    }
+  const openingProtectionUsed =
+    state.openingProtectionUsed || openingLossProtected;
+
+  if (playerWon && state.round >= MAX_ROUNDS) {
     return {
       ...state,
-      seals: Math.max(0, seals),
+      openingProtectionUsed,
       victories,
-      phase: playerWon ? "victory" : "gameover",
+      phase: "victory",
       pendingBattle: null,
     };
   }
-  if (seals <= 0) {
+  if (playerLost && seals <= 0) {
     return {
       ...state,
       seals: 0,
+      openingProtectionUsed,
       victories,
       phase: "gameover",
       pendingBattle: null,
     };
   }
 
-  const nextRound = state.round + 1;
-  const income = getRoundReward(state, playerWon);
+  const nextRound = playerWon ? state.round + 1 : state.round;
+  const income = getBattleReward(state, outcome);
   const base: GameState = {
     ...state,
     phase: "shop",
@@ -586,10 +585,13 @@ export function advanceAfterBattle(
     gold: state.gold + income,
     rerollsUsed: 0,
     selectedSlot: null,
+    openingProtectionUsed,
     pendingBattle: null,
   };
-  const withOpponent = rollOpponentVariant(base, nextRound);
-  const rolled = rollOffers(withOpponent, false);
+  const opponentState = playerWon
+    ? rollOpponentVariant(base, nextRound)
+    : base;
+  const rolled = rollOffers(opponentState, false);
   return { ...rolled.state, offers: rolled.offers };
 }
 
@@ -621,22 +623,52 @@ export function getRoundReward(
   );
 }
 
+export function isOpeningDefeatProtected(
+  state: GameState,
+  outcome: BattleOutcome = "enemy",
+): boolean {
+  return (
+    outcome === "enemy" &&
+    state.round === 1 &&
+    !state.openingProtectionUsed
+  );
+}
+
+export function getBattleReward(
+  state: GameState,
+  outcome: BattleOutcome,
+): number {
+  if (outcome === "player") {
+    return state.round >= MAX_ROUNDS ? 0 : getRoundReward(state, true);
+  }
+  if (outcome === "enemy") {
+    const protectedLoss = isOpeningDefeatProtected(state, outcome);
+    const sealsAfterLoss = protectedLoss ? state.seals : state.seals - 1;
+    return sealsAfterLoss > 0 ? DEFEAT_RECOVERY_GOLD : 0;
+  }
+  return 0;
+}
+
 export function sanitizeStoredState(value: unknown): GameState | null {
   if (!isRecord(value)) return null;
   const version = value.version;
-  if (version !== 2 && version !== 3 && version !== 4) return null;
+  if (version !== 2 && version !== 3 && version !== 4 && version !== 5) {
+    return null;
+  }
 
   const board = sanitizeBoard(value.board);
   const offers = sanitizeOffers(value.offers);
   const phase = sanitizePhase(value.phase);
   if (!board || !offers || !phase) return null;
   const reserve =
-    version === 4
+    version === 4 || version === 5
       ? value.reserve === null
         ? null
         : sanitizeItemInstance(value.reserve)
       : null;
-  if (version === 4 && value.reserve !== null && !reserve) return null;
+  if ((version === 4 || version === 5) && value.reserve !== null && !reserve) {
+    return null;
+  }
 
   const round = safeInteger(value.round, 1, MAX_ROUNDS);
   const gold = safeInteger(value.gold, 0, 999);
@@ -671,7 +703,7 @@ export function sanitizeStoredState(value: unknown): GameState | null {
 
   if (version === 2) {
     return {
-      version: 4,
+      version: 5,
       phase:
         phase === "battle" || phase === "result" ? "shop" : phase,
       round,
@@ -686,6 +718,7 @@ export function sanitizeStoredState(value: unknown): GameState | null {
       rngState,
       idCounter,
       opponentVariant: 0,
+      openingProtectionUsed: round > 1,
       pendingBattle: null,
     };
   }
@@ -702,9 +735,16 @@ export function sanitizeStoredState(value: unknown): GameState | null {
   ) {
     return null;
   }
+  const openingProtectionUsed =
+    version === 5
+      ? typeof value.openingProtectionUsed === "boolean"
+        ? value.openingProtectionUsed
+        : null
+      : round > 1;
+  if (openingProtectionUsed === null) return null;
 
   return {
-    version: 4,
+    version: 5,
     phase,
     round,
     gold,
@@ -718,6 +758,7 @@ export function sanitizeStoredState(value: unknown): GameState | null {
     rngState,
     idCounter,
     opponentVariant,
+    openingProtectionUsed,
     pendingBattle,
   };
 }
@@ -747,7 +788,8 @@ function safeText(value: unknown, maximum = 160): string | null {
 }
 
 function sanitizePhase(value: unknown): GamePhase | null {
-  return value === "shop" ||
+  return value === "intro" ||
+    value === "shop" ||
     value === "battle" ||
     value === "result" ||
     value === "victory" ||
