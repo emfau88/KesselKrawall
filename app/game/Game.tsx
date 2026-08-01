@@ -3046,7 +3046,9 @@ export default function Game() {
         <article className="combatant player-combatant">
           <div className="player-heading">
             <div className="power-heading-wrap">
-              <span className="eyebrow">DEIN ZAUBERKESSEL</span>
+              {!isCombatPhase && (
+                <span className="eyebrow">DEIN ZAUBERKESSEL</span>
+              )}
               {!isCombatPhase && (
                 <h2>
                   <button

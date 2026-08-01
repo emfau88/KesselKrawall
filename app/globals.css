@@ -2996,15 +2996,25 @@ button.board-slot:active {
   border-radius: 22px 22px 0 0;
 }
 
-@media (max-width: 699px) and (min-height: 761px) {
-  .game-shell.phase-result {
-    grid-template-rows: auto 600px auto;
-    overflow-y: auto;
+@media (max-width: 699px) {
+  .phase-result .result-sheet {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 47dvh;
+    max-height: 47dvh;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    overflow: hidden;
   }
 
-  .phase-result .result-sheet {
-    max-height: none;
-    overflow: visible;
+  .phase-result .result-sheet .stats-list {
+    min-height: 0;
+    padding-right: 2px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
   }
 }
 
