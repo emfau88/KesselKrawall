@@ -1,7 +1,14 @@
 export const ART_FILES = {
-  "cauldron-player": "cauldron-player.png",
+  "cauldron-player": "cauldron-player-v3.png",
   "cauldron-enemy": "cauldron-enemy.png",
   "cauldron-boss": "cauldron-boss.png",
+  "cauldron-zischbert": "cauldron-zischbert.png",
+  "cauldron-moor-martha": "cauldron-moor-martha.png",
+  "cauldron-schild-siggi": "cauldron-schild-siggi.png",
+  "cauldron-knister-klara": "cauldron-knister-klara.png",
+  "cauldron-tox-toni": "cauldron-tox-toni.png",
+  "cauldron-broesel-berta": "cauldron-broesel-berta.png",
+  "cauldron-meisterin-mirea": "cauldron-meisterin-mirea.png",
   "menu-rune-ring-outer": "menu-rune-ring-outer.webp",
   "menu-rune-ring-inner": "menu-rune-ring-inner.webp",
   "result-victory": "result-victory.png",
@@ -142,6 +149,17 @@ export const OPPONENT_ART: Record<string, ArtAsset> = {
   "broesel-berta": "opponent-broesel-berta",
   "meisterin-mirea": "opponent-meisterin-mirea",
   grosskessel: "opponent-grosskessel",
+};
+
+export const OPPONENT_CAULDRON_ART: Partial<Record<string, ArtAsset>> = {
+  zischbert: "cauldron-zischbert",
+  "moor-martha": "cauldron-moor-martha",
+  "schild-siggi": "cauldron-schild-siggi",
+  "knister-klara": "cauldron-knister-klara",
+  "tox-toni": "cauldron-tox-toni",
+  "broesel-berta": "cauldron-broesel-berta",
+  "meisterin-mirea": "cauldron-meisterin-mirea",
+  grosskessel: "cauldron-boss",
 };
 
 export function ArtSprite({

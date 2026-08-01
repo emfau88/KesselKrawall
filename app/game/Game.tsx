@@ -16,6 +16,7 @@ import {
   ITEM_ART,
   ITEM_PROJECTILE_ART,
   OPPONENT_ART,
+  OPPONENT_CAULDRON_ART,
   preloadArtAssets,
   UiIcon,
   type ArtAsset,
@@ -111,7 +112,15 @@ import type {
 const ROMAN_LEVEL = ["", "I", "II", "III"] as const;
 const BUILD_HASH = process.env.NEXT_PUBLIC_BUILD_SHA ?? "local";
 const COMBAT_SOUNDS_STORAGE_KEY = "kessel-krawall:combat-sounds";
-const COMBAT_VFX_ASSETS = [
+const COMBAT_PRELOAD_ASSETS = [
+  "cauldron-zischbert",
+  "cauldron-moor-martha",
+  "cauldron-schild-siggi",
+  "cauldron-knister-klara",
+  "cauldron-tox-toni",
+  "cauldron-broesel-berta",
+  "cauldron-meisterin-mirea",
+  "cauldron-boss",
   "vfx-fire",
   "vfx-fire-projectile",
   "vfx-dragon-tooth-projectile",
@@ -550,6 +559,7 @@ function CauldronBoard({
   board,
   side,
   cauldronAsset,
+  cauldronVariant,
   selectedSlot,
   activeUids = [],
   hitKind,
@@ -565,6 +575,7 @@ function CauldronBoard({
   board: Board;
   side: "player" | "enemy";
   cauldronAsset: ArtAsset;
+  cauldronVariant?: string;
   selectedSlot: number | null;
   activeUids: readonly string[];
   hitKind: CombatEventKind | null;
@@ -577,6 +588,10 @@ function CauldronBoard({
   activationTimesByUid?: CombatActivationTimeline;
   floatingNumbers?: readonly FloatingCombatNumber[];
 }) {
+  const reactionKey = `${hitKind ?? "idle"}-${
+    activeUids.join("-") || "rest"
+  }`;
+
   return (
     <div
       className={[
@@ -586,17 +601,39 @@ function CauldronBoard({
         hitKind ? `is-reacting reaction-${hitKind}` : "",
       ].join(" ")}
       data-side={side}
+      data-cauldron-variant={cauldronVariant}
     >
       {showCauldron && (
         <div
           className="cauldron"
           aria-hidden="true"
-          key={`${hitKind ?? "idle"}-${activeUids.join("-") || "rest"}`}
         >
           <span className="cauldron-aura" />
-          <ArtSprite asset={cauldronAsset} className="cauldron-art" />
-          <span className="cauldron-steam steam-one" />
-          <span className="cauldron-steam steam-two" />
+          <ArtSprite
+            key={reactionKey}
+            asset={cauldronAsset}
+            className="cauldron-art"
+          />
+          {cauldronVariant && (
+            <>
+              <span className="cauldron-character-effect effect-one" />
+              <span className="cauldron-character-effect effect-two" />
+              <span className="cauldron-particle-field">
+                <i className="cauldron-particle particle-one" />
+                <i className="cauldron-particle particle-two" />
+                <i className="cauldron-particle particle-three" />
+                <i className="cauldron-particle particle-four" />
+                <i className="cauldron-particle particle-five" />
+                <i className="cauldron-particle particle-six" />
+              </span>
+            </>
+          )}
+          {!cauldronVariant && (
+            <>
+              <span className="cauldron-steam steam-one" />
+              <span className="cauldron-steam steam-two" />
+            </>
+          )}
         </div>
       )}
       <CombatFloatingNumberLayer numbers={floatingNumbers} />
@@ -1481,7 +1518,7 @@ export default function Game() {
   }, []);
 
   useEffect(() => {
-    void preloadArtAssets(COMBAT_VFX_ASSETS);
+    void preloadArtAssets(COMBAT_PRELOAD_ASSETS);
   }, []);
 
   useEffect(() => {
@@ -2901,8 +2938,10 @@ export default function Game() {
             board={opponent.board}
             side="enemy"
             cauldronAsset={
-              opponent.rank === "boss" ? "cauldron-boss" : "cauldron-enemy"
+              OPPONENT_CAULDRON_ART[opponent.id] ??
+              (opponent.rank === "boss" ? "cauldron-boss" : "cauldron-enemy")
             }
+            cauldronVariant={opponent.id}
             selectedSlot={null}
             activeUids={activeUids}
             hitKind={
@@ -3054,6 +3093,7 @@ export default function Game() {
             board={game.board}
             side="player"
             cauldronAsset="cauldron-player"
+            cauldronVariant="player"
             selectedSlot={game.selectedSlot}
             activeUids={activeUids}
             hitKind={

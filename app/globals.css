@@ -901,6 +901,515 @@ button:focus-visible {
   animation-name: boss-rage;
 }
 
+.cauldron-character-effect {
+  display: none;
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.cauldron-particle-field {
+  position: absolute;
+  z-index: 4;
+  top: -24%;
+  left: 18%;
+  width: 64%;
+  height: 46%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.cauldron-particle {
+  --particle-drift: 0px;
+  position: absolute;
+  bottom: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  color: var(--brew-particle, #ff7545);
+  box-shadow:
+    0 0 4px currentColor,
+    0 0 9px color-mix(in srgb, currentColor 68%, transparent);
+  opacity: 0;
+  animation: var(--particle-motion, cauldron-particle-rise)
+    var(--particle-speed, 2.6s) ease-out infinite;
+}
+
+.cauldron-particle:nth-child(even) {
+  color: var(--brew-particle-alt, var(--brew-particle, #ffb347));
+}
+
+.cauldron-particle.particle-one {
+  left: 8%;
+  --particle-drift: -7px;
+  animation-delay: -0.15s;
+}
+
+.cauldron-particle.particle-two {
+  left: 27%;
+  width: 4px;
+  height: 4px;
+  --particle-drift: 4px;
+  animation-delay: -1.05s;
+}
+
+.cauldron-particle.particle-three {
+  left: 44%;
+  width: 6px;
+  height: 6px;
+  --particle-drift: -2px;
+  animation-delay: -1.85s;
+}
+
+.cauldron-particle.particle-four {
+  left: 62%;
+  width: 3px;
+  height: 3px;
+  --particle-drift: 8px;
+  animation-delay: -0.65s;
+}
+
+.cauldron-particle.particle-five {
+  left: 78%;
+  width: 5px;
+  height: 5px;
+  --particle-drift: 5px;
+  animation-delay: -1.45s;
+}
+
+.cauldron-particle.particle-six {
+  left: 91%;
+  width: 3px;
+  height: 3px;
+  --particle-drift: -5px;
+  animation-delay: -2.15s;
+}
+
+.cauldron-board[data-cauldron-variant] .cauldron-art {
+  filter:
+    drop-shadow(0 12px 10px rgba(0, 0, 0, 0.62))
+    drop-shadow(0 0 9px var(--brew-shadow, rgba(255, 117, 69, 0.28)));
+}
+
+.cauldron-board[data-cauldron-variant] .cauldron-aura {
+  inset: 19px 15px 8px;
+  background: radial-gradient(circle, var(--brew-aura, rgba(255, 117, 69, 0.5)), transparent 70%);
+  animation-duration: var(--aura-speed, 2.5s);
+}
+
+.cauldron-board[data-cauldron-variant="player"] {
+  --brew-particle: #ffb743;
+  --brew-particle-alt: #52cef4;
+  --brew-aura: rgba(82, 206, 244, 0.46);
+  --brew-shadow: rgba(255, 191, 71, 0.34);
+  --particle-speed: 2.35s;
+  --particle-motion: player-mote;
+  --aura-speed: 2.6s;
+}
+
+.cauldron-board[data-cauldron-variant="zischbert"] {
+  --brew-particle: #ff5b2e;
+  --brew-particle-alt: #ffc247;
+  --brew-aura: rgba(255, 91, 46, 0.58);
+  --brew-shadow: rgba(255, 91, 46, 0.38);
+  --particle-speed: 1.65s;
+  --particle-motion: zischbert-mote;
+  --aura-speed: 1.55s;
+}
+
+.cauldron-board[data-cauldron-variant="moor-martha"] {
+  --brew-particle: #a9cf36;
+  --brew-particle-alt: #e0e85c;
+  --brew-aura: rgba(151, 189, 54, 0.45);
+  --brew-shadow: rgba(151, 189, 54, 0.28);
+  --particle-speed: 3.8s;
+  --particle-motion: martha-mote;
+  --aura-speed: 4.1s;
+}
+
+.cauldron-board[data-cauldron-variant="schild-siggi"] {
+  --brew-particle: #65c8f2;
+  --brew-particle-alt: #d6f7ff;
+  --brew-aura: rgba(101, 200, 242, 0.52);
+  --brew-shadow: rgba(101, 200, 242, 0.28);
+  --particle-speed: 3.2s;
+  --aura-speed: 2.8s;
+}
+
+.cauldron-board[data-cauldron-variant="knister-klara"] {
+  --brew-particle: #ff982e;
+  --brew-particle-alt: #a476ff;
+  --brew-aura: rgba(166, 105, 255, 0.5);
+  --brew-shadow: rgba(255, 152, 46, 0.32);
+  --particle-speed: 1.9s;
+  --particle-motion: klara-mote;
+  --aura-speed: 1.8s;
+}
+
+.cauldron-board[data-cauldron-variant="tox-toni"] {
+  --brew-particle: #8dde3f;
+  --brew-particle-alt: #d7f45b;
+  --brew-aura: rgba(141, 222, 63, 0.5);
+  --brew-shadow: rgba(141, 222, 63, 0.3);
+  --particle-speed: 2.25s;
+  --particle-motion: toni-mote;
+  --aura-speed: 2.2s;
+}
+
+.cauldron-board[data-cauldron-variant="broesel-berta"] {
+  --brew-particle: #ffad36;
+  --brew-particle-alt: #ffe18a;
+  --brew-aura: rgba(255, 173, 54, 0.46);
+  --brew-shadow: rgba(255, 173, 54, 0.3);
+  --particle-speed: 3.1s;
+  --particle-motion: berta-mote;
+  --aura-speed: 3.4s;
+}
+
+.cauldron-board[data-cauldron-variant="meisterin-mirea"] {
+  --brew-particle: #e63b2e;
+  --brew-particle-alt: #ffc247;
+  --brew-aura: rgba(230, 59, 46, 0.54);
+  --brew-shadow: rgba(255, 194, 71, 0.32);
+  --particle-speed: 2.8s;
+  --particle-motion: mirea-mote;
+  --aura-speed: 2.7s;
+}
+
+.cauldron-board[data-cauldron-variant="grosskessel"] {
+  --brew-particle: #3ccfff;
+  --brew-particle-alt: #b68cff;
+  --brew-aura: rgba(80, 191, 255, 0.56);
+  --brew-shadow: rgba(182, 140, 255, 0.38);
+  --particle-speed: 2.35s;
+  --particle-motion: boss-mote;
+  --aura-speed: 2.15s;
+}
+
+.cauldron-board[data-cauldron-variant="zischbert"] .cauldron {
+  animation-name: zischbert-idle;
+  animation-duration: 3.1s;
+}
+
+.cauldron-board[data-cauldron-variant="moor-martha"] .cauldron {
+  animation-name: martha-idle;
+  animation-duration: 5.6s;
+}
+
+.cauldron-board[data-cauldron-variant="schild-siggi"] .cauldron {
+  animation-name: siggi-idle;
+  animation-duration: 4.2s;
+}
+
+.cauldron-board[data-cauldron-variant="schild-siggi"] .cauldron-art {
+  filter:
+    drop-shadow(0 12px 10px rgba(0, 0, 0, 0.62))
+    drop-shadow(0 0 9px rgba(101, 200, 242, 0.28));
+}
+
+.cauldron-board[data-cauldron-variant="schild-siggi"] .cauldron-aura {
+  inset: 19px 15px 8px;
+  background: radial-gradient(circle, rgba(101, 200, 242, 0.52), transparent 70%);
+  animation-name: siggi-ward-pulse;
+  animation-duration: 2.8s;
+}
+
+.cauldron-board[data-cauldron-variant="schild-siggi"] .effect-one {
+  display: block;
+  top: 38%;
+  left: 33%;
+  width: 34%;
+  height: 9%;
+  overflow: hidden;
+  border-radius: 45%;
+  opacity: 0.78;
+  mix-blend-mode: screen;
+  transform: rotate(-0.5deg);
+}
+
+.cauldron-board[data-cauldron-variant="schild-siggi"] .effect-one::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -45%;
+  width: 42%;
+  background: linear-gradient(90deg, transparent, rgba(214, 247, 255, 0.92), transparent);
+  filter: blur(1px);
+  animation: siggi-visor-glint 3.8s ease-in-out infinite;
+  transform: skewX(-20deg);
+}
+
+.cauldron-board[data-cauldron-variant="schild-siggi"] .effect-two {
+  display: block;
+  top: 52%;
+  left: 29%;
+  width: 42%;
+  height: 36%;
+  opacity: 0;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(226, 250, 255, 0.92), rgba(101, 200, 242, 0.42) 36%, transparent 70%);
+  clip-path: polygon(50% 0, 94% 16%, 86% 70%, 50% 100%, 14% 70%, 6% 16%);
+  filter: drop-shadow(0 0 8px rgba(101, 200, 242, 0.95));
+}
+
+.cauldron-board[data-cauldron-variant="schild-siggi"].reaction-shield .effect-two {
+  animation: siggi-shield-lock 680ms cubic-bezier(0.16, 0.8, 0.24, 1) both;
+}
+
+.cauldron-board[data-cauldron-variant="schild-siggi"].reaction-damage .cauldron-art,
+.cauldron-board[data-cauldron-variant="schild-siggi"].reaction-poison .cauldron-art,
+.cauldron-board[data-cauldron-variant="schild-siggi"].reaction-poisonBurst .cauldron-art,
+.cauldron-board[data-cauldron-variant="schild-siggi"].reaction-burn .cauldron-art {
+  animation-name: siggi-impact;
+}
+
+.cauldron-board[data-cauldron-variant="player"] .cauldron {
+  animation-name: player-hero-idle;
+  animation-duration: 3.8s;
+}
+
+.cauldron-board[data-cauldron-variant="player"] .cauldron-aura {
+  background: radial-gradient(circle, rgba(255, 191, 71, 0.38), rgba(82, 206, 244, 0.26) 48%, transparent 72%);
+}
+
+.cauldron-board[data-cauldron-variant="player"] .effect-one {
+  display: block;
+  top: 61%;
+  left: 34%;
+  width: 32%;
+  height: 28%;
+  border-radius: 45%;
+  background: conic-gradient(
+    from 25deg,
+    rgba(255, 183, 67, 0.74),
+    rgba(255, 222, 139, 0.7),
+    rgba(82, 206, 244, 0.58),
+    rgba(255, 183, 67, 0.74)
+  );
+  filter: blur(3px);
+  mix-blend-mode: screen;
+  animation: player-crest-pulse 2.6s ease-in-out infinite;
+}
+
+.cauldron-board[data-cauldron-variant="player"] .effect-two {
+  display: block;
+  top: 7%;
+  left: 14%;
+  width: 72%;
+  height: 35%;
+  border: 2px solid rgba(255, 191, 71, 0.86);
+  border-radius: 50%;
+  opacity: 0;
+  box-shadow:
+    -5px 0 8px rgba(255, 183, 67, 0.68),
+    5px 0 8px rgba(82, 206, 244, 0.68);
+}
+
+.cauldron-board[data-cauldron-variant="player"].reaction-heal .effect-two,
+.cauldron-board[data-cauldron-variant="player"].reaction-shield .effect-two,
+.cauldron-board[data-cauldron-variant="player"].reaction-synergy .effect-two,
+.cauldron-board[data-cauldron-variant="player"].reaction-cleanse .effect-two {
+  animation: player-family-burst 700ms ease-out both;
+}
+
+.cauldron-board[data-cauldron-variant="zischbert"] .effect-one {
+  display: block;
+  top: 4%;
+  left: 13%;
+  width: 74%;
+  height: 31%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255, 194, 71, 0.62), rgba(255, 91, 46, 0.16) 48%, transparent 72%);
+  filter: blur(2px);
+  mix-blend-mode: screen;
+  animation: zischbert-heat 1.55s ease-in-out infinite;
+}
+
+.cauldron-board[data-cauldron-variant="zischbert"] .cauldron-particle {
+  border-radius: 1px 50% 50%;
+  transform: rotate(45deg);
+}
+
+.cauldron-board[data-cauldron-variant="moor-martha"] .effect-one {
+  display: block;
+  top: 9%;
+  left: 20%;
+  width: 60%;
+  height: 22%;
+  border: 2px solid rgba(207, 225, 80, 0.42);
+  border-radius: 50%;
+  box-shadow: inset 0 0 10px rgba(151, 189, 54, 0.32);
+  animation: martha-brew 4.1s ease-in-out infinite;
+}
+
+.cauldron-board[data-cauldron-variant="moor-martha"] .cauldron-particle {
+  border-radius: 54% 46% 58% 42%;
+  filter: blur(0.2px);
+}
+
+.cauldron-board[data-cauldron-variant="knister-klara"] .cauldron {
+  animation-name: klara-idle;
+  animation-duration: 3s;
+}
+
+.cauldron-board[data-cauldron-variant="knister-klara"] .effect-one {
+  display: block;
+  top: 21%;
+  left: 49%;
+  width: 14%;
+  height: 14%;
+  background: #ffd65a;
+  clip-path: polygon(50% 0, 61% 38%, 100% 50%, 61% 62%, 50% 100%, 39% 62%, 0 50%, 39% 38%);
+  filter: drop-shadow(0 0 5px #ff9b32);
+  mix-blend-mode: screen;
+  animation: klara-spark 2.1s steps(1, end) infinite;
+}
+
+.cauldron-board[data-cauldron-variant="knister-klara"] .effect-two {
+  display: block;
+  top: 11%;
+  left: 8%;
+  width: 84%;
+  height: 54%;
+  border: 2px solid rgba(255, 152, 46, 0.84);
+  border-radius: 50%;
+  opacity: 0;
+  filter: drop-shadow(0 0 7px rgba(164, 118, 255, 0.92));
+}
+
+.cauldron-board[data-cauldron-variant="knister-klara"].reaction-synergy .effect-two,
+.cauldron-board[data-cauldron-variant="knister-klara"].reaction-burn .effect-two {
+  animation: klara-combo-ring 620ms ease-out both;
+}
+
+.cauldron-board[data-cauldron-variant="knister-klara"] .cauldron-particle {
+  border-radius: 1px;
+  clip-path: polygon(50% 0, 66% 34%, 100% 50%, 66% 66%, 50% 100%, 34% 66%, 0 50%, 34% 34%);
+}
+
+.cauldron-board[data-cauldron-variant="tox-toni"] .cauldron {
+  animation-name: toni-idle;
+  animation-duration: 4s;
+}
+
+.cauldron-board[data-cauldron-variant="tox-toni"] .effect-one {
+  display: block;
+  top: 63%;
+  left: 49%;
+  width: 2px;
+  height: 11%;
+  border-radius: 2px;
+  background: #d7f45b;
+  box-shadow: 0 0 4px rgba(141, 222, 63, 0.9);
+  transform-origin: 50% 100%;
+  animation: toni-gauge 3.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+.cauldron-board[data-cauldron-variant="tox-toni"] .effect-two {
+  display: block;
+  top: 8%;
+  left: 17%;
+  width: 66%;
+  height: 29%;
+  border-radius: 50%;
+  opacity: 0;
+  background: radial-gradient(ellipse, rgba(215, 244, 91, 0.65), transparent 68%);
+  mix-blend-mode: screen;
+}
+
+.cauldron-board[data-cauldron-variant="tox-toni"].reaction-poison .effect-two,
+.cauldron-board[data-cauldron-variant="tox-toni"].reaction-poisonBurst .effect-two {
+  animation: toni-pressure 760ms ease-out both;
+}
+
+.cauldron-board[data-cauldron-variant="broesel-berta"] .cauldron {
+  animation-name: berta-idle;
+  animation-duration: 4.8s;
+}
+
+.cauldron-board[data-cauldron-variant="broesel-berta"] .effect-one {
+  display: block;
+  top: 65%;
+  left: 38%;
+  width: 24%;
+  height: 17%;
+  border-radius: 38%;
+  background: radial-gradient(circle, rgba(255, 232, 150, 0.84), rgba(255, 132, 39, 0.3) 48%, transparent 74%);
+  filter: blur(1px);
+  mix-blend-mode: screen;
+  animation: berta-oven 2.4s ease-in-out infinite;
+}
+
+.cauldron-board[data-cauldron-variant="broesel-berta"] .cauldron-particle {
+  border-radius: 45% 45% 55% 55%;
+}
+
+.cauldron-board[data-cauldron-variant="meisterin-mirea"] .cauldron {
+  animation-name: mirea-idle;
+  animation-duration: 4.6s;
+}
+
+.cauldron-board[data-cauldron-variant="meisterin-mirea"] .effect-one {
+  display: block;
+  top: 8%;
+  left: 18%;
+  width: 64%;
+  height: 13%;
+  overflow: hidden;
+  clip-path: polygon(0 100%, 11% 34%, 23% 80%, 38% 0, 50% 76%, 62% 0, 77% 80%, 89% 34%, 100% 100%);
+  mix-blend-mode: screen;
+}
+
+.cauldron-board[data-cauldron-variant="meisterin-mirea"] .effect-one::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -42%;
+  width: 38%;
+  background: linear-gradient(90deg, transparent, rgba(255, 239, 174, 0.96), transparent);
+  animation: mirea-crown-glint 4.2s ease-in-out infinite;
+  transform: skewX(-18deg);
+}
+
+.cauldron-board[data-cauldron-variant="meisterin-mirea"] .effect-two {
+  display: block;
+  top: 57%;
+  left: 35%;
+  width: 30%;
+  height: 27%;
+  border-radius: 45%;
+  background: radial-gradient(circle, rgba(255, 194, 71, 0.72), rgba(230, 59, 46, 0.22) 50%, transparent 72%);
+  mix-blend-mode: screen;
+  animation: mirea-crest 2.7s ease-in-out infinite;
+}
+
+.cauldron-board[data-cauldron-variant="grosskessel"] .cauldron {
+  animation-name: grosskessel-idle;
+  animation-duration: 5.2s;
+}
+
+.rank-boss .cauldron-board[data-cauldron-variant="grosskessel"] .cauldron-aura {
+  background: radial-gradient(circle, rgba(80, 191, 255, 0.56), rgba(182, 140, 255, 0.22) 48%, transparent 72%);
+  filter: blur(10px);
+  animation-duration: 2.15s;
+}
+
+.cauldron-board[data-cauldron-variant="grosskessel"] .effect-one {
+  display: block;
+  top: 1%;
+  left: 11%;
+  width: 78%;
+  height: 42%;
+  border: 2px solid rgba(60, 207, 255, 0.45);
+  border-radius: 50%;
+  opacity: 0.55;
+  filter: drop-shadow(0 0 8px rgba(182, 140, 255, 0.75));
+  animation: boss-crown-pulse 2.15s ease-in-out infinite;
+}
+
+.cauldron-board[data-cauldron-variant="grosskessel"] .cauldron-particle {
+  border-radius: 55% 45% 65% 35%;
+}
+
 .combat-number-layer {
   position: absolute;
   z-index: 7;
@@ -3108,6 +3617,530 @@ button.board-slot:active {
   100% {
     filter: brightness(1);
     transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes siggi-idle {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+  46% {
+    transform: translateX(-50%) translateY(-1px) scale(1.006, 0.997);
+  }
+  52% {
+    transform: translateX(-50%) translateY(1px) scale(1.008, 0.994);
+  }
+  60% {
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+@keyframes cauldron-particle-rise {
+  0% {
+    opacity: 0;
+    transform: translate(0, 4px) scale(0.55);
+  }
+  16% {
+    opacity: 0.92;
+  }
+  72% {
+    opacity: 0.68;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--particle-drift), -48px) scale(0.18);
+  }
+}
+
+@keyframes player-mote {
+  0% {
+    opacity: 0;
+    transform: translate(0, 4px) rotate(0) scale(0.42);
+  }
+  18% {
+    opacity: 0.94;
+  }
+  55% {
+    transform: translate(0, -25px) rotate(120deg) scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--particle-drift), -50px) rotate(250deg) scale(0.16);
+  }
+}
+
+@keyframes zischbert-mote {
+  0% {
+    opacity: 0;
+    transform: translate(0, 4px) rotate(35deg) scale(0.4);
+  }
+  18% {
+    opacity: 1;
+  }
+  48% {
+    transform: translate(0, -20px) rotate(95deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--particle-drift), -52px) rotate(170deg) scale(0.12);
+  }
+}
+
+@keyframes martha-mote {
+  0% {
+    opacity: 0;
+    transform: translate(0, 3px) scale(0.45, 0.7);
+  }
+  24% {
+    opacity: 0.78;
+  }
+  62% {
+    transform: translate(0, -24px) scale(1.1, 0.92);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--particle-drift), -42px) scale(0.55);
+  }
+}
+
+@keyframes klara-mote {
+  0% {
+    opacity: 0;
+    transform: translate(0, 3px) rotate(0) scale(0.3);
+  }
+  14% {
+    opacity: 1;
+  }
+  45% {
+    transform: translate(0, -20px) rotate(120deg) scale(1.25);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--particle-drift), -50px) rotate(260deg) scale(0.1);
+  }
+}
+
+@keyframes toni-mote {
+  0% {
+    opacity: 0;
+    transform: translate(0, 2px) scale(0.48);
+  }
+  20% {
+    opacity: 0.9;
+  }
+  55% {
+    transform: translate(0, -22px) scale(0.94);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--particle-drift), -47px) scale(0.2);
+  }
+}
+
+@keyframes berta-mote {
+  0% {
+    opacity: 0;
+    transform: translate(0, 4px) scale(0.52, 0.38);
+  }
+  22% {
+    opacity: 0.82;
+    transform: translate(0, -5px) scale(1.05, 1.18);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--particle-drift), -40px) scale(0.45);
+  }
+}
+
+@keyframes mirea-mote {
+  0% {
+    opacity: 0;
+    transform: translate(0, 5px) scale(0.3);
+  }
+  25% {
+    opacity: 0.92;
+  }
+  72% {
+    opacity: 0.72;
+    transform: translate(0, -34px) scale(0.88);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--particle-drift), -54px) scale(0.12);
+  }
+}
+
+@keyframes boss-mote {
+  0% {
+    opacity: 0;
+    transform: translate(0, 5px) scale(0.4) rotate(0);
+  }
+  18% {
+    opacity: 0.92;
+  }
+  58% {
+    transform: translate(0, -27px) scale(1.15) rotate(120deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--particle-drift), -56px) scale(0.15) rotate(240deg);
+  }
+}
+
+@keyframes player-hero-idle {
+  0%,
+  34%,
+  100% {
+    transform: translateX(-50%) translateY(1px) rotate(-0.45deg);
+  }
+  43% {
+    transform: translateX(-50%) translateY(-4px) rotate(0.7deg) scale(1.01, 0.988);
+  }
+  51% {
+    transform: translateX(-50%) translateY(0) rotate(-0.6deg) scale(0.994, 1.008);
+  }
+  59% {
+    transform: translateX(-50%) translateY(-2px) rotate(0.3deg);
+  }
+}
+
+@keyframes zischbert-idle {
+  0%,
+  42%,
+  100% {
+    transform: translateX(-50%) translateY(1px) rotate(-0.5deg);
+  }
+  47% {
+    transform: translateX(-50%) translateY(-4px) rotate(1.2deg) scale(1.018, 0.982);
+  }
+  51% {
+    transform: translateX(-50%) translateY(0) rotate(-1.2deg) scale(0.988, 1.012);
+  }
+  56% {
+    transform: translateX(-50%) translateY(-2px) rotate(0.7deg);
+  }
+}
+
+@keyframes martha-idle {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(1px) rotate(-1.1deg);
+  }
+  45% {
+    transform: translateX(-50%) translateY(-1px) rotate(0.65deg) scale(1.004, 0.998);
+  }
+  72% {
+    transform: translateX(-50%) translateY(0) rotate(1deg);
+  }
+}
+
+@keyframes klara-idle {
+  0%,
+  38%,
+  100% {
+    transform: translateX(-50%) translateY(1px) rotate(-1deg);
+  }
+  46% {
+    transform: translateX(-50%) translateY(-5px) rotate(1.8deg) scale(1.012, 0.985);
+  }
+  54% {
+    transform: translateX(-50%) translateY(0) rotate(-1.5deg) scale(0.99, 1.01);
+  }
+  61% {
+    transform: translateX(-50%) translateY(-2px) rotate(0.7deg);
+  }
+}
+
+@keyframes toni-idle {
+  0%,
+  18%,
+  42%,
+  66%,
+  100% {
+    transform: translateX(-50%) translateY(0) rotate(0);
+  }
+  28% {
+    transform: translateX(-50%) translateY(-1px) rotate(-0.65deg);
+  }
+  52% {
+    transform: translateX(-50%) translateY(-1px) rotate(0.65deg);
+  }
+  78% {
+    transform: translateX(-50%) translateY(-2px) scale(1.006);
+  }
+}
+
+@keyframes berta-idle {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(1px) scale(1);
+  }
+  47% {
+    transform: translateX(-50%) translateY(-1px) scale(1.006, 0.994);
+  }
+  52% {
+    transform: translateX(-50%) translateY(1px) scale(1.012, 0.986);
+  }
+  60% {
+    transform: translateX(-50%) translateY(0) scale(0.998, 1.004);
+  }
+}
+
+@keyframes mirea-idle {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(1px) rotate(-0.35deg);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-4px) rotate(0.35deg) scale(1.008);
+  }
+}
+
+@keyframes grosskessel-idle {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(1px) scale(1);
+  }
+  45% {
+    transform: translateX(-50%) translateY(-3px) scale(1.018);
+  }
+  55% {
+    transform: translateX(-50%) translateY(-2px) scale(1.012);
+  }
+}
+
+@keyframes siggi-ward-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 0.82;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes siggi-visor-glint {
+  0%,
+  68%,
+  100% {
+    opacity: 0;
+    translate: 0 0;
+  }
+  72% {
+    opacity: 0.9;
+  }
+  84% {
+    opacity: 0;
+    translate: 350% 0;
+  }
+}
+
+@keyframes siggi-shield-lock {
+  0% {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+  34% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  62% {
+    opacity: 0.76;
+    transform: scale(0.98);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.18);
+  }
+}
+
+@keyframes siggi-impact {
+  0% {
+    filter: brightness(1.65) drop-shadow(0 0 16px var(--danger));
+    transform: translateX(0) scale(1);
+  }
+  32% {
+    transform: translateX(-2px) scale(0.985);
+  }
+  62% {
+    transform: translateX(2px) scale(1.012);
+  }
+  100% {
+    filter: brightness(1);
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes player-crest-pulse {
+  0%,
+  100% {
+    opacity: 0.22;
+    transform: scale(0.88) rotate(-4deg);
+  }
+  50% {
+    opacity: 0.62;
+    transform: scale(1.08) rotate(4deg);
+  }
+}
+
+@keyframes player-family-burst {
+  0% {
+    opacity: 0;
+    transform: scale(0.72) rotate(-8deg);
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.2) rotate(10deg);
+  }
+}
+
+@keyframes zischbert-heat {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: scale(0.9, 0.82);
+  }
+  50% {
+    opacity: 0.88;
+    transform: scale(1.06, 1.12);
+  }
+}
+
+@keyframes martha-brew {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scale(0.92, 0.84) rotate(-1deg);
+  }
+  48% {
+    opacity: 0.66;
+    transform: scale(1.03, 1) rotate(1deg);
+  }
+}
+
+@keyframes klara-spark {
+  0%,
+  18%,
+  54%,
+  100% {
+    opacity: 0;
+    transform: rotate(0) scale(0.35);
+  }
+  20%,
+  24% {
+    opacity: 1;
+    transform: rotate(35deg) scale(1.2);
+  }
+  56%,
+  60% {
+    opacity: 0.9;
+    transform: rotate(78deg) scale(0.92);
+  }
+}
+
+@keyframes klara-combo-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.68) rotate(-12deg);
+  }
+  36% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.22) rotate(16deg);
+  }
+}
+
+@keyframes toni-gauge {
+  0%,
+  16%,
+  100% {
+    transform: rotate(-42deg);
+  }
+  32%,
+  44% {
+    transform: rotate(18deg);
+  }
+  58%,
+  72% {
+    transform: rotate(39deg);
+  }
+  82% {
+    transform: rotate(-8deg);
+  }
+}
+
+@keyframes toni-pressure {
+  0% {
+    opacity: 0;
+    transform: scale(0.76);
+  }
+  38% {
+    opacity: 0.92;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.22);
+  }
+}
+
+@keyframes berta-oven {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes mirea-crown-glint {
+  0%,
+  64%,
+  100% {
+    opacity: 0;
+    translate: 0 0;
+  }
+  69% {
+    opacity: 0.94;
+  }
+  84% {
+    opacity: 0;
+    translate: 360% 0;
+  }
+}
+
+@keyframes mirea-crest {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scale(0.88);
+  }
+  50% {
+    opacity: 0.72;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes boss-crown-pulse {
+  0%,
+  100% {
+    opacity: 0.32;
+    transform: scale(0.92, 0.82);
+  }
+  50% {
+    opacity: 0.78;
+    transform: scale(1.08, 1.04);
   }
 }
 
