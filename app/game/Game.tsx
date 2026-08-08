@@ -53,11 +53,11 @@ import {
   playCombatSound,
   playGameSound,
   preloadGameAudio,
+  resolveCombatSound,
+  resolveGameAudioScene,
   setCombatSoundsEnabled as setCombatSoundsPlaybackEnabled,
   setGameAudioScene,
   stopGameAudio,
-  type CombatSound,
-  type GameAudioScene,
 } from "./audio";
 import {
   CAMPAIGNS,
@@ -301,25 +301,6 @@ function eventIcon(kind: CombatEventKind): UiAsset {
     default:
       return "battle";
   }
-}
-
-function combatSound(
-  event: CombatEvent,
-  source: EventSource | null,
-): CombatSound {
-  if (event.kind === "poison" || event.kind === "poisonBurst") return "poison";
-  if (event.kind === "heal") return "heal";
-  if (event.kind === "frost") return "hit";
-  if (event.kind === "echo") return "shield";
-  if (
-    event.kind === "shield" ||
-    event.kind === "synergy" ||
-    event.kind === "cleanse"
-  ) {
-    return "shield";
-  }
-  if (event.kind === "burn" || source?.family === "fire") return "fire";
-  return "hit";
 }
 
 function mergeValueLabel(definition: ItemDefinition): string {
@@ -1726,17 +1707,9 @@ export default function Game() {
   }, []);
 
   useEffect(() => {
-    const audioScene: GameAudioScene =
-      screen !== "game"
-        ? "menu"
-        : game.phase === "battle"
-          ? opponent.rank === "boss"
-            ? "boss"
-            : "battle"
-          : game.phase === "shop" || game.phase === "intro"
-            ? "shop"
-            : "result";
-    setGameAudioScene(audioScene);
+    setGameAudioScene(
+      resolveGameAudioScene(screen === "game", game.phase, opponent.rank),
+    );
   }, [game.phase, opponent.rank, screen]);
 
   useEffect(() => {
@@ -2078,13 +2051,13 @@ export default function Game() {
           }
           if (soundCue?.contributionId === contribution.id) {
             playCombatSound(
-              combatSound(
-                soundCue.event,
+              resolveCombatSound(
+                soundCue.event.kind,
                 findEventSource(
                   soundCue.event,
                   game.board,
                   opponent.board,
-                ),
+                )?.family ?? null,
               ),
               speedRef.current,
               nextBeat.tier,

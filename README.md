@@ -117,6 +117,8 @@ synchronisiert, statt nur eine abstrakte Zahl einzublenden.
 - Shop, Verkauf, neue Angebote und lokale Spielstand-Speicherung
 - fünf Familien-Synergien mit eigenen Kampfeffekten und Nachbarschaftsregeln
 - deterministische Kampfsimulation mit klarer visueller Präsentation
+- eigene, gedrosselte Familienklänge für Frost und Echo sowie gemeinsame
+  Normal- und Bosskampfmusik in beiden Kampagnen
 - ab Runde 2 standardmäßig 2× Kampftempo, sanfte Kesselhitze ab Sekunde 15
   und klarer Abschlussdruck in den letzten fünf Sekunden
 - lesbare Kampfmeldungen, reaktive Lebensbalken und Itembeiträge nach der Runde

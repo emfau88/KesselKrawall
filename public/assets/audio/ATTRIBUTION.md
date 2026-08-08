@@ -33,7 +33,8 @@ asset directory.
 - **Retro Magic Sound Effects** — NSFRL  
   Source: <https://nsfrl.itch.io/retro-magic-sound-effects>  
   License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)  
-  Used for merge and result stingers.
+  Used for merge and result stingers. `StatusGood_1_A_Echo` was shortened,
+  faded, and level-matched for the Echo family.
 - **Bubble Sound Effects** — BMacZero / Brian MacIntosh  
   Source: <https://opengameart.org/content/bubble-sound-effects>  
   License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)  
@@ -41,7 +42,9 @@ asset directory.
 - **Basic Spell Impacts** — Lentikula
   Source: <https://lentikula.itch.io/freecc0-basic-spell-impacts-sfx>
   License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
-  Used for short fire, poison, shield, and generic combat impacts.
+  Used for short fire, poison, shield, generic combat impacts, and the Frost
+  family. `Ice Spell Impact 5` was shortened, faded, and level-matched for
+  frequent combat playback.
 - **Healing Spell Impacts** — Lentikula
   Source: <https://lentikula.itch.io/healing-spell-impacts>
   License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)

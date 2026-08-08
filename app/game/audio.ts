@@ -1,3 +1,10 @@
+import type {
+  CombatEventKind,
+  Family,
+  GamePhase,
+  OpponentRank,
+} from "./types";
+
 export type GameSound =
   | "uiClick"
   | "uiSelect"
@@ -11,6 +18,8 @@ export type GameSound =
   | "fire"
   | "poison"
   | "shield"
+  | "frost"
+  | "echo"
   | "heal"
   | "hit"
   | "victory"
@@ -19,7 +28,7 @@ export type GameSound =
 export type GameAudioScene = "menu" | "shop" | "battle" | "boss" | "result";
 export type CombatSound = Extract<
   GameSound,
-  "fire" | "poison" | "shield" | "heal" | "hit"
+  "fire" | "poison" | "shield" | "frost" | "echo" | "heal" | "hit"
 >;
 export type CombatSoundTier = "hero" | "standard" | "ambient";
 
@@ -64,6 +73,8 @@ const SOUND_FILES: Partial<Record<GameSound, AudioFile>> = {
   fire: { path: "combat/fire.ogg", volume: 0.63 },
   poison: { path: "combat/poison.ogg", volume: 0.57 },
   shield: { path: "combat/shield.ogg", volume: 0.63 },
+  frost: { path: "combat/frost.ogg", volume: 0.63 },
+  echo: { path: "combat/echo.ogg", volume: 0.65 },
   heal: { path: "combat/heal.ogg", volume: 0.65 },
   hit: { path: "combat/hit.ogg", volume: 0.63 },
   victory: { path: "sfx/result-victory.ogg", volume: 0.9 },
@@ -135,6 +146,14 @@ const SOUND_STEPS: Partial<Record<GameSound, readonly ToneStep[]>> = {
     { frequency: 740, endFrequency: 980, duration: 0.16, type: "sine", gain: 0.045 },
     { frequency: 370, duration: 0.2, type: "triangle", gain: 0.03 },
   ],
+  frost: [
+    { frequency: 920, endFrequency: 520, duration: 0.15, type: "triangle", gain: 0.035 },
+    { frequency: 1320, endFrequency: 760, duration: 0.11, delay: 0.035, type: "sine", gain: 0.025 },
+  ],
+  echo: [
+    { frequency: 520, endFrequency: 720, duration: 0.12, type: "sine", gain: 0.03 },
+    { frequency: 720, endFrequency: 520, duration: 0.16, delay: 0.12, type: "sine", gain: 0.02 },
+  ],
   heal: [
     { frequency: 440, endFrequency: 660, duration: 0.18, type: "sine" },
     { frequency: 660, endFrequency: 880, duration: 0.18, delay: 0.1, type: "sine", gain: 0.04 },
@@ -167,6 +186,38 @@ const activeCombatOneShots = new Set<HTMLAudioElement>();
 const lastCombatSoundAt = new Map<CombatSound, number>();
 let lastAnyCombatSoundAt = Number.NEGATIVE_INFINITY;
 const fadeVersions = new WeakMap<HTMLMediaElement, number>();
+
+export function resolveGameAudioScene(
+  inGame: boolean,
+  phase: GamePhase,
+  opponentRank: OpponentRank,
+): GameAudioScene {
+  if (!inGame) return "menu";
+  if (phase === "battle") {
+    return opponentRank === "boss" ? "boss" : "battle";
+  }
+  if (phase === "shop" || phase === "intro") return "shop";
+  return "result";
+}
+
+export function resolveCombatSound(
+  eventKind: CombatEventKind,
+  sourceFamily: Family | null,
+): CombatSound {
+  if (eventKind === "poison" || eventKind === "poisonBurst") return "poison";
+  if (eventKind === "heal") return "heal";
+  if (eventKind === "frost" || sourceFamily === "frost") return "frost";
+  if (eventKind === "echo" || sourceFamily === "echo") return "echo";
+  if (
+    eventKind === "shield" ||
+    eventKind === "synergy" ||
+    eventKind === "cleanse"
+  ) {
+    return "shield";
+  }
+  if (eventKind === "burn" || sourceFamily === "fire") return "fire";
+  return "hit";
+}
 
 function assetUrl(path: string): string {
   return new URL(`${AUDIO_ROOT}/${path}`, document.baseURI).href;

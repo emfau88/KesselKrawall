@@ -12,6 +12,8 @@ import { ITEM_PROJECTILE_ART } from "../app/game/ArtSprite";
 import {
   getCombatSoundPlaybackPolicy,
   getCombatSoundsEnabled,
+  resolveCombatSound,
+  resolveGameAudioScene,
   setCombatSoundsEnabled,
 } from "../app/game/audio";
 import {
@@ -1604,6 +1606,23 @@ test("combat audio becomes more restrictive at higher playback speeds", () => {
   assert.ok(fast.sameSoundIntervalMs < fastest.sameSoundIntervalMs);
   assert.equal(fastest.maxVoices, 1);
   assert.equal(hero.maxVoices, 2);
+});
+
+test("campaign combat audio uses dedicated frost and echo families", () => {
+  assert.equal(resolveCombatSound("damage", "frost"), "frost");
+  assert.equal(resolveCombatSound("shield", "frost"), "frost");
+  assert.equal(resolveCombatSound("frost", null), "frost");
+  assert.equal(resolveCombatSound("damage", "echo"), "echo");
+  assert.equal(resolveCombatSound("echo", null), "echo");
+  assert.equal(resolveCombatSound("burn", "fire"), "fire");
+});
+
+test("all campaigns share regular and boss battle music scenes", () => {
+  assert.equal(resolveGameAudioScene(true, "battle", "regular"), "battle");
+  assert.equal(resolveGameAudioScene(true, "battle", "elite"), "battle");
+  assert.equal(resolveGameAudioScene(true, "battle", "boss"), "boss");
+  assert.equal(resolveGameAudioScene(true, "shop", "boss"), "shop");
+  assert.equal(resolveGameAudioScene(false, "battle", "boss"), "menu");
 });
 
 test("combat sounds can be disabled independently", () => {
