@@ -6,6 +6,7 @@ import type {
   CombatEvent,
   CombatEventKind,
   CombatResult,
+  Family,
   ItemCombatStats,
   ItemDefinition,
   ItemInstance,
@@ -57,6 +58,7 @@ interface Combatant {
   runtimes: RuntimeItem[];
   powerMultiplier: number;
   hpDamageDealt: number;
+  familyActivationCount: Record<Family, number>;
 }
 
 interface World {
@@ -330,6 +332,13 @@ function createCombatant(
     runtimes,
     powerMultiplier: 1,
     hpDamageDealt: 0,
+    familyActivationCount: {
+      fire: 0,
+      poison: 0,
+      guard: 0,
+      frost: 0,
+      echo: 0,
+    },
   };
 }
 
@@ -425,6 +434,7 @@ function activateItem(
   target: Combatant,
   runtime: RuntimeItem,
   effectMultiplier = 1,
+  isEcho = false,
 ): void {
   const { instance, slot } = runtime;
   const definition = ITEM_BY_ID[instance.itemId];
@@ -432,7 +442,7 @@ function activateItem(
   const stats = statFor(actor, instance.uid);
   stats.triggers += 1;
   const activationIndex = runtime.activations;
-  runtime.activations += 1;
+  if (!isEcho) runtime.activations += 1;
   const placementPower = familyPowerMultiplier(actor, slot, definition);
   const directMultiplier = directDamageMultiplier(actor) * placementPower;
   const defensiveMultiplier = guardMultiplier(actor) * placementPower;
@@ -567,6 +577,46 @@ function activateItem(
   }
   if (definition.levelThreeBonus === "cleansePoison" && instance.level === 3) {
     clearPoison(world, actor, instance.uid);
+  }
+
+  if (isEcho || actor.hp <= 0 || target.hp <= 0) return;
+  if (definition.family === "frost" && isSynergyActive(actor.board, "frost")) {
+    actor.familyActivationCount.frost += 1;
+    if (actor.familyActivationCount.frost % 3 === 0) {
+      for (const targetRuntime of target.runtimes) {
+        const targetTrigger = ITEM_BY_ID[targetRuntime.instance.itemId].trigger;
+        if (
+          targetTrigger?.type !== "onGuardedHit" &&
+          targetTrigger?.type !== "emergency"
+        ) {
+          targetRuntime.nextAt += 650;
+        }
+      }
+      pushEvent(
+        world,
+        "frost",
+        actor.side,
+        target.side,
+        instance.uid,
+        "Froststarre · Takt verzögert",
+        650,
+      );
+    }
+  }
+  if (definition.family === "echo" && isSynergyActive(actor.board, "echo")) {
+    actor.familyActivationCount.echo += 1;
+    if (actor.familyActivationCount.echo % 3 === 0) {
+      pushEvent(
+        world,
+        "echo",
+        actor.side,
+        actor.side,
+        instance.uid,
+        `${definition.name} · Nachhall`,
+        55,
+      );
+      activateItem(world, actor, target, runtime, effectMultiplier * 0.55, true);
+    }
   }
 }
 
@@ -745,6 +795,31 @@ export function simulateBattle(
         "boss-kesselzorn",
         "Kesselzorn entfacht",
         25,
+      );
+    }
+
+    if (
+      world.bossRule === "timeFractureAtHalf" &&
+      !world.bossRuleTriggered &&
+      world.enemy.hp > 0 &&
+      world.enemy.hp <= world.enemy.maxHp / 2
+    ) {
+      world.bossRuleTriggered = true;
+      world.enemy.powerMultiplier = 1.15;
+      for (const runtime of world.player.runtimes) {
+        const trigger = ITEM_BY_ID[runtime.instance.itemId].trigger;
+        if (trigger?.type !== "onGuardedHit" && trigger?.type !== "emergency") {
+          runtime.nextAt += 900;
+        }
+      }
+      pushEvent(
+        world,
+        "boss",
+        "enemy",
+        "player",
+        "boss-zeitbruch",
+        "Zeitbruch · dein Takt springt zurück",
+        15,
       );
     }
 

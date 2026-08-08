@@ -1,6 +1,6 @@
 # Kessel-Krawall – verbindliche Kernspezifikation
 
-Stand: Phase 1–5 des vollständigen Neubaus.
+Stand: Kampagnenausbau mit Kesselkabinett und Frostarchiv.
 
 ## Produktziel
 
@@ -14,27 +14,32 @@ Oaken Tower dient als Qualitätsreferenz für Entscheidungsdichte und
 skalierende Kombinationen, nicht als Vorlage für Inhalte, Darstellung oder
 Online-Systeme.
 
-## Verbindlicher Scope des Vertical Slice
+## Verbindlicher spielbarer Scope
 
-- acht Kämpfe: sieben reguläre Gegner und ein Boss
-- zwölf Zutaten: je vier aus Feuer, Gift und Schutz
+- zwei Kampagnen mit je acht Kämpfen: sechs reguläre Gegner, eine Elite und
+  ein Boss
+- zwanzig Zutaten: je vier aus Feuer, Gift, Schutz, Frost und Echo
 - maximal fünf belegte Kesselplätze
 - ab Runde 5 ein passiver Ablageplatz außerhalb des aktiven Aufbaus
 - drei Merge-Stufen
 - eine Synergieschwelle bei drei Familienpunkten
+- pro Kampagne genau drei aktive Familien; Kampagne II setzt Frost und Echo
+  fest und ergänzt eine gewählte Familie aus Feuer, Gift oder Schutz
 - drei Schutzsiegel; nur die erste Niederlage in Runde 1 ist geschützt
 - Hochformat ist vollständig unterstützt; mobiles Querformat fordert zum
   Drehen auf, Desktop-Querformat bleibt funktional
-- keine Meta-Progression, vierte Familie oder Online-Funktion
+- Meta-Fortschritt schaltet Inhalte und Trophäen frei, gewährt aber keine
+  dauerhaften Kampfkraft-Boni; keine Online-Funktion
 
-Die Phasen 1–5 implementieren die vollständigen Kernregeln, die mobile
-Benutzeroberfläche und eine
-abgeschlossene Acht-Runden-Kampagne.
+Die Kernregeln und die mobile Benutzeroberfläche gelten unverändert für beide
+Kampagnen. Jeder Run beginnt mit einem frischen Kessel, 7 Gold und 3 Siegeln.
 
 ## Kampagnendramaturgie
 
 Eine neue Kampagne zeigt vor dem ersten Einkauf einmalig die Kampfarena mit
 Gegner- und Spielerkessel. Erst danach führt ein klarer Einstieg zum Hexenmarkt.
+
+### Kampagne I – Der große Kessel-Wettstreit
 
 1. **Zischbert:** verständlicher Feuerstart ohne Schutz
 2. **Moor-Martha:** erster sichtbarer Giftaufbau
@@ -48,6 +53,21 @@ Gegner- und Spielerkessel. Erst danach führt ein klarer Einstieg zum Hexenmarkt
 Der Großkessel verstärkt unter 50 % Lebensenergie alle eigenen Wirkungen um
 25 %. Dies ist seine einzige exklusive Regel und wird im Kampf sichtbar
 angekündigt.
+
+### Kampagne II – Das frostgebundene Archiv
+
+1. **Reif-Rudi:** Einstieg in Frosttreffer und Eisschild
+2. **Hall-Hanne:** erste aktive Echo-Synergie
+3. **Eis-Elsa:** Frost-Rhythmus mit Heilung und Schutz
+4. **Takt-Tilda:** Nachbarschaftsbuffs aus Frost und Echo
+5. **Splitter-Sven:** aktive Frost-Synergie und Tempokontrolle
+6. **Resonanz-Rosa:** aktive Echo-Synergie mit Doppelwirkungen
+7. **Archivarin Aeva:** Elite-Build aus Frost und Echo, zwei Bonusgold
+8. **Der Chronokessel:** Boss mit Zeitbruch
+
+Der Chronokessel verstärkt unter 50 % Lebensenergie seine Wirkungen um 15 %
+und verschiebt einmalig den nächsten normalen Aktivierungszeitpunkt aller
+Spieleritems um 0,9 Sekunden. Die Regel wird im Kampf sichtbar angekündigt.
 
 ## Economy
 
@@ -65,8 +85,10 @@ angekündigt.
 - Ein Kauf bei vollem Kessel ist erlaubt, wenn das neue Level-I-Item sofort
   verschmilzt oder die ab Runde 5 verfügbare Ablage frei ist.
 
-Die ersten Angebote sind verlässlich Chilischote, Schleimpilz und Eierschale
-und decken damit alle drei Familien ab. In den ersten Runden enthält
+Die ersten Angebote decken verlässlich die drei aktiven Familien ab: in
+Kampagne I Chilischote, Schleimpilz und Eierschale; in Kampagne II
+Frostsplitter, Spiegelscherbe und das Startitem der gewählten gemeisterten
+Familie. In den ersten Runden enthält
 der erste Reroll beziehungsweise Folgeshop bevorzugt eine vorhandene Zutat,
 damit ein schlechter Zufallsstart die Kampagne nicht entscheidet.
 
@@ -132,6 +154,11 @@ damit ein schlechter Zufallsstart die Kampagne nicht entscheidet.
 - **Gift 3:** Jede Giftanwendung erzeugt einen zusätzlichen Stapel und
   Giftitems laden 5 % schneller.
 - **Schutz 3:** 12 Startschild sowie 15 % mehr Heilung und Schild.
+- **Frost 3:** Jede dritte Frost-Aktivierung verschiebt die nächsten normalen
+  Aktivierungen des Gegners um 0,65 Sekunden.
+- **Echo 3:** Jede dritte Echo-Aktivierung wiederholt ihre Wirkung sofort mit
+  55 % Stärke. Der Nachhall zählt nicht als neue Aktivierung und kann sich
+  nicht selbst erneut auslösen.
 
 ## Niederlage und Fortschritt
 
@@ -144,13 +171,17 @@ damit ein schlechter Zufallsstart die Kampagne nicht entscheidet.
 - Ein Unentschieden kostet kein Siegel und gewährt kein Gold.
 - Der Boss kann erneut herausgefordert werden, solange noch ein Siegel bleibt.
 - Kampf-Lebenspunkte und Schutzsiegel sind getrennte Ressourcen.
+- Der Sieg in Kampagne I schaltet Kampagne II im Kesselkabinett frei.
+- Trophäen speichern Siege, bestes Siegel-Ergebnis und finale Buildstärke.
+  Gold, Zutaten, Siegel und Kampfkraft werden nie zwischen Runs übertragen.
 
 ## Technische Leitplanken
 
 - React/TypeScript mit datengetriebenen Item- und Gegnerdefinitionen
 - reine Funktionen für Shop, Merges, Synergien und Kampfsimulation
 - Simulation erzeugt Ereignisse; die UI spielt diese lediglich ab
-- lokaler Speicher für stabilen Kampagnenzustand und Einstellungen; ein
+- lokaler Speicher für stabilen Kampagnenzustand, Profilfortschritt und
+  Einstellungen; ein
   laufender oder abgeschlossener Kampf wird atomar mitgespeichert
 - keine globale Sonderfalllogik pro Item; Sonderwirkungen werden über
   deklarative Effekttypen und zentrale Handler abgebildet
@@ -161,20 +192,21 @@ damit ein schlechter Zufallsstart die Kampagne nicht entscheidet.
   der Home-Bildschirm-Weg verständlich erklärt
 - Kaufaktionen bleiben von der scrollbaren Detail- und Angebotsfläche getrennt
 
-## Abnahme Phase 1–5
+## Abnahme des spielbaren Stands
 
 - Shop kaufen, verkaufen und neu würfeln
 - fünf Slots per Tap umsortieren
 - automatische Merge-Kaskaden bis Level III
 - Kauf-Merge bei vollem Board
-- drei funktionierende Familien-Synergien
-- zwölf vollständig datengetriebene Zutaten
+- fünf funktionierende Familien-Synergien
+- zwanzig vollständig datengetriebene Zutaten
 - deterministische Kampfauflösung mit Schaden, Gift, Brand, Heilung und Schild
 - Kampfstatistik pro Spieleritem
 - Ergebnis-, Weiter- und Neustartzustand
-- sieben individuelle Gegner und ein finaler Boss
-- Elite-Belohnung und sichtbare Bossregel
-- Kampagnenfortschritt, Gesamtsieg und endgültige Niederlage
+- vierzehn individuelle Gegner, zwei Eliten und zwei finale Bosse
+- Elite-Belohnungen und zwei sichtbare Bossregeln
+- Kampagnenfortschritt, Freischaltung, Trophäen, Gesamtsieg und endgültige
+  Niederlage
 - Kampagnenzustand wird lokal gespeichert
 - eigenständige Kauf-, Kampf- und Ergebnisdarstellung im Hochformat
 - keine abgeschnittenen oder überlagerten Bedienelemente ab 320 × 568 Pixeln

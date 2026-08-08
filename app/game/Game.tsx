@@ -58,6 +58,12 @@ import {
   type CombatSound,
   type GameAudioScene,
 } from "./audio";
+import {
+  CAMPAIGNS,
+  getCampaign,
+  getCampaignFamilies,
+  LEGACY_FAMILIES,
+} from "./campaigns";
 import { FAMILY_META, ITEM_BY_ID } from "./data";
 import {
   advancePresentationFrame,
@@ -87,7 +93,6 @@ import {
   getRoundReward,
   getSellValue,
   isOpeningDefeatProtected,
-  MAX_ROUNDS,
   RESERVE_UNLOCK_ROUND,
   rerollShop,
   resetRun,
@@ -97,9 +102,18 @@ import {
   showBattleResult,
   swapSlotWithReserve,
 } from "./state";
-import { loadStoredGame, persistGame } from "./storage";
+import {
+  createEmptyProgress,
+  hasCompletedCampaign,
+  loadPlayerProgress,
+  loadStoredGame,
+  persistGame,
+  persistPlayerProgress,
+  recordCampaignVictory,
+} from "./storage";
 import type {
   Board,
+  CampaignId,
   CombatEvent,
   CombatEventKind,
   CombatResult,
@@ -108,22 +122,16 @@ import type {
   ItemCombatStats,
   ItemDefinition,
   ItemLevel,
+  LegacyFamily,
   OpponentDefinition,
+  PlayerProgress,
   Side,
 } from "./types";
 
 const ROMAN_LEVEL = ["", "I", "II", "III"] as const;
 const BUILD_HASH = process.env.NEXT_PUBLIC_BUILD_SHA ?? "local";
 const COMBAT_SOUNDS_STORAGE_KEY = "kessel-krawall:combat-sounds";
-const COMBAT_PRELOAD_ASSETS = [
-  "cauldron-zischbert",
-  "cauldron-moor-martha",
-  "cauldron-schild-siggi",
-  "cauldron-knister-klara",
-  "cauldron-tox-toni",
-  "cauldron-broesel-berta",
-  "cauldron-meisterin-mirea",
-  "cauldron-boss",
+const SHARED_COMBAT_PRELOAD_ASSETS = [
   "vfx-fire",
   "vfx-fire-projectile",
   "vfx-dragon-tooth-projectile",
@@ -140,7 +148,30 @@ const COMBAT_PRELOAD_ASSETS = [
   "vfx-moon-salt-projectile",
   "vfx-impact",
 ] as const satisfies readonly ArtAsset[];
-type AppScreen = "menu" | "game";
+
+const CAMPAIGN_PRELOAD_ASSETS: Record<CampaignId, readonly ArtAsset[]> = {
+  "grand-tournament": [
+  "cauldron-zischbert",
+  "cauldron-moor-martha",
+  "cauldron-schild-siggi",
+  "cauldron-knister-klara",
+  "cauldron-tox-toni",
+  "cauldron-broesel-berta",
+  "cauldron-meisterin-mirea",
+  "cauldron-boss",
+  ],
+  "frostbound-vault": [
+    "cauldron-reif-rudi",
+    "cauldron-hall-hanne",
+    "cauldron-eis-elsa",
+    "cauldron-takt-tilda",
+    "cauldron-splitter-sven",
+    "cauldron-resonanz-rosa",
+    "cauldron-archivarin-aeva",
+    "cauldron-chronokessel",
+  ],
+};
+type AppScreen = "menu" | "cabinet" | "game";
 
 interface BattleView {
   beatId: string;
@@ -235,6 +266,8 @@ const FAMILY_ICON: Record<Family, UiAsset> = {
   fire: "family-fire",
   poison: "family-poison",
   guard: "family-guard",
+  frost: "family-frost",
+  echo: "family-echo",
 };
 
 function eventIcon(kind: CombatEventKind): UiAsset {
@@ -250,6 +283,10 @@ function eventIcon(kind: CombatEventKind): UiAsset {
     case "cleanse":
     case "synergy":
       return "shield";
+    case "frost":
+      return "speed";
+    case "echo":
+      return "power";
     case "boss":
       return "status-rage";
     default:
@@ -263,6 +300,8 @@ function combatSound(
 ): CombatSound {
   if (event.kind === "poison" || event.kind === "poisonBurst") return "poison";
   if (event.kind === "heal") return "heal";
+  if (event.kind === "frost") return "hit";
+  if (event.kind === "echo") return "shield";
   if (
     event.kind === "shield" ||
     event.kind === "synergy" ||
@@ -462,6 +501,22 @@ function CombatStatusRow({
           <span className="status-value">
             <b>+25%</b>
             <small>Zorn</small>
+          </span>
+          <small className="status-duration">dauerhaft</small>
+        </span>
+      )}
+      {status.timeFracture && (
+        <span
+          className="combat-status status-time-fracture"
+          title="Zeitbruch: +15 % Kraft für den Chronokessel. Dein nächster Angriffstakt wurde einmalig um 0,9 Sekunden verschoben."
+          aria-label="Zeitbruch, Chronokessel dauerhaft 15 Prozent stärker, dein Angriffstakt wurde einmalig verzögert"
+        >
+          <span className="status-icon-shell">
+            <UiIcon asset="speed" className="status-icon" />
+          </span>
+          <span className="status-value">
+            <b>+15%</b>
+            <small>Zeitbruch</small>
           </span>
           <small className="status-duration">dauerhaft</small>
         </span>
@@ -855,11 +910,17 @@ function ReservePocket({
   );
 }
 
-function SynergyStrip({ board }: { board: Board }) {
+function SynergyStrip({
+  board,
+  families,
+}: {
+  board: Board;
+  families: readonly Family[];
+}) {
   const weights = getFamilyWeights(board);
   return (
     <div className="synergy-strip" aria-label="Familien-Synergien">
-      {(Object.keys(FAMILY_META) as Family[]).map((family) => {
+      {families.map((family) => {
         const meta = FAMILY_META[family];
         const active = weights[family] >= 3;
         const shownWeight = Math.min(weights[family], 3);
@@ -1174,6 +1235,7 @@ function BattleVfx({
   const defensiveEffect =
     event.kind === "shield" ||
     event.kind === "synergy" ||
+    event.kind === "echo" ||
     event.kind === "cleanse" ||
     event.kind === "heal";
   const itemProjectile = source
@@ -1426,9 +1488,17 @@ function createBattleViewState(
 export default function Game() {
   const [game, setGame] = useState<GameState>(() => createInitialState());
   const [screen, setScreen] = useState<AppScreen>("menu");
+  const [progress, setProgress] = useState<PlayerProgress>(() =>
+    createEmptyProgress(),
+  );
   const [hydrated, setHydrated] = useState(false);
   const [hasStoredRun, setHasStoredRun] = useState(false);
   const [confirmNewRun, setConfirmNewRun] = useState(false);
+  const [requestedCampaign, setRequestedCampaign] = useState<CampaignId>(
+    "grand-tournament",
+  );
+  const [selectedLegacyFamily, setSelectedLegacyFamily] =
+    useState<LegacyFamily>("fire");
   const [showAudioSettings, setShowAudioSettings] = useState(false);
   const [audioActivated, setAudioActivated] = useState(false);
   const [combatSoundsEnabled, setCombatSoundsEnabled] = useState(() => {
@@ -1471,6 +1541,8 @@ export default function Game() {
   const confirmNewRunRef = useRef<HTMLButtonElement>(null);
   const mergeNotice = mergeNotices[0] ?? null;
 
+  const campaign = useMemo(() => getCampaign(game.campaignId), [game.campaignId]);
+  const maxRounds = campaign.opponents.length;
   const opponent = useMemo(() => getCurrentOpponent(game), [game]);
   const combatActivationTimes = useMemo(
     () => ({
@@ -1504,6 +1576,7 @@ export default function Game() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
+        let storedProgress = loadPlayerProgress(window.localStorage);
         const parsed = loadStoredGame(window.localStorage);
         if (parsed) {
           const restoredSpeed = parsed.round === 1 ? 1 : 2;
@@ -1511,6 +1584,18 @@ export default function Game() {
           setSpeed(restoredSpeed);
           setGame(parsed);
           setHasStoredRun(true);
+          if (
+            parsed.phase === "victory" &&
+            !hasCompletedCampaign(storedProgress, parsed.campaignId)
+          ) {
+            storedProgress = recordCampaignVictory(
+              storedProgress,
+              parsed.campaignId,
+              parsed.seals,
+              getPowerValue(parsed.board),
+            );
+            persistPlayerProgress(window.localStorage, storedProgress);
+          }
           if (parsed.pendingBattle) {
             setCombat(parsed.pendingBattle);
             setBattleView(
@@ -1524,6 +1609,7 @@ export default function Game() {
             );
           }
         }
+        setProgress(storedProgress);
       } catch {
         // A blocked or corrupted local store must never block the game.
       } finally {
@@ -1534,8 +1620,11 @@ export default function Game() {
   }, []);
 
   useEffect(() => {
-    void preloadArtAssets(COMBAT_PRELOAD_ASSETS);
-  }, []);
+    void preloadArtAssets([
+      ...SHARED_COMBAT_PRELOAD_ASSETS,
+      ...CAMPAIGN_PRELOAD_ASSETS[game.campaignId],
+    ]);
+  }, [game.campaignId]);
 
   useEffect(() => {
     preloadGameAudio();
@@ -1572,7 +1661,7 @@ export default function Game() {
 
   useEffect(() => {
     const audioScene: GameAudioScene =
-      screen === "menu"
+      screen !== "game"
         ? "menu"
         : game.phase === "battle"
           ? opponent.rank === "boss"
@@ -2331,7 +2420,17 @@ export default function Game() {
     setBattleClock(0);
     setBattleEnding(null);
     if (nextGame.phase === "victory") {
-      announce("Der Großkessel fällt. Du gewinnst das Kesselturnier!");
+      setProgress((current) => {
+        const updated = recordCampaignVictory(
+          current,
+          game.campaignId,
+          nextGame.seals,
+          getPowerValue(nextGame.board),
+        );
+        persistPlayerProgress(window.localStorage, updated);
+        return updated;
+      });
+      announce(`${opponent.name} fällt. Die Kampagnentrophäe gehört dir!`);
     } else if (nextGame.phase === "gameover") {
       announce("Das letzte Siegel ist gebrochen. Die Kampagne endet.");
     } else if (outcome === "player") {
@@ -2357,7 +2456,11 @@ export default function Game() {
   }
 
   function handleReset() {
-    const next = resetRun();
+    const next = resetRun(
+      undefined,
+      game.campaignId,
+      game.activeFamilies,
+    );
     updateCombatPause(false);
     updateCombatSpeed(1);
     setGame(next);
@@ -2371,19 +2474,49 @@ export default function Game() {
     announce("Ein neuer Kessel betritt den Wettstreit.");
   }
 
-  function startNewRunFromMenu() {
-    handleReset();
+  function startCampaign(
+    campaignId: CampaignId,
+    legacyFamily = selectedLegacyFamily,
+  ) {
+    const next = resetRun(
+      undefined,
+      campaignId,
+      getCampaignFamilies(campaignId, legacyFamily),
+    );
+    updateCombatPause(false);
+    updateCombatSpeed(1);
+    setGame(next);
+    setCombat(null);
+    setBattleView(null);
+    setBattleClock(0);
+    setBattleEnding(null);
+    setMergeNotices([]);
+    setReserveSelected(false);
+    setBusy(false);
     setConfirmNewRun(false);
     setHasStoredRun(true);
     setScreen("game");
+    announce(`${getCampaign(campaignId).name} beginnt.`);
   }
 
-  function handleNewRunRequest() {
+  function startRequestedCampaign() {
+    startCampaign(requestedCampaign, selectedLegacyFamily);
+  }
+
+  function requestCampaignStart(campaignId: CampaignId) {
+    if (
+      campaignId === "frostbound-vault" &&
+      !hasCompletedCampaign(progress, "grand-tournament")
+    ) {
+      announceActionError("Besiege zuerst den Großkessel in Kampagne I.");
+      return;
+    }
+    setRequestedCampaign(campaignId);
     if (hasStoredRun) {
       setConfirmNewRun(true);
       return;
     }
-    startNewRunFromMenu();
+    startCampaign(campaignId, selectedLegacyFamily);
   }
 
   function handleContinueRun() {
@@ -2406,6 +2539,12 @@ export default function Game() {
     setShowPowerHelp(false);
     setHasStoredRun(true);
     setScreen("menu");
+  }
+
+  function handleOpenCabinet() {
+    setConfirmNewRun(false);
+    setShowAudioSettings(false);
+    setScreen("cabinet");
   }
 
   function handleOpenAudioSettings() {
@@ -2614,7 +2753,7 @@ export default function Game() {
         >
           <span className="audio-setting-copy">
             <strong>Kampfsounds</strong>
-            <small>Feuer, Gift, Schild, Heilung und Treffer</small>
+            <small>Magie, Treffer, Heilung und Schutz</small>
           </span>
           <span className="audio-switch" aria-hidden="true">
             <i />
@@ -2628,18 +2767,245 @@ export default function Game() {
     </div>
   ) : null;
 
+  const runStateLabel =
+    game.phase === "victory"
+      ? "Kampagne gewonnen"
+      : game.phase === "gameover"
+        ? "Kampagne beendet"
+        : game.phase === "battle"
+          ? `Kampf läuft · Runde ${game.round}`
+          : game.phase === "result"
+            ? `Ergebnis bereit · Runde ${game.round}`
+            : `Runde ${game.round} von ${maxRounds}`;
+  const requestedCampaignDefinition = getCampaign(requestedCampaign);
+  const newRunDialog = confirmNewRun ? (
+    <div
+      className="new-run-dialog-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) setConfirmNewRun(false);
+      }}
+    >
+      <section
+        className="new-run-dialog"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="new-run-dialog-title"
+        aria-describedby="new-run-dialog-description"
+      >
+        <span className="dialog-seal" aria-hidden="true">
+          <UiIcon asset="run-seal" className="dialog-seal-icon" />
+        </span>
+        <span className="eyebrow">SPIELSTAND ERSETZEN</span>
+        <h2 id="new-run-dialog-title">Neue Kampagne beginnen?</h2>
+        <p id="new-run-dialog-description">
+          Dein gespeicherter Stand ({runStateLabel}) wird durch
+          <strong> {requestedCampaignDefinition.name}</strong> mit 7 Gold und
+          3 Siegeln ersetzt.
+        </p>
+        <div className="dialog-actions">
+          <button
+            type="button"
+            className="dialog-cancel-button"
+            onClick={() => setConfirmNewRun(false)}
+          >
+            ABBRECHEN
+          </button>
+          <button
+            type="button"
+            className="dialog-confirm-button"
+            onClick={startRequestedCampaign}
+            ref={confirmNewRunRef}
+          >
+            KAMPAGNE STARTEN
+          </button>
+        </div>
+      </section>
+    </div>
+  ) : null;
+
+  if (screen === "cabinet") {
+    const firstCampaignComplete = hasCompletedCampaign(
+      progress,
+      "grand-tournament",
+    );
+    return (
+      <main
+        className={`cabinet-shell ${fullscreenActive ? "is-fullscreen" : ""}`}
+        ref={shellRef}
+        onClickCapture={handleUiButtonClick}
+      >
+        <BackdropImage backdrop="menu" className="cabinet-backdrop" />
+        <div className="cabinet-shade" aria-hidden="true" />
+        <header className="cabinet-topbar">
+          <button
+            type="button"
+            className="cabinet-back-button"
+            onClick={() => setScreen("menu")}
+          >
+            ← HAUPTMENÜ
+          </button>
+          <div>
+            <span className="eyebrow">DEIN FORTSCHRITT</span>
+            <h1>Kesselkabinett</h1>
+          </div>
+          <button
+            type="button"
+            className="audio-settings-button"
+            onClick={handleOpenAudioSettings}
+            aria-label="Audio-Einstellungen öffnen"
+          >
+            <span className="audio-button-glyph" aria-hidden="true">♪</span>
+            <span>Audio</span>
+          </button>
+        </header>
+
+        <div className="cabinet-content">
+          <section className="cabinet-intro">
+            <div>
+              <span className="eyebrow">KAMPAGNENWAHL</span>
+              <h2>Jeder Wettstreit beginnt mit einem frischen Kessel.</h2>
+              <p>
+                Gold, Zutaten und Siegel werden nicht übertragen. Freigeschaltet
+                werden neue Regeln, Familien und Trophäen – keine dauerhaften
+                Schadensboni.
+              </p>
+            </div>
+            <ArtSprite asset="cauldron-player" className="cabinet-cauldron" />
+          </section>
+
+          <section className="campaign-grid" aria-label="Verfügbare Kampagnen">
+            {CAMPAIGNS.map((entry) => {
+              const unlocked =
+                entry.id === "grand-tournament" || firstCampaignComplete;
+              const completed = hasCompletedCampaign(progress, entry.id);
+              const record = progress.campaigns[entry.id];
+              const isCurrentRun =
+                hasStoredRun &&
+                game.campaignId === entry.id &&
+                game.phase !== "victory" &&
+                game.phase !== "gameover";
+              const entryFamilies = entry.selectableLegacyFamily
+                ? getCampaignFamilies(entry.id, selectedLegacyFamily)
+                : [...entry.defaultFamilies];
+              return (
+                <article
+                  className={`campaign-card campaign-${entry.number} ${
+                    unlocked ? "is-unlocked" : "is-locked"
+                  } ${completed ? "is-completed" : ""}`}
+                  key={entry.id}
+                >
+                  <div className="campaign-card-heading">
+                    <span className="campaign-number">KAMPAGNE {entry.number}</span>
+                    <span className="campaign-state">
+                      {completed ? "TROPHÄE ERHALTEN" : unlocked ? "BEREIT" : "GESPERRT"}
+                    </span>
+                  </div>
+                  <h2>{entry.name}</h2>
+                  <strong>{entry.subtitle}</strong>
+                  <p>{entry.description}</p>
+
+                  {entry.selectableLegacyFamily && unlocked && (
+                    <div className="legacy-family-choice">
+                      <span>DEINE GEMEISTERTE FAMILIE</span>
+                      <div>
+                        {LEGACY_FAMILIES.map((family) => (
+                          <button
+                            type="button"
+                            className={
+                              selectedLegacyFamily === family ? "is-selected" : ""
+                            }
+                            onClick={() => setSelectedLegacyFamily(family)}
+                            aria-pressed={selectedLegacyFamily === family}
+                            key={family}
+                          >
+                            <UiIcon
+                              asset={FAMILY_ICON[family]}
+                              className="campaign-family-icon"
+                            />
+                            {FAMILY_META[family].name}
+                          </button>
+                        ))}
+                      </div>
+                      <small>
+                        Frost und Echo sind fest. So bleibt der Shop bei genau
+                        drei Familien lesbar.
+                      </small>
+                    </div>
+                  )}
+
+                  <div className="campaign-family-row" aria-label="Aktive Familien">
+                    {entryFamilies.map((family) => (
+                      <span className={familyClass(family)} key={family}>
+                        <UiIcon
+                          asset={FAMILY_ICON[family]}
+                          className="campaign-family-icon"
+                        />
+                        {FAMILY_META[family].name}
+                      </span>
+                    ))}
+                  </div>
+
+                  {record && (
+                    <div className="campaign-record">
+                      <span>{entry.trophyName}</span>
+                      <small>
+                        {record.wins}× gewonnen · bestes Ergebnis: {record.bestSeals} Siegel
+                      </small>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    className="campaign-action-button"
+                    disabled={!unlocked || !hydrated}
+                    onClick={() =>
+                      isCurrentRun
+                        ? handleContinueRun()
+                        : requestCampaignStart(entry.id)
+                    }
+                  >
+                    {isCurrentRun
+                      ? `RUN FORTSETZEN · RUNDE ${game.round}`
+                      : unlocked
+                        ? "FRISCHEN RUN STARTEN"
+                        : "BESIEGE ZUERST DEN GROSSKESSEL"}
+                  </button>
+                </article>
+              );
+            })}
+          </section>
+
+          <section className="cabinet-collection" aria-label="Sammlung">
+            <article>
+              <UiIcon asset="elite" className="cabinet-collection-icon" />
+              <div>
+                <strong>Trophäen</strong>
+                <small>
+                  {CAMPAIGNS.filter((entry) =>
+                    hasCompletedCampaign(progress, entry.id),
+                  ).length}
+                  /{CAMPAIGNS.length} Kampagnen gemeistert
+                </small>
+              </div>
+            </article>
+            <article>
+              <UiIcon asset="power" className="cabinet-collection-icon" />
+              <div>
+                <strong>Rezeptbuch</strong>
+                <small>{firstCampaignComplete ? "5" : "3"} Familien entdeckt</small>
+              </div>
+            </article>
+          </section>
+        </div>
+        {newRunDialog}
+        {audioSettingsDialog}
+      </main>
+    );
+  }
+
   if (screen === "menu") {
     const menuOpponent = getCurrentOpponent(game);
-    const runStateLabel =
-      game.phase === "victory"
-        ? "Turnier gewonnen"
-        : game.phase === "gameover"
-          ? "Kampagne beendet"
-          : game.phase === "battle"
-            ? `Kampf läuft · Runde ${game.round}`
-            : game.phase === "result"
-              ? `Ergebnis bereit · Runde ${game.round}`
-              : `Runde ${game.round} von ${MAX_ROUNDS}`;
 
     return (
       <main
@@ -2760,19 +3126,17 @@ export default function Game() {
               <button
                 type="button"
                 className={hasStoredRun ? "menu-secondary-button" : "menu-primary-button"}
-                onClick={handleNewRunRequest}
+                onClick={handleOpenCabinet}
                 disabled={!hydrated}
               >
                 <span>
-                  <UiIcon asset="power" className="menu-button-icon" />
-                  NEUE KAMPAGNE STARTEN
+                  <UiIcon asset="elite" className="menu-button-icon" />
+                  KESSELKABINETT ÖFFNEN
                 </span>
                 <small>
-                  {hasStoredRun
-                    ? "Ersetzt den gespeicherten Spielstand nach Bestätigung"
-                    : hydrated
-                      ? "7 Gold · 3 Siegel · 8 Gegner"
-                      : "Spielstand wird geprüft …"}
+                  {hydrated
+                    ? "Kampagnen, Trophäen und Familien wählen"
+                    : "Fortschritt wird geprüft …"}
                 </small>
               </button>
             </div>
@@ -2809,73 +3173,30 @@ export default function Game() {
             <section className="menu-coming-soon" aria-labelledby="coming-soon-title">
               <div className="menu-section-heading">
                 <div>
-                  <span className="eyebrow">DER WETTSTREIT WÄCHST</span>
-                  <h2 id="coming-soon-title">Bald im Kesselkabinett</h2>
+                  <span className="eyebrow">DEIN WEG GEHT WEITER</span>
+                  <h2 id="coming-soon-title">Das Kesselkabinett ist geöffnet</h2>
                 </div>
-                <span className="coming-soon-badge">DEMNÄCHST</span>
+                <span className="coming-soon-badge">2 KAMPAGNEN</span>
               </div>
               <div className="coming-soon-grid">
                 <article>
                   <UiIcon asset="battle" className="coming-soon-icon" />
-                  <div><strong>Neue Kampagnen</strong><small>Weitere Turniere &amp; Bosse</small></div>
+                  <div><strong>Frost &amp; Echo</strong><small>Neue Familien nach Kampagne I</small></div>
                 </article>
                 <article>
                   <UiIcon asset="power" className="coming-soon-icon" />
-                  <div><strong>Freischaltbare Upgrades</strong><small>Dauerhafte Kesselkünste</small></div>
+                  <div><strong>Eigene Build-Pools</strong><small>Immer genau drei aktive Familien</small></div>
                 </article>
                 <article>
                   <UiIcon asset="elite" className="coming-soon-icon" />
-                  <div><strong>Belohnungen</strong><small>Trophäen für starke Kampagnen</small></div>
+                  <div><strong>Trophäen</strong><small>Fortschritt ohne dauerhaften Schadensbonus</small></div>
                 </article>
               </div>
             </section>
           </section>
         </div>
 
-        {confirmNewRun && (
-          <div
-            className="new-run-dialog-backdrop"
-            role="presentation"
-            onMouseDown={(event) => {
-              if (event.target === event.currentTarget) setConfirmNewRun(false);
-            }}
-          >
-            <section
-              className="new-run-dialog"
-              role="alertdialog"
-              aria-modal="true"
-              aria-labelledby="new-run-dialog-title"
-              aria-describedby="new-run-dialog-description"
-            >
-              <span className="dialog-seal" aria-hidden="true">
-                <UiIcon asset="run-seal" className="dialog-seal-icon" />
-              </span>
-              <span className="eyebrow">SPIELSTAND ERSETZEN</span>
-              <h2 id="new-run-dialog-title">Wirklich eine neue Kampagne beginnen?</h2>
-              <p id="new-run-dialog-description">
-                Dein gespeicherter Stand ({runStateLabel}) wird durch einen
-                frischen Spielstand mit 7 Gold und 3 Siegeln ersetzt.
-              </p>
-              <div className="dialog-actions">
-                <button
-                  type="button"
-                  className="dialog-cancel-button"
-                  onClick={() => setConfirmNewRun(false)}
-                >
-                  ABBRECHEN
-                </button>
-                <button
-                  type="button"
-                  className="dialog-confirm-button"
-                  onClick={startNewRunFromMenu}
-                  ref={confirmNewRunRef}
-                >
-                  NEUE KAMPAGNE STARTEN
-                </button>
-              </div>
-            </section>
-          </div>
-        )}
+        {newRunDialog}
         {audioSettingsDialog}
       </main>
     );
@@ -2893,9 +3214,9 @@ export default function Game() {
           <strong>KESSEL <i>•</i> KRAWALL</strong>
           <span
             className="round-pips"
-            aria-label={`Kampagnenfortschritt: Runde ${game.round} von ${MAX_ROUNDS}`}
+            aria-label={`Kampagnenfortschritt: Runde ${game.round} von ${maxRounds}`}
           >
-            {Array.from({ length: MAX_ROUNDS }, (_, index) => (
+            {Array.from({ length: maxRounds }, (_, index) => (
               <i
                 className={
                   index + 1 < game.round
@@ -2914,7 +3235,7 @@ export default function Game() {
           <div className="run-status">
             <div>
               <small>RUNDE</small>
-              <b>{game.round}/{MAX_ROUNDS}</b>
+              <b>{game.round}/{maxRounds}</b>
             </div>
             <div
               ref={goldStatusRef}
@@ -3320,7 +3641,7 @@ export default function Game() {
                   />
                 )}
               </div>
-              <SynergyStrip board={game.board} />
+              <SynergyStrip board={game.board} families={game.activeFamilies} />
             </section>
           </div>
 
@@ -3654,8 +3975,8 @@ export default function Game() {
               </h2>
               <p>
                 {combat.winner === "player"
-                  ? game.round >= MAX_ROUNDS
-                    ? "Der Titel des Kesselturniers gehört dir."
+                  ? game.round >= maxRounds
+                    ? `${campaign.trophyName} gehört dir.`
                     : `+${getRoundReward(game, true)} Gold in der nächsten Runde`
                   : combat.winner === "draw"
                     ? `Kein Siegelverlust und kein Gold. ${opponent.name} wartet erneut.`
@@ -3682,8 +4003,8 @@ export default function Game() {
           <StatsList stats={combat.playerStats} />
           <button type="button" className="continue-button" onClick={handleContinue}>
             {combat.winner === "player"
-              ? game.round >= MAX_ROUNDS
-                ? "TURNIER ABSCHLIESSEN"
+              ? game.round >= maxRounds
+                ? "KAMPAGNE ABSCHLIESSEN"
                 : `BELOHNUNG NEHMEN · +${getBattleReward(game, combat.winner)} GOLD`
               : combat.winner === "draw"
                 ? "REVANCHE VORBEREITEN"
@@ -3692,7 +4013,7 @@ export default function Game() {
                   : `REVANCHE VORBEREITEN · +${getBattleReward(game, combat.winner)} GOLD`}
             <span>
               {combat.winner === "player"
-                ? game.round >= MAX_ROUNDS
+                ? game.round >= maxRounds
                   ? "Kampagnenergebnis ansehen →"
                   : `Runde ${game.round + 1} vorbereiten →`
                 : combat.winner === "enemy" &&
@@ -3709,11 +4030,11 @@ export default function Game() {
         <section className="gameover-sheet">
           <ArtSprite asset="result-defeat" className="gameover-icon" />
           <span className="eyebrow">
-            {game.round >= MAX_ROUNDS ? "DER BOSS BLEIBT STEHEN" : "DER KESSEL IST ERKALTET"}
+            {game.round >= maxRounds ? "DER BOSS BLEIBT STEHEN" : "DER KESSEL IST ERKALTET"}
           </span>
           <h2>
-            {game.round >= MAX_ROUNDS
-              ? "Der Großkessel verteidigt seinen Titel."
+            {game.round >= maxRounds
+              ? `${opponent.name} verteidigt ${campaign.trophyName}.`
               : `Die Kampagne endet in Runde ${game.round}.`}
           </h2>
           <p>
@@ -3731,14 +4052,14 @@ export default function Game() {
         <section className="gameover-sheet victory-sheet">
           <ArtSprite asset="result-victory" className="gameover-icon" />
           <span className="eyebrow">KESSELMEISTER!</span>
-          <h2>Du gewinnst den großen Kessel-Wettstreit.</h2>
+          <h2>Du meisterst „{campaign.name}“.</h2>
           <p>
             {game.victories} Siege · {game.seals} Siegel übrig · finale Buildstärke{" "}
             {playerPower}
           </p>
-          <button type="button" className="continue-button" onClick={handleReset}>
-            NOCH EINE KAMPAGNE STARTEN
-            <span>Neue Angebote · neue Buildrichtung</span>
+          <button type="button" className="continue-button" onClick={handleOpenCabinet}>
+            TROPHÄE INS KESSELKABINETT BRINGEN
+            <span>Nächste Kampagne und neue Familien ansehen</span>
           </button>
         </section>
       )}

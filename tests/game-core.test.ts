@@ -22,7 +22,12 @@ import {
   mergeFloatingCombatNumbers,
   pruneExpiredFloatingNumbers,
 } from "../app/game/combatFloatingNumbers";
-import { CAMPAIGN_OPPONENTS, ITEM_BY_ID } from "../app/game/data";
+import { CAMPAIGNS, getCampaignFamilies } from "../app/game/campaigns";
+import {
+  CAMPAIGN_OPPONENTS,
+  FROSTBOUND_OPPONENTS,
+  ITEM_BY_ID,
+} from "../app/game/data";
 import {
   DEFAULT_COMBAT_LIMIT_MS,
   getItemCooldownMs,
@@ -53,12 +58,19 @@ import {
   getCurrentOpponent,
   getSellValue,
   isSynergyActive,
+  rerollShop,
   RESERVE_UNLOCK_ROUND,
   sanitizeStoredState,
   sellReserve,
   swapSlotWithReserve,
 } from "../app/game/state";
-import { loadStoredGame, persistGame } from "../app/game/storage";
+import {
+  createEmptyProgress,
+  hasCompletedCampaign,
+  loadStoredGame,
+  persistGame,
+  recordCampaignVictory,
+} from "../app/game/storage";
 import type {
   CombatEvent,
   GameState,
@@ -896,14 +908,16 @@ test("healing tuber triggers once below half health with a smaller heal", () => 
   assert.ok(heals[0].playerHp <= 59);
 });
 
-test("version three saves migrate to an empty version five reserve", () => {
+test("version three saves migrate to campaign one with an empty reserve", () => {
   const legacy = JSON.parse(JSON.stringify(createInitialState(48)));
   legacy.version = 3;
   delete legacy.reserve;
   delete legacy.openingProtectionUsed;
 
   const migrated = sanitizeStoredState(legacy);
-  assert.equal(migrated?.version, 5);
+  assert.equal(migrated?.version, 6);
+  assert.equal(migrated?.campaignId, "grand-tournament");
+  assert.deepEqual(migrated?.activeFamilies, ["fire", "poison", "guard"]);
   assert.equal(migrated?.reserve, null);
   assert.equal(migrated?.openingProtectionUsed, false);
 });
@@ -970,6 +984,92 @@ test("campaign contains seven opponents and one final boss", () => {
   );
 });
 
+test("campaign two has its own eight-fight roster and time-fracture boss", () => {
+  assert.equal(CAMPAIGNS.length, 2);
+  assert.equal(FROSTBOUND_OPPONENTS.length, 8);
+  assert.equal(FROSTBOUND_OPPONENTS[6].rank, "elite");
+  assert.equal(FROSTBOUND_OPPONENTS[7].rank, "boss");
+  assert.equal(FROSTBOUND_OPPONENTS[7].bossRule, "timeFractureAtHalf");
+});
+
+test("campaign two keeps Frost and Echo while selecting one legacy family", () => {
+  const activeFamilies = getCampaignFamilies("frostbound-vault", "poison");
+  const state = enterOpeningShop(
+    createInitialState(91, "frostbound-vault", activeFamilies),
+  );
+  assert.deepEqual(state.activeFamilies, ["frost", "echo", "poison"]);
+  assert.deepEqual(
+    state.offers.map((offer) => ITEM_BY_ID[offer.itemId].family),
+    ["frost", "echo", "poison"],
+  );
+
+  let rolled = state;
+  for (let index = 0; index < 12; index += 1) {
+    rolled = rerollShop(rolled).state;
+    assert.ok(
+      rolled.offers.every((offer) =>
+        activeFamilies.includes(ITEM_BY_ID[offer.itemId].family),
+      ),
+    );
+  }
+});
+
+test("campaign victories persist as unlock progress without combat bonuses", () => {
+  const initial = createEmptyProgress();
+  assert.equal(hasCompletedCampaign(initial, "grand-tournament"), false);
+  const completed = recordCampaignVictory(
+    initial,
+    "grand-tournament",
+    2,
+    73,
+  );
+  assert.equal(hasCompletedCampaign(completed, "grand-tournament"), true);
+  assert.deepEqual(completed.campaigns["grand-tournament"], {
+    wins: 1,
+    bestSeals: 2,
+    bestPower: 73,
+  });
+});
+
+test("Frost and Echo synergies create their readable signature events", () => {
+  const frostBattle = simulateBattle(
+    [
+      item("frost-main", "frost-shard", 2),
+      item("frost-bell", "ice-bell"),
+      null,
+      null,
+      null,
+    ],
+    opponent([null, null, null, null, null], 250),
+  );
+  assert.ok(
+    frostBattle.events.some(
+      (event) =>
+        event.kind === "frost" && event.label.includes("Froststarre"),
+    ),
+  );
+  const frostMessage = getImportantCombatMessage(frostBattle.events);
+  assert.equal(frostMessage?.amountLabel, "+0,65 s gegnerische Ladezeit");
+
+  const echoBattle = simulateBattle(
+    [
+      item("echo-main", "mirror-shard", 2),
+      item("echo-bell", "echo-bell"),
+      null,
+      null,
+      null,
+    ],
+    opponent([null, null, null, null, null], 250),
+  );
+  assert.ok(
+    echoBattle.events.some(
+      (event) => event.kind === "echo" && event.label.includes("Nachhall"),
+    ),
+  );
+  const echoMessage = getImportantCombatMessage(echoBattle.events);
+  assert.equal(echoMessage?.amountLabel, "55 % Nachhall");
+});
+
 test("winning the eighth fight completes the campaign", () => {
   const state = {
     ...createInitialState(43),
@@ -1020,6 +1120,27 @@ test("the boss visibly triggers Kesselzorn below half health", () => {
   );
 });
 
+test("the Chronokessel visibly triggers its one-time time fracture", () => {
+  const board = [
+    item("c1", "frost-shard", 3),
+    item("c2", "ice-bell", 3),
+    item("c3", "mirror-shard", 3),
+    item("c4", "echo-bell", 3),
+    item("c5", "time-thread", 3),
+  ];
+  const battle = simulateBattle(board, FROSTBOUND_OPPONENTS[7]);
+  const fractures = battle.events.filter(
+    (event) => event.kind === "boss" && event.sourceUid === "boss-zeitbruch",
+  );
+  assert.equal(fractures.length, 1);
+  assert.ok(fractures[0].label.includes("Zeitbruch"));
+  const fractureBeat = createCombatBeats(battle.events).find(
+    (beat) => beat.event.sourceUid === "boss-zeitbruch",
+  );
+  assert.equal(fractureBeat?.statuses.enemy.timeFracture, true);
+  assert.equal(fractureBeat?.statuses.enemy.rage, false);
+});
+
 test("combat presentation preserves every simulated event and final snapshot", () => {
   const board = [
     item("p1", "chili", 2),
@@ -1061,6 +1182,37 @@ test("the weakest representative opening knocks out Zischbert in time", () => {
     assert.equal(battle.winner, "player");
     assert.equal(battle.reason, "knockout");
     assert.ok(battle.duration < DEFAULT_COMBAT_LIMIT_MS);
+  }
+});
+
+test("every campaign-two opening choice can clear Reif-Rudi", () => {
+  const reifRudi = FROSTBOUND_OPPONENTS[0];
+  const opponentBoards = [
+    reifRudi.board,
+    ...(reifRudi.boardVariants ?? []),
+  ];
+
+  for (const legacyItemId of ["chili", "slime-shroom", "egg-shell"]) {
+    const offeredItemIds = ["frost-shard", "mirror-shard", legacyItemId];
+    for (let first = 0; first < offeredItemIds.length; first += 1) {
+      for (let second = first + 1; second < offeredItemIds.length; second += 1) {
+        const opening = [
+          item(`opening-${legacyItemId}-${first}`, offeredItemIds[first]),
+          item(`opening-${legacyItemId}-${second}`, offeredItemIds[second]),
+          null,
+          null,
+          null,
+        ];
+        for (const board of opponentBoards) {
+          const battle = simulateBattle(opening, { ...reifRudi, board });
+          assert.equal(
+            battle.winner,
+            "player",
+            `${offeredItemIds[first]} + ${offeredItemIds[second]} failed against Reif-Rudi`,
+          );
+        }
+      }
+    }
   }
 });
 

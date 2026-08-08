@@ -1,4 +1,6 @@
-export type Family = "fire" | "poison" | "guard";
+export type Family = "fire" | "poison" | "guard" | "frost" | "echo";
+export type LegacyFamily = "fire" | "poison" | "guard";
+export type CampaignId = "grand-tournament" | "frostbound-vault";
 export type ItemLevel = 1 | 2 | 3;
 export type GamePhase =
   | "intro"
@@ -10,7 +12,7 @@ export type GamePhase =
 export type Side = "player" | "enemy";
 export type BattleOutcome = Side | "draw";
 export type OpponentRank = "regular" | "elite" | "boss";
-export type BossRule = "rageAtHalf";
+export type BossRule = "rageAtHalf" | "timeFractureAtHalf";
 
 export type EffectType =
   | "damage"
@@ -82,6 +84,20 @@ export interface OpponentDefinition {
   bossRule?: BossRule;
 }
 
+export interface CampaignDefinition {
+  id: CampaignId;
+  number: number;
+  name: string;
+  subtitle: string;
+  description: string;
+  trophyName: string;
+  opponents: readonly OpponentDefinition[];
+  fixedFamilies: readonly Family[];
+  selectableLegacyFamily: boolean;
+  defaultFamilies: readonly Family[];
+  openingItemByFamily: Readonly<Partial<Record<Family, string>>>;
+}
+
 export interface MergeStep {
   itemId: string;
   fromLevel: ItemLevel;
@@ -95,7 +111,9 @@ export type ItemLocation =
   | { area: "reserve" };
 
 export interface GameState {
-  version: 5;
+  version: 6;
+  campaignId: CampaignId;
+  activeFamilies: Family[];
   phase: GamePhase;
   round: number;
   gold: number;
@@ -111,6 +129,17 @@ export interface GameState {
   opponentVariant: number;
   openingProtectionUsed: boolean;
   pendingBattle: CombatResult | null;
+}
+
+export interface CampaignProgress {
+  wins: number;
+  bestSeals: number;
+  bestPower: number;
+}
+
+export interface PlayerProgress {
+  version: 1;
+  campaigns: Partial<Record<CampaignId, CampaignProgress>>;
 }
 
 export interface ItemCombatStats {
@@ -135,6 +164,8 @@ export type CombatEventKind =
   | "shield"
   | "cleanse"
   | "synergy"
+  | "frost"
+  | "echo"
   | "boss";
 
 export interface CombatEvent {

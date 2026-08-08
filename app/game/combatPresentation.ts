@@ -17,6 +17,7 @@ export interface CombatSideStatus {
   poison: TimedCombatStatus;
   burn: TimedCombatStatus;
   rage: boolean;
+  timeFracture: boolean;
 }
 
 export interface CombatStatusSnapshot {
@@ -58,6 +59,7 @@ interface MutableSideStatus {
   poison: number;
   burn: Map<string, number>;
   rage: boolean;
+  timeFracture: boolean;
 }
 
 interface AtomicCombatBeat extends CombatBeat {
@@ -90,6 +92,7 @@ function emptySideStatus(): CombatSideStatus {
     poison: emptyTimedStatus(),
     burn: emptyTimedStatus(),
     rage: false,
+    timeFracture: false,
   };
 }
 
@@ -116,7 +119,11 @@ export interface ImportantCombatMessage {
 function importantMessagePriority(event: CombatEvent): number {
   if (event.kind === "boss") return 3;
   if (event.kind === "poisonBurst") return 2;
-  if (event.kind === "synergy") return 2;
+  if (
+    event.kind === "synergy" ||
+    event.kind === "frost" ||
+    event.kind === "echo"
+  ) return 2;
   if (event.kind === "cleanse") return 1;
   return 0;
 }
@@ -163,6 +170,13 @@ function summarizeEventAmounts(events: CombatEvent[]): string {
     } else if (event.kind === "shield" || event.kind === "synergy") {
       key = "shield";
       format = (amount) => `+${amount} Schild`;
+    } else if (event.kind === "frost") {
+      key = "frost";
+      format = (amount) =>
+        `+${String(amount / 1_000).replace(".", ",")} s gegnerische Ladezeit`;
+    } else if (event.kind === "echo") {
+      key = "echo";
+      format = (amount) => `${amount} % Nachhall`;
     } else if (event.kind === "cleanse") {
       key = "cleanse";
       format = (amount) => `−${amount} Gift`;
@@ -255,7 +269,11 @@ function applyStatusEvent(
   } else if (event.kind === "cleanse") {
     targetStatus.poison = 0;
   } else if (event.kind === "boss") {
-    statuses[event.actor].rage = true;
+    if (event.sourceUid === "boss-zeitbruch") {
+      statuses[event.actor].timeFracture = true;
+    } else {
+      statuses[event.actor].rage = true;
+    }
   }
 }
 
@@ -304,6 +322,7 @@ function snapshotStatuses(
     poison: timedPoisonAt(statuses[side].poison, time),
     burn: timedStatusAt(statuses[side].burn, time, BURN_INTERVAL_MS),
     rage: statuses[side].rage,
+    timeFracture: statuses[side].timeFracture,
   });
 
   return {
@@ -315,7 +334,11 @@ function snapshotStatuses(
 function eventPriority(event: CombatEvent): number {
   if (event.kind === "boss") return 10_000;
   if (event.playerHp <= 0 || event.enemyHp <= 0) return 9_000;
-  if (event.kind === "synergy") return 8_000;
+  if (
+    event.kind === "synergy" ||
+    event.kind === "frost" ||
+    event.kind === "echo"
+  ) return 8_000;
   if (event.kind === "damage" || event.kind === "poisonBurst") {
     return 5_000 + event.amount;
   }
@@ -350,8 +373,18 @@ function createAtomicCombatBeats(events: CombatEvent[]): AtomicCombatBeat[] {
   const beats: AtomicCombatBeat[] = [];
   const seenItemSources = new Set<string>();
   const statuses: Record<Side, MutableSideStatus> = {
-    player: { poison: 0, burn: new Map(), rage: false },
-    enemy: { poison: 0, burn: new Map(), rage: false },
+    player: {
+      poison: 0,
+      burn: new Map(),
+      rage: false,
+      timeFracture: false,
+    },
+    enemy: {
+      poison: 0,
+      burn: new Map(),
+      rage: false,
+      timeFracture: false,
+    },
   };
 
   for (let index = 0; index < events.length; ) {
@@ -387,6 +420,8 @@ function createAtomicCombatBeats(events: CombatEvent[]): AtomicCombatBeat[] {
     const firstUse =
       !firstIsStatus &&
       first.kind !== "synergy" &&
+      first.kind !== "frost" &&
+      first.kind !== "echo" &&
       first.kind !== "boss" &&
       !seenItemSources.has(first.sourceUid);
     if (firstUse) seenItemSources.add(first.sourceUid);
@@ -395,6 +430,8 @@ function createAtomicCombatBeats(events: CombatEvent[]): AtomicCombatBeat[] {
         (event) =>
           event.kind === "boss" ||
           event.kind === "synergy" ||
+          event.kind === "frost" ||
+          event.kind === "echo" ||
           event.playerHp <= 0 ||
           event.enemyHp <= 0,
       );

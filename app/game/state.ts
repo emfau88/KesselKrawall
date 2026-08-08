@@ -1,7 +1,13 @@
+import {
+  getCampaign,
+  getCampaignFamilies,
+  getOpeningItemIds,
+} from "./campaigns";
 import { CAMPAIGN_OPPONENTS, ITEM_BY_ID, ITEMS } from "./data";
 import type {
   BattleOutcome,
   Board,
+  CampaignId,
   CombatResult,
   Family,
   GamePhase,
@@ -17,14 +23,14 @@ export const BOARD_SIZE = 5;
 export const SYNERGY_THRESHOLD = 3;
 export const MAX_ROUNDS = CAMPAIGN_OPPONENTS.length;
 export const RESERVE_UNLOCK_ROUND = 5;
-export const STORAGE_KEY = "kessel-krawall-run-v5";
+export const STORAGE_KEY = "kessel-krawall-run-v6";
 export const LEGACY_STORAGE_KEYS = [
+  "kessel-krawall-run-v5",
   "kessel-krawall-run-v4",
   "kessel-krawall-run-v3",
   "kessel-krawall-run-v2",
 ] as const;
 export const DEFEAT_RECOVERY_GOLD = 3;
-const OPENING_ITEM_IDS = ["chili", "slime-shroom", "egg-shell"] as const;
 
 export interface ActionResult {
   state: GameState;
@@ -54,11 +60,11 @@ function pick<T>(items: readonly T[], random: number): T {
   return items[Math.min(items.length - 1, Math.floor(random * items.length))];
 }
 
-function opponentVariantCount(round: number): number {
-  const opponent =
-    CAMPAIGN_OPPONENTS[
-      Math.min(Math.max(0, round - 1), CAMPAIGN_OPPONENTS.length - 1)
-    ];
+function opponentVariantCount(campaignId: CampaignId, round: number): number {
+  const opponents = getCampaign(campaignId).opponents;
+  const opponent = opponents[
+    Math.min(Math.max(0, round - 1), opponents.length - 1)
+  ];
   return 1 + (opponent.boardVariants?.length ?? 0);
 }
 
@@ -68,8 +74,8 @@ function rollOpponentVariant(state: GameState, round: number): GameState {
     ...state,
     rngState,
     opponentVariant: Math.min(
-      opponentVariantCount(round) - 1,
-      Math.floor(random * opponentVariantCount(round)),
+      opponentVariantCount(state.campaignId, round) - 1,
+      Math.floor(random * opponentVariantCount(state.campaignId, round)),
     ),
   };
 }
@@ -84,7 +90,9 @@ function chooseWeightedItem(
   );
   const familyWeights = getFamilyWeights(state.board);
   const ownedIds = new Set(inventoryItems.map((item) => item.itemId));
-  const weighted = ITEMS.map((item) => {
+  const weighted = ITEMS.filter((item) =>
+    state.activeFamilies.includes(item.family),
+  ).map((item) => {
     let weight = 1;
     weight += familyWeights[item.family] * 0.16;
     if (ownedIds.has(item.id)) weight += 0.42;
@@ -117,7 +125,10 @@ function rollOffers(
     state = { ...state, rngState: nextSeed };
 
     if (opening) {
-      itemId = OPENING_ITEM_IDS[index];
+      itemId = getOpeningItemIds(
+        state.campaignId,
+        state.activeFamilies,
+      )[index];
     } else if (index === 0 && state.round <= 3 && owned.length > 0) {
       itemId = pick(owned, random).itemId;
     } else {
@@ -133,9 +144,15 @@ function rollOffers(
   return { state, offers };
 }
 
-export function createInitialState(seed = 0x4b4b2026): GameState {
+export function createInitialState(
+  seed = 0x4b4b2026,
+  campaignId: CampaignId = "grand-tournament",
+  activeFamilies = getCampaignFamilies(campaignId),
+): GameState {
   const base: GameState = {
-    version: 5,
+    version: 6,
+    campaignId,
+    activeFamilies: [...activeFamilies],
     phase: "intro",
     round: 1,
     gold: 7,
@@ -148,7 +165,8 @@ export function createInitialState(seed = 0x4b4b2026): GameState {
     selectedSlot: null,
     rngState: seed >>> 0,
     idCounter: 1,
-    opponentVariant: (seed >>> 0) % opponentVariantCount(1),
+    opponentVariant:
+      (seed >>> 0) % opponentVariantCount(campaignId, 1),
     openingProtectionUsed: false,
     pendingBattle: null,
   };
@@ -157,7 +175,13 @@ export function createInitialState(seed = 0x4b4b2026): GameState {
 }
 
 export function getFamilyWeights(board: Board): Record<Family, number> {
-  const weights: Record<Family, number> = { fire: 0, poison: 0, guard: 0 };
+  const weights: Record<Family, number> = {
+    fire: 0,
+    poison: 0,
+    guard: 0,
+    frost: 0,
+    echo: 0,
+  };
   for (const instance of board) {
     if (!instance) continue;
     weights[ITEM_BY_ID[instance.itemId].family] += 2 ** (instance.level - 1);
@@ -545,6 +569,7 @@ export function advanceAfterBattle(
   state: GameState,
   outcome: BattleOutcome,
 ): GameState {
+  const maxRounds = getCampaign(state.campaignId).opponents.length;
   const playerWon = outcome === "player";
   const playerLost = outcome === "enemy";
   const openingLossProtected = isOpeningDefeatProtected(state, outcome);
@@ -554,7 +579,7 @@ export function advanceAfterBattle(
   const openingProtectionUsed =
     state.openingProtectionUsed || openingLossProtected;
 
-  if (playerWon && state.round >= MAX_ROUNDS) {
+  if (playerWon && state.round >= maxRounds) {
     return {
       ...state,
       openingProtectionUsed,
@@ -595,13 +620,18 @@ export function advanceAfterBattle(
   return { ...rolled.state, offers: rolled.offers };
 }
 
-export function resetRun(seed = Date.now() >>> 0): GameState {
-  return createInitialState(seed);
+export function resetRun(
+  seed = Date.now() >>> 0,
+  campaignId: CampaignId = "grand-tournament",
+  activeFamilies = getCampaignFamilies(campaignId),
+): GameState {
+  return createInitialState(seed, campaignId, activeFamilies);
 }
 
 export function getCurrentOpponent(state: GameState) {
-  const opponent = CAMPAIGN_OPPONENTS[
-    Math.min(Math.max(0, state.round - 1), CAMPAIGN_OPPONENTS.length - 1)
+  const opponents = getCampaign(state.campaignId).opponents;
+  const opponent = opponents[
+    Math.min(Math.max(0, state.round - 1), opponents.length - 1)
   ];
   const boards = [opponent.board, ...(opponent.boardVariants ?? [])];
   return {
@@ -639,7 +669,9 @@ export function getBattleReward(
   outcome: BattleOutcome,
 ): number {
   if (outcome === "player") {
-    return state.round >= MAX_ROUNDS ? 0 : getRoundReward(state, true);
+    return state.round >= getCampaign(state.campaignId).opponents.length
+      ? 0
+      : getRoundReward(state, true);
   }
   if (outcome === "enemy") {
     const protectedLoss = isOpeningDefeatProtected(state, outcome);
@@ -652,28 +684,48 @@ export function getBattleReward(
 export function sanitizeStoredState(value: unknown): GameState | null {
   if (!isRecord(value)) return null;
   const version = value.version;
-  if (version !== 2 && version !== 3 && version !== 4 && version !== 5) {
+  if (
+    version !== 2 &&
+    version !== 3 &&
+    version !== 4 &&
+    version !== 5 &&
+    version !== 6
+  ) {
     return null;
   }
+
+  const campaignId =
+    version === 6 ? sanitizeCampaignId(value.campaignId) : "grand-tournament";
+  if (!campaignId) return null;
+  const activeFamilies =
+    version === 6
+      ? sanitizeActiveFamilies(value.activeFamilies, campaignId)
+      : getCampaignFamilies("grand-tournament");
+  if (!activeFamilies) return null;
+  const maxRounds = getCampaign(campaignId).opponents.length;
 
   const board = sanitizeBoard(value.board);
   const offers = sanitizeOffers(value.offers);
   const phase = sanitizePhase(value.phase);
   if (!board || !offers || !phase) return null;
   const reserve =
-    version === 4 || version === 5
+    version === 4 || version === 5 || version === 6
       ? value.reserve === null
         ? null
         : sanitizeItemInstance(value.reserve)
       : null;
-  if ((version === 4 || version === 5) && value.reserve !== null && !reserve) {
+  if (
+    (version === 4 || version === 5 || version === 6) &&
+    value.reserve !== null &&
+    !reserve
+  ) {
     return null;
   }
 
-  const round = safeInteger(value.round, 1, MAX_ROUNDS);
+  const round = safeInteger(value.round, 1, maxRounds);
   const gold = safeInteger(value.gold, 0, 999);
   const seals = safeInteger(value.seals, 0, 3);
-  const victories = safeInteger(value.victories ?? 0, 0, MAX_ROUNDS);
+  const victories = safeInteger(value.victories ?? 0, 0, maxRounds);
   const rerollsUsed = safeInteger(value.rerollsUsed, 0, 99);
   const rngState = safeInteger(value.rngState, 0, 0xffffffff);
   const idCounter = safeInteger(value.idCounter, 1, Number.MAX_SAFE_INTEGER);
@@ -703,7 +755,9 @@ export function sanitizeStoredState(value: unknown): GameState | null {
 
   if (version === 2) {
     return {
-      version: 5,
+      version: 6,
+      campaignId,
+      activeFamilies,
       phase:
         phase === "battle" || phase === "result" ? "shop" : phase,
       round,
@@ -736,7 +790,7 @@ export function sanitizeStoredState(value: unknown): GameState | null {
     return null;
   }
   const openingProtectionUsed =
-    version === 5
+    version === 5 || version === 6
       ? typeof value.openingProtectionUsed === "boolean"
         ? value.openingProtectionUsed
         : null
@@ -744,7 +798,9 @@ export function sanitizeStoredState(value: unknown): GameState | null {
   if (openingProtectionUsed === null) return null;
 
   return {
-    version: 5,
+    version: 6,
+    campaignId,
+    activeFamilies,
     phase,
     round,
     gold,
@@ -761,6 +817,42 @@ export function sanitizeStoredState(value: unknown): GameState | null {
     openingProtectionUsed,
     pendingBattle,
   };
+}
+
+function sanitizeCampaignId(value: unknown): CampaignId | null {
+  return value === "grand-tournament" || value === "frostbound-vault"
+    ? value
+    : null;
+}
+
+function sanitizeActiveFamilies(
+  value: unknown,
+  campaignId: CampaignId,
+): Family[] | null {
+  if (!Array.isArray(value) || value.length !== 3) return null;
+  const validFamilies = new Set<Family>([
+    "fire",
+    "poison",
+    "guard",
+    "frost",
+    "echo",
+  ]);
+  if (value.some((family) => !validFamilies.has(family as Family))) {
+    return null;
+  }
+  const families = value as Family[];
+  if (new Set(families).size !== families.length) return null;
+  const campaign = getCampaign(campaignId);
+  if (campaign.fixedFamilies.some((family) => !families.includes(family))) {
+    return null;
+  }
+  if (
+    !campaign.selectableLegacyFamily &&
+    families.some((family) => !campaign.defaultFamilies.includes(family))
+  ) {
+    return null;
+  }
+  return [...families];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -888,6 +980,8 @@ function sanitizeCombatResult(value: unknown): CombatResult | null | undefined {
     "shield",
     "cleanse",
     "synergy",
+    "frost",
+    "echo",
     "boss",
   ]);
   const events = value.events.map((event) => {

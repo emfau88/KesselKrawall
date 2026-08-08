@@ -31,11 +31,11 @@ test("server-renders the Kessel-Krawall main menu before the game", async () => 
   assert.match(html, /<title>Kessel-Krawall<\/title>/i);
   assert.match(html, /Kessel/);
   assert.match(html, /Krawall/);
-  assert.match(html, /NEUE KAMPAGNE STARTEN/);
+  assert.match(html, /KESSELKABINETT ÖFFNEN/);
   assert.match(html, /Ton aktivieren/);
   assert.match(html, /Was ist die Kampagne/);
   assert.match(html, /Siegel &amp; Niederlagen/);
-  assert.match(html, /DEMNÄCHST/);
+  assert.match(html, /2 KAMPAGNEN/);
   assert.doesNotMatch(html, /HEXENMARKT|KAMPF STARTEN/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });

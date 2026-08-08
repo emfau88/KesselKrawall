@@ -8,8 +8,9 @@
 Kessel, fünf Zutatenplätze und möglichst wirkungsvolle Kettenreaktionen.**
 
 Im Hexenmarkt kaufst du Zutaten, verschmilzt gleiche Exemplare zu stärkeren
-Stufen und kombinierst Feuer, Gift und Schutz. Danach kämpft dein Kessel
-automatisch – und zeigt unmittelbar, ob dein Aufbau funktioniert.
+Stufen und kombinierst Familien wie Feuer, Gift, Schutz, Frost und Echo.
+Danach kämpft dein Kessel automatisch – und zeigt unmittelbar, ob dein Aufbau
+funktioniert.
 
 ## Direkt spielen
 
@@ -18,11 +19,15 @@ automatisch – und zeigt unmittelbar, ob dein Aufbau funktioniert.
 Das Spiel läuft ohne Installation im Browser. Der Kampagnenstand wird lokal auf
 dem Gerät gespeichert.
 
-## Einblick
+## Ingame-Eindrücke
 
 <p align="center">
   <img src="docs/readme/startscreen.png" alt="Startscreen von Kessel-Krawall" width="49%">
   <img src="docs/readme/hexenmarkt.png" alt="Hexenmarkt und Aufbauphase" width="49%">
+</p>
+
+<p align="center">
+  <em>Startscreen mit animiertem Kessel · Hexenmarkt mit Angeboten, Aufbau und Synergien</em>
 </p>
 
 ## Der Spielablauf
@@ -36,29 +41,76 @@ dem Gerät gespeichert.
 6. **Kämpfen:** Dein Aufbau tritt automatisch gegen den nächsten Kessel an.
 7. **Anpassen:** Nutze Ergebnis und Itemstatistiken für die nächste Runde.
 
-Eine Kampagne führt über sieben Gegner zum Großkessel als finalem Boss. Drei
-Schutzsiegel verzeihen Fehler, aber nicht unbegrenzt.
+Jede Kampagne führt über sieben Gegner zu einem eigenen Boss. Drei
+Schutzsiegel verzeihen Fehler, aber nicht unbegrenzt. Nach dem Großkessel
+öffnet sich das frostgebundene Archiv als zweite Kampagne.
 
-## Drei Familien, unterschiedliche Rhythmen
+## Zwei eigenständige Kampagnen
+
+| Kampagne | Familienpool | Besonderheit | Boss |
+| --- | --- | --- | --- |
+| **Kessel-Krawall** | Feuer, Gift, Schutz | Der zugängliche Einstieg in Merges, Positionierung und Familien-Synergien | **Großkessel** mit Kesselzorn |
+| **Das frostgebundene Archiv** | Frost, Echo und eine gewählte gemeisterte Familie | Kontroll- und Wiederholungs-Builds mit deutlich anderem Rhythmus | **Chronokessel** mit Zeitbruch |
+
+Kampagne II wird nach dem ersten Kampagnenabschluss freigeschaltet. Jeder Run
+beginnt weiterhin mit frischem Gold, leeren Plätzen und drei Schutzsiegeln.
+Das Kesselkabinett speichert Freischaltungen, Trophäen und Bestleistungen,
+verleiht aber bewusst keine dauerhaften Kampfkraft-Boni.
+
+## Fünf Familien, klar getrennte Kampagnenpools
 
 | Familie | Spielidee |
 | --- | --- |
 | **Feuer** | Direkter Schaden, Brand und aggressive Kettenreaktionen |
 | **Gift** | Stapelbarer Druck; ab 10 Gift wird alles als sofortiger Toxinschock entladen |
 | **Schutz** | Schilde, frühere Notfallheilung und begrenzte Trefferkonter über Mondsalz |
+| **Frost** | Kontrolliert den gegnerischen Takt; jede dritte Aktivierung verzögert ihn |
+| **Echo** | Wiederholt jede dritte Aktivierung mit 55 % ihrer Wirkung |
 
-Die zwölf Zutaten sind datengetrieben definiert. Position, Merge-Stufe,
-Familiengewicht und gegenseitige Auslöser entscheiden darüber, wie sich ein
-Build im Kampf verhält.
+Die zwanzig Zutaten sind datengetrieben definiert. Pro Kampagne bleiben genau
+drei Familien aktiv, damit Shop und Synergien trotz wachsender Sammlung
+lesbar bleiben. Position, Merge-Stufe, Familiengewicht und gegenseitige
+Auslöser entscheiden darüber, wie sich ein Build im Kampf verhält.
+
+### Neue Effekte im frostgebundenen Archiv
+
+| Effekt | Wirkung | Darstellung im Kampf |
+| --- | --- | --- |
+| **Froststarre** | Jede dritte Frost-Aktivierung verzögert die gegnerische Ladezeit um 0,65 Sekunden. | Blauer Familien-Callout und ein kontrolliertes Frostprojektil |
+| **Nachhall** | Jede dritte Echo-Aktivierung wiederholt 55 % der ursprünglichen Wirkung. | Violetter Echo-Callout und eine Reaktion am auslösenden Kessel |
+| **Zeitbruch** | Unter 50 % Leben erhält der Chronokessel +15 % Kraft und verschiebt deinen Angriffstakt einmalig um 0,9 Sekunden. | Eigene Zeitbruch-Statusanzeige statt des Kesselzorn-Buffs |
+
+Cooldown-Ringe folgen der tatsächlichen Aktivierungszeit. Dadurch bleiben
+Frost-Verzögerungen und Zeitbruch sichtbar mit dem nächsten Angriff
+synchronisiert, statt nur eine abstrakte Zahl einzublenden.
+
+### Einheitliche Assets und Effekte
+
+- Die neuen animierten Kessel verwenden wie die überarbeiteten Kessel aus
+  Kampagne I quadratische 512×512-Quelldateien und dieselben responsiven
+  Größenstufen. Besonders breite Silhouetten sind individuell feinjustiert.
+- Zutaten und Gegnerporträts liegen einheitlich in 256×256 vor und werden in
+  denselben Slots, Rahmen und Detailkarten dargestellt.
+- Kampfprojektile nutzen feste Darstellungsstufen für Hauptangriffe,
+  Standardangriffe und Nebenwirkungen. Die sichtbare Silhouette neuer Frost-
+  und Echo-Projektile ist zusätzlich defensiv skaliert, damit kein einzelnes
+  Projektil das Feld dominiert.
+- Jeder neue Gegner besitzt einen eigenen Kessel, eine eigene Farbwelt und
+  fortlaufende Partikelanimationen. Trefferreaktionen unterbrechen die
+  Partikel nicht.
 
 ## Aktueller spielbarer Stand
 
-- vollständige Kampagne mit acht Kämpfen und Bossregel „Kesselzorn“
-- zwölf Zutaten in drei Familien, Merge-Kaskaden bis Level III
+- zwei Kampagnen mit je acht Kämpfen, eigenen Gegnern und Bossregeln
+- zwanzig Zutaten in fünf Familien, Merge-Kaskaden bis Level III
+- Kesselkabinett mit Freischaltung, Trophäen und Kampagnenrekorden ohne
+  dauerhafte Kampfkraft-Boni
+- Kampagne II kombiniert Frost und Echo mit einer gewählten gemeisterten
+  Familie aus Feuer, Gift oder Schutz
 - fünf per Tap umsortierbare Zutatenplätze
 - eine passive, ab Runde 5 freigeschaltete Ablage für genau eine Zutat
 - Shop, Verkauf, neue Angebote und lokale Spielstand-Speicherung
-- Feuer-, Gift- und Schutz-Synergien mit Nachbarschaftseffekten
+- fünf Familien-Synergien mit eigenen Kampfeffekten und Nachbarschaftsregeln
 - deterministische Kampfsimulation mit klarer visueller Präsentation
 - ab Runde 2 standardmäßig 2× Kampftempo, sanfte Kesselhitze ab Sekunde 15
   und klarer Abschlussdruck in den letzten fünf Sekunden
@@ -119,11 +171,10 @@ npm run build:pages
 
 ## Nächste Schwerpunkte
 
-1. festgefahrene Kämpfe durch eine sanfte späte Schadenssteigerung reduzieren
-2. Startkessel, Magiekreis und Dekoration als lebendige Idle-Szene ausarbeiten
-3. den Einstieg in Spielfeld und Hexenmarkt ohne Erklärungsfenster weiterführen
+1. Frost, Echo und den Chronokessel anhand echter Runs weiter ausbalancieren
+2. Item-Detailkarten für Buffs und gegenseitige Beeinflussung entwickeln
+3. Schaden über Zeit und Schilde auf kleinen Bildschirmen noch deutlicher zeigen
 4. Shop-Druck auf vollen Aufbauten und spätere Inhalts-Erweiterungen prüfen
-5. die Kampagnenstruktur für zusätzliche Kampagnen und Gegnerpools vorbereiten
 
 Kessel-Krawall bleibt bewusst fokussiert: keine Figuren, kein Pathfinding,
 keine komplizierten Rezepte und kein Echtzeit-PvP – dafür ein verständlicher

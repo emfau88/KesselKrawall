@@ -10,6 +10,8 @@
   --fire: #ff7545;
   --poison: #8dd75b;
   --guard: #65c8f2;
+  --frost: #8edcff;
+  --echo: #bd91ff;
   --danger: #f06a68;
   --safe-top: max(8px, env(safe-area-inset-top));
   --safe-bottom: max(12px, env(safe-area-inset-bottom));
@@ -922,6 +924,11 @@ button:focus-visible {
   --status-color: #d78cff;
 }
 
+.combat-status.status-time-fracture {
+  min-width: 112px;
+  --status-color: var(--frost);
+}
+
 .combat-status.status-shield {
   min-width: 78px;
 }
@@ -1040,6 +1047,7 @@ button:focus-visible {
 .cauldron-board.reaction-heal .cauldron-art,
 .cauldron-board.reaction-shield .cauldron-art,
 .cauldron-board.reaction-synergy .cauldron-art,
+.cauldron-board.reaction-echo .cauldron-art,
 .cauldron-board.reaction-cleanse .cauldron-art {
   animation-name: cauldron-boost;
 }
@@ -1232,6 +1240,79 @@ button:focus-visible {
   --particle-speed: 2.35s;
   --particle-motion: boss-mote;
   --aura-speed: 2.15s;
+}
+
+.cauldron-board[data-cauldron-variant="reif-rudi"],
+.cauldron-board[data-cauldron-variant="eis-elsa"],
+.cauldron-board[data-cauldron-variant="splitter-sven"] {
+  --brew-particle: #8edcff;
+  --brew-particle-alt: #e8fbff;
+  --brew-aura: rgba(142, 220, 255, 0.52);
+  --brew-shadow: rgba(142, 220, 255, 0.34);
+  --particle-motion: frost-archive-mote;
+}
+
+.cauldron-board[data-cauldron-variant="hall-hanne"],
+.cauldron-board[data-cauldron-variant="resonanz-rosa"] {
+  --brew-particle: #c788ff;
+  --brew-particle-alt: #ff70e6;
+  --brew-aura: rgba(189, 145, 255, 0.52);
+  --brew-shadow: rgba(213, 103, 255, 0.36);
+  --particle-motion: echo-ring-mote;
+}
+
+.cauldron-board[data-cauldron-variant="takt-tilda"] {
+  --brew-particle: #5fe4ff;
+  --brew-particle-alt: #d494ff;
+  --brew-aura: rgba(95, 228, 255, 0.46);
+  --brew-shadow: rgba(209, 143, 255, 0.32);
+  --particle-motion: clock-spark-mote;
+}
+
+.cauldron-board[data-cauldron-variant="archivarin-aeva"] {
+  --brew-particle: #f1c366;
+  --brew-particle-alt: #c89cff;
+  --brew-aura: rgba(241, 195, 102, 0.42);
+  --brew-shadow: rgba(200, 156, 255, 0.3);
+  --particle-motion: archive-page-mote;
+}
+
+.cauldron-board[data-cauldron-variant="chronokessel"] {
+  --brew-particle: #55e5ff;
+  --brew-particle-alt: #b37cff;
+  --brew-aura: rgba(85, 229, 255, 0.58);
+  --brew-shadow: rgba(179, 124, 255, 0.42);
+  --particle-motion: chrono-mote;
+  --particle-speed: 2.2s;
+  --aura-speed: 1.9s;
+}
+
+.cauldron-board[data-cauldron-variant="eis-elsa"] .cauldron-art,
+.cauldron-board[data-cauldron-variant="archivarin-aeva"] .cauldron-art {
+  top: 2%;
+  right: auto;
+  bottom: auto;
+  left: 2%;
+  width: 96%;
+  height: 96%;
+}
+
+.cauldron-board[data-cauldron-variant="resonanz-rosa"] .cauldron-art {
+  top: 4%;
+  right: auto;
+  bottom: auto;
+  left: 4%;
+  width: 92%;
+  height: 92%;
+}
+
+.cauldron-board[data-cauldron-variant="chronokessel"] .cauldron-art {
+  top: 3%;
+  right: auto;
+  bottom: auto;
+  left: 3%;
+  width: 94%;
+  height: 94%;
 }
 
 .cauldron-board[data-cauldron-variant="zischbert"] .cauldron {
@@ -1557,6 +1638,145 @@ button:focus-visible {
   border-radius: 55% 45% 65% 35%;
 }
 
+.cauldron-board[data-cauldron-variant="reif-rudi"] .cauldron {
+  animation-name: rudi-shiver-idle;
+  animation-duration: 3.6s;
+}
+
+.cauldron-board[data-cauldron-variant="reif-rudi"] .effect-one,
+.cauldron-board[data-cauldron-variant="eis-elsa"] .effect-one {
+  display: block;
+  top: 5%;
+  left: 17%;
+  width: 66%;
+  height: 30%;
+  border: 2px solid rgba(220, 250, 255, 0.72);
+  border-radius: 50%;
+  filter: drop-shadow(0 0 7px rgba(142, 220, 255, 0.86));
+  animation: frost-crown-pulse 2.8s ease-in-out infinite;
+}
+
+.cauldron-board[data-cauldron-variant="hall-hanne"] .cauldron {
+  animation-name: hanne-resonance-idle;
+  animation-duration: 3.4s;
+}
+
+.cauldron-board[data-cauldron-variant="hall-hanne"] .effect-one,
+.cauldron-board[data-cauldron-variant="resonanz-rosa"] .effect-one {
+  display: block;
+  top: 7%;
+  left: 13%;
+  width: 74%;
+  height: 36%;
+  border: 2px solid rgba(210, 151, 255, 0.78);
+  border-radius: 50%;
+  box-shadow: 0 0 0 7px rgba(210, 151, 255, 0.12);
+  animation: echo-ripple 2.35s ease-out infinite;
+}
+
+.cauldron-board[data-cauldron-variant="eis-elsa"] .cauldron {
+  animation-name: elsa-regal-idle;
+  animation-duration: 4.8s;
+}
+
+.cauldron-board[data-cauldron-variant="takt-tilda"] .cauldron {
+  animation-name: tilda-tick-idle;
+  animation-duration: 2.4s;
+}
+
+.cauldron-board[data-cauldron-variant="takt-tilda"] .effect-one {
+  display: block;
+  top: 43%;
+  left: 49.5%;
+  width: 2px;
+  height: 22%;
+  border-radius: 2px;
+  background: #72ecff;
+  box-shadow: 0 0 6px #bd91ff;
+  transform-origin: 50% 8%;
+  animation: tilda-clock-hand 3.2s steps(8, end) infinite;
+}
+
+.cauldron-board[data-cauldron-variant="splitter-sven"] .cauldron {
+  animation-name: sven-stomp-idle;
+  animation-duration: 4.4s;
+}
+
+.cauldron-board[data-cauldron-variant="splitter-sven"] .effect-one {
+  display: block;
+  top: 59%;
+  left: 23%;
+  width: 54%;
+  height: 28%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(224, 250, 255, 0.58), transparent 68%);
+  animation: sven-frost-breath 3.1s ease-in-out infinite;
+}
+
+.cauldron-board[data-cauldron-variant="resonanz-rosa"] .cauldron {
+  animation-name: rosa-stage-idle;
+  animation-duration: 3.8s;
+}
+
+.cauldron-board[data-cauldron-variant="archivarin-aeva"] .cauldron {
+  animation-name: aeva-study-idle;
+  animation-duration: 5.4s;
+}
+
+.cauldron-board[data-cauldron-variant="archivarin-aeva"] .effect-one {
+  display: block;
+  top: 35%;
+  left: 24%;
+  width: 52%;
+  height: 13%;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+.cauldron-board[data-cauldron-variant="archivarin-aeva"] .effect-one::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -30%;
+  width: 24%;
+  background: linear-gradient(90deg, transparent, rgba(255, 225, 149, 0.96), transparent);
+  animation: aeva-glass-glint 4.6s ease-in-out infinite;
+  transform: skewX(-22deg);
+}
+
+.cauldron-board[data-cauldron-variant="chronokessel"] .cauldron {
+  animation-name: chrono-gravity-idle;
+  animation-duration: 4.6s;
+}
+
+.rank-boss .cauldron-board[data-cauldron-variant="chronokessel"] .cauldron-aura {
+  filter: blur(11px);
+  animation-duration: 1.9s;
+}
+
+.cauldron-board[data-cauldron-variant="chronokessel"] .effect-one {
+  display: block;
+  top: 0;
+  left: 10%;
+  width: 80%;
+  height: 44%;
+  border: 2px dashed rgba(103, 230, 255, 0.82);
+  border-radius: 50%;
+  filter: drop-shadow(0 0 8px rgba(179, 124, 255, 0.9));
+  animation: chrono-ring-spin 5.2s linear infinite;
+}
+
+.cauldron-board[data-cauldron-variant="chronokessel"] .effect-two {
+  display: block;
+  top: 38%;
+  left: 46%;
+  width: 8%;
+  height: 25%;
+  background: linear-gradient(180deg, #6be7ff, transparent);
+  clip-path: polygon(45% 0, 55% 0, 100% 86%, 50% 100%, 0 86%);
+  transform-origin: 50% 8%;
+  animation: chrono-hand 4s steps(12, end) infinite;
+}
+
 .combat-number-layer {
   position: absolute;
   z-index: 7;
@@ -1738,6 +1958,14 @@ button.board-slot:active {
   border-color: rgba(101, 200, 242, 0.52);
 }
 
+.board-slot.family-frost {
+  border-color: rgba(142, 220, 255, 0.58);
+}
+
+.board-slot.family-echo {
+  border-color: rgba(189, 145, 255, 0.58);
+}
+
 .board-slot.is-selected {
   border-color: var(--gold);
   box-shadow: 0 0 0 3px rgba(245, 197, 91, 0.2), 0 0 22px rgba(245, 197, 91, 0.32);
@@ -1881,6 +2109,14 @@ button.board-slot:active {
   background: var(--guard);
 }
 
+.item-family-dot.family-frost {
+  background: var(--frost);
+}
+
+.item-family-dot.family-echo {
+  background: var(--echo);
+}
+
 .effect-lane {
   position: relative;
   z-index: 12;
@@ -1970,6 +2206,14 @@ button.board-slot:active {
   --vfx-color: var(--guard);
 }
 
+.arena-vfx.family-frost {
+  --vfx-color: var(--frost);
+}
+
+.arena-vfx.family-echo {
+  --vfx-color: var(--echo);
+}
+
 .battle-projectile,
 .battle-impact {
   position: absolute;
@@ -2015,6 +2259,15 @@ button.board-slot:active {
 
 .battle-projectile.projectile-item-dragon-tooth {
   scale: 0.84;
+}
+
+.battle-projectile.projectile-item-frost-shard,
+.battle-projectile.projectile-item-ice-bell,
+.battle-projectile.projectile-item-rime-clock,
+.battle-projectile.projectile-item-mirror-shard,
+.battle-projectile.projectile-item-echo-bell,
+.battle-projectile.projectile-item-time-thread {
+  scale: 0.86;
 }
 
 .is-self-effect .battle-projectile {
@@ -2285,6 +2538,14 @@ button.board-slot:active {
 
 .event-synergy .combat-callout > span {
   color: var(--guard);
+}
+
+.event-frost .combat-callout > span {
+  color: var(--frost);
+}
+
+.event-echo .combat-callout > span {
+  color: var(--echo);
 }
 
 .event-boss .combat-callout {
@@ -2630,6 +2891,14 @@ button.board-slot:active {
   color: var(--guard);
 }
 
+.synergy-pill.family-frost.is-active {
+  color: var(--frost);
+}
+
+.synergy-pill.family-echo.is-active {
+  color: var(--echo);
+}
+
 .item-inspector {
   min-height: 58px;
   margin: 4px 0 8px;
@@ -2746,6 +3015,14 @@ button.board-slot:active {
   border-color: rgba(101, 200, 242, 0.36);
 }
 
+.shop-card.family-frost {
+  border-color: rgba(142, 220, 255, 0.4);
+}
+
+.shop-card.family-echo {
+  border-color: rgba(189, 145, 255, 0.4);
+}
+
 .offer-family {
   display: flex;
   align-items: center;
@@ -2860,6 +3137,14 @@ button.board-slot:active {
 
 .shop-card.family-guard .offer-synergy {
   color: #a8e3fa;
+}
+
+.shop-card.family-frost .offer-synergy {
+  color: #bcecff;
+}
+
+.shop-card.family-echo .offer-synergy {
+  color: #d7bbff;
 }
 
 .offer-price {
@@ -3449,6 +3734,14 @@ button.board-slot:active {
   --merge-color: var(--guard);
 }
 
+.merge-overlay.family-frost {
+  --merge-color: var(--frost);
+}
+
+.merge-overlay.family-echo {
+  --merge-color: var(--echo);
+}
+
 .merge-overlay.is-max-level {
   border-color: #fff3a2;
   box-shadow:
@@ -4020,6 +4313,121 @@ button.board-slot:active {
   55% {
     transform: translateX(-50%) translateY(-2px) scale(1.012);
   }
+}
+
+@keyframes frost-archive-mote {
+  0% { opacity: 0; transform: translate(0, 3px) rotate(0) scale(0.3); }
+  20% { opacity: 0.95; }
+  70% { opacity: 0.72; transform: translate(0, -30px) rotate(150deg) scale(1); }
+  100% { opacity: 0; transform: translate(var(--particle-drift), -52px) rotate(260deg) scale(0.18); }
+}
+
+@keyframes echo-ring-mote {
+  0% { opacity: 0; transform: translate(0, 2px) scale(0.3); }
+  18% { opacity: 0.88; }
+  55% { transform: translate(0, -22px) scale(1.2); }
+  100% { opacity: 0; transform: translate(var(--particle-drift), -46px) scale(1.8); }
+}
+
+@keyframes clock-spark-mote {
+  0% { opacity: 0; transform: translate(0, 4px) rotate(0) scale(0.4); }
+  22% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--particle-drift), -48px) rotate(360deg) scale(0.15); }
+}
+
+@keyframes archive-page-mote {
+  0% { opacity: 0; transform: translate(0, 4px) rotate(-18deg) scale(0.45, 0.7); }
+  22% { opacity: 0.82; }
+  100% { opacity: 0; transform: translate(var(--particle-drift), -45px) rotate(32deg) scale(0.28, 0.5); }
+}
+
+@keyframes chrono-mote {
+  0% { opacity: 0; transform: translate(0, 2px) rotate(0) scale(0.35); }
+  18% { opacity: 1; }
+  62% { transform: translate(0, -26px) rotate(220deg) scale(1.1); }
+  100% { opacity: 0; transform: translate(var(--particle-drift), -54px) rotate(420deg) scale(0.12); }
+}
+
+@keyframes rudi-shiver-idle {
+  0%, 38%, 52%, 100% { transform: translateX(-50%) translateY(1px) rotate(0); }
+  42% { transform: translateX(calc(-50% - 2px)) translateY(-1px) rotate(-0.7deg); }
+  46% { transform: translateX(calc(-50% + 2px)) translateY(0) rotate(0.7deg); }
+  49% { transform: translateX(calc(-50% - 1px)) translateY(-1px); }
+}
+
+@keyframes hanne-resonance-idle {
+  0%, 100% { transform: translateX(-50%) translateY(1px) scale(1); }
+  48% { transform: translateX(-50%) translateY(-3px) scale(1.012, 0.992); }
+  56% { transform: translateX(-50%) translateY(0) scale(0.994, 1.008); }
+}
+
+@keyframes elsa-regal-idle {
+  0%, 100% { transform: translateX(-50%) translateY(1px) rotate(-0.3deg); }
+  50% { transform: translateX(-50%) translateY(-4px) rotate(0.3deg); }
+}
+
+@keyframes tilda-tick-idle {
+  0%, 46%, 100% { transform: translateX(-50%) translateY(1px) rotate(-0.8deg); }
+  50% { transform: translateX(-50%) translateY(-2px) rotate(0.9deg); }
+  54% { transform: translateX(-50%) translateY(0) rotate(-0.4deg); }
+}
+
+@keyframes sven-stomp-idle {
+  0%, 70%, 100% { transform: translateX(-50%) translateY(1px) scale(1); }
+  75% { transform: translateX(-50%) translateY(-4px) scale(1.012, 0.985); }
+  80% { transform: translateX(-50%) translateY(2px) scale(1.018, 0.975); }
+  86% { transform: translateX(-50%) translateY(0) scale(0.996, 1.006); }
+}
+
+@keyframes rosa-stage-idle {
+  0%, 100% { transform: translateX(-50%) translateY(1px) rotate(-1deg); }
+  35% { transform: translateX(-50%) translateY(-3px) rotate(1.2deg); }
+  68% { transform: translateX(-50%) translateY(-1px) rotate(-0.4deg); }
+}
+
+@keyframes aeva-study-idle {
+  0%, 32%, 100% { transform: translateX(-50%) translateY(1px) rotate(0); }
+  45%, 68% { transform: translateX(-50%) translateY(-2px) rotate(-1.1deg); }
+  77% { transform: translateX(-50%) translateY(-3px) rotate(0.5deg); }
+}
+
+@keyframes chrono-gravity-idle {
+  0%, 100% { transform: translateX(-50%) translateY(1px) scale(1); }
+  50% { transform: translateX(-50%) translateY(-5px) scale(1.012); }
+}
+
+@keyframes frost-crown-pulse {
+  0%, 100% { opacity: 0.25; transform: scale(0.94); }
+  50% { opacity: 0.78; transform: scale(1.04); }
+}
+
+@keyframes echo-ripple {
+  0% { opacity: 0; transform: scale(0.76); }
+  28% { opacity: 0.8; }
+  100% { opacity: 0; transform: scale(1.18); }
+}
+
+@keyframes tilda-clock-hand {
+  to { transform: rotate(1turn); }
+}
+
+@keyframes sven-frost-breath {
+  0%, 100% { opacity: 0.18; transform: scale(0.88); }
+  55% { opacity: 0.7; transform: scale(1.08); }
+}
+
+@keyframes aeva-glass-glint {
+  0%, 68%, 100% { opacity: 0; translate: 0; }
+  74% { opacity: 1; }
+  86% { opacity: 0; translate: 430%; }
+}
+
+@keyframes chrono-ring-spin {
+  to { transform: rotate(1turn); }
+}
+
+@keyframes chrono-hand {
+  to { transform: rotate(1turn); }
 }
 
 @keyframes siggi-ward-pulse {
@@ -5450,6 +5858,14 @@ button.board-slot:active {
   .battle-event-panel.event-shield strong,
   .battle-event-panel.event-synergy strong {
     color: var(--guard);
+  }
+
+  .battle-event-panel.event-frost strong {
+    color: var(--frost);
+  }
+
+  .battle-event-panel.event-echo strong {
+    color: var(--echo);
   }
 
   .battle-speed {
