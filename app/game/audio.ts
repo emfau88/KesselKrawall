@@ -54,8 +54,8 @@ const AMBIENCE_FADE_MS = 450;
 const SOUND_FILES: Partial<Record<GameSound, AudioFile>> = {
   uiClick: { path: "sfx/ui-click.ogg", volume: 0.72 },
   uiSelect: { path: "sfx/ui-select.ogg", volume: 0.72 },
-  purchase: { path: "sfx/purchase.ogg", volume: 0.8 },
-  sell: { path: "sfx/sell.ogg", volume: 0.8 },
+  purchase: { path: "sfx/coin-transfer.ogg", volume: 0.64 },
+  sell: { path: "sfx/coin-transfer.ogg", volume: 0.64 },
   reroll: { path: "sfx/reroll.ogg", volume: 0.78 },
   error: { path: "sfx/error.ogg", volume: 0.82 },
   cauldronFull: { path: "sfx/cauldron-full.ogg", volume: 0.82 },

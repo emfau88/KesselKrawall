@@ -240,6 +240,153 @@ button:focus-visible {
   color: var(--gold);
 }
 
+.gold-status.is-spending {
+  animation: gold-status-spend 680ms ease-out both;
+}
+
+.gold-status.is-earning {
+  animation: gold-status-earn 680ms ease-out both;
+}
+
+.gold-transfer-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.gold-transfer {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.gold-transfer-coin {
+  --coin-delay: 0ms;
+  --coin-scatter-x: -5px;
+  --coin-scatter-y: 2px;
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  width: 20px;
+  height: 20px;
+  opacity: 0;
+  filter:
+    drop-shadow(0 0 5px rgba(245, 197, 91, 0.88))
+    drop-shadow(0 3px 3px rgba(0, 0, 0, 0.5));
+  animation: gold-coin-flight 570ms cubic-bezier(0.2, 0.72, 0.28, 1)
+    var(--coin-delay) both;
+}
+
+.gold-transfer-coin.coin-two {
+  --coin-delay: 42ms;
+  --coin-scatter-x: 7px;
+  --coin-scatter-y: -5px;
+}
+
+.gold-transfer-coin.coin-three {
+  --coin-delay: 84ms;
+  --coin-scatter-x: 1px;
+  --coin-scatter-y: 7px;
+}
+
+.gold-transfer-delta {
+  position: absolute;
+  top: var(--hud-y);
+  left: var(--hud-x);
+  min-width: 34px;
+  padding: 3px 6px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: rgba(20, 13, 24, 0.94);
+  color: var(--gold);
+  font-size: 11px;
+  line-height: 1;
+  text-align: center;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.36);
+  animation: gold-transfer-delta 720ms ease-out both;
+}
+
+.gold-transfer.is-spend .gold-transfer-delta {
+  color: #ffb18d;
+}
+
+@keyframes gold-coin-flight {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+    rotate: -25deg;
+    scale: 0.62;
+  }
+  12% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 1;
+    translate:
+      calc(var(--arc-x) + var(--coin-scatter-x))
+      calc(var(--arc-y) + var(--coin-scatter-y));
+    rotate: 210deg;
+    scale: 1.08;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: var(--travel-x) var(--travel-y);
+    rotate: 410deg;
+    scale: 0.58;
+  }
+}
+
+@keyframes gold-transfer-delta {
+  0%,
+  18% {
+    opacity: 0;
+    translate: 0 5px;
+    scale: 0.78;
+  }
+  30%,
+  68% {
+    opacity: 1;
+    translate: 0 -5px;
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: 0 -16px;
+    scale: 0.94;
+  }
+}
+
+@keyframes gold-status-spend {
+  0%,
+  100% {
+    background: transparent;
+  }
+  24%,
+  62% {
+    background: rgba(255, 117, 69, 0.14);
+    box-shadow: inset 0 0 12px rgba(255, 117, 69, 0.16);
+  }
+}
+
+@keyframes gold-status-earn {
+  0%,
+  100% {
+    background: transparent;
+  }
+  24%,
+  62% {
+    background: rgba(245, 197, 91, 0.16);
+    box-shadow: inset 0 0 14px rgba(245, 197, 91, 0.2);
+  }
+}
+
 .seal-on,
 .seal-off {
   display: inline-grid;
@@ -6354,5 +6501,15 @@ button.board-slot:active {
     opacity: 1;
     animation: none !important;
     transform: none;
+  }
+
+  .gold-transfer-coin,
+  .gold-transfer-delta {
+    display: none;
+  }
+
+  .gold-status.is-spending,
+  .gold-status.is-earning {
+    animation: none !important;
   }
 }

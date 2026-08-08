@@ -184,6 +184,15 @@ interface MergeNotice {
   total: number;
 }
 
+interface GoldTransferEffect {
+  id: number;
+  kind: "spend" | "earn";
+  amount: number;
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+  hud: { x: number; y: number };
+}
+
 interface EventSource {
   itemId: string;
   name: string;
@@ -1446,6 +1455,7 @@ export default function Game() {
   const [speed, setSpeed] = useState(1);
   const [showPowerHelp, setShowPowerHelp] = useState(false);
   const [reserveSelected, setReserveSelected] = useState(false);
+  const [goldTransfers, setGoldTransfers] = useState<GoldTransferEffect[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const combatPausedRef = useRef(combatPaused);
@@ -1455,6 +1465,9 @@ export default function Game() {
   >(() => undefined);
   const speedRef = useRef(speed);
   const shellRef = useRef<HTMLElement>(null);
+  const goldStatusRef = useRef<HTMLDivElement>(null);
+  const goldTransferIdRef = useRef(0);
+  const goldTransferTimersRef = useRef<Set<number>>(new Set());
   const confirmNewRunRef = useRef<HTMLButtonElement>(null);
   const mergeNotice = mergeNotices[0] ?? null;
 
@@ -1528,6 +1541,16 @@ export default function Game() {
     preloadGameAudio();
     return () => stopGameAudio();
   }, []);
+
+  useEffect(
+    () => () => {
+      for (const timer of goldTransferTimersRef.current) {
+        window.clearTimeout(timer);
+      }
+      goldTransferTimersRef.current.clear();
+    },
+    [],
+  );
 
   useEffect(() => {
     setCombatSoundsPlaybackEnabled(combatSoundsEnabled);
@@ -2083,13 +2106,61 @@ export default function Game() {
     playGameSound("uiClick");
   }
 
-  function handleBuy(offerUid: string) {
+  function startGoldTransfer(
+    kind: GoldTransferEffect["kind"],
+    amount: number,
+    transactionElement: Element | null,
+  ) {
+    const goldElement = goldStatusRef.current;
+    if (!goldElement || !transactionElement || amount <= 0) {
+      playGameSound(kind === "spend" ? "purchase" : "sell");
+      return;
+    }
+
+    const goldRect = goldElement.getBoundingClientRect();
+    const transactionRect = transactionElement.getBoundingClientRect();
+    const goldPoint = {
+      x: goldRect.left + goldRect.width / 2,
+      y: goldRect.top + goldRect.height / 2,
+    };
+    const transactionPoint = {
+      x: transactionRect.left + transactionRect.width / 2,
+      y: transactionRect.top + transactionRect.height / 2,
+    };
+    const effect: GoldTransferEffect = {
+      id: ++goldTransferIdRef.current,
+      kind,
+      amount,
+      from: kind === "spend" ? goldPoint : transactionPoint,
+      to: kind === "spend" ? transactionPoint : goldPoint,
+      hud: goldPoint,
+    };
+
+    setGoldTransfers((current) => [...current.slice(-2), effect]);
+    playGameSound(kind === "spend" ? "purchase" : "sell");
+    const timer = window.setTimeout(() => {
+      setGoldTransfers((current) =>
+        current.filter((entry) => entry.id !== effect.id),
+      );
+      goldTransferTimersRef.current.delete(timer);
+    }, 760);
+    goldTransferTimersRef.current.add(timer);
+  }
+
+  function handleBuy(offerUid: string, offerElement: HTMLButtonElement) {
     if (busy) return;
     const result = buyOffer(game, offerUid);
     if (result.error) {
       announceActionError(result.error);
       return;
     }
+    const purchaseAnchor =
+      offerElement.querySelector(".offer-price") ?? offerElement;
+    startGoldTransfer(
+      "spend",
+      Math.abs(result.goldDelta ?? 0),
+      purchaseAnchor,
+    );
     setReserveSelected(false);
     setGame(result.state);
     if (result.merges?.length) {
@@ -2129,7 +2200,6 @@ export default function Game() {
       );
       setBusy(true);
     } else {
-      playGameSound("purchase");
       announce(
         result.purchaseLocation?.area === "reserve"
           ? "Zutat in der Ablage geparkt. Dort wirkt sie nicht im Kampf."
@@ -2193,15 +2263,24 @@ export default function Game() {
     );
   }
 
-  function handleSell() {
+  function handleSell(fallbackElement: HTMLButtonElement) {
     if (!reserveSelected && game.selectedSlot === null) return;
+    const selectedElement = reserveSelected
+      ? shellRef.current?.querySelector('[data-testid="reserve-slot"]')
+      : shellRef.current?.querySelector(
+          `.player-workbench .board-slot[data-slot="${game.selectedSlot}"]`,
+        );
     const result = reserveSelected
       ? sellReserve(game)
       : sellSlot(game, game.selectedSlot!);
     if (result.error) return announceActionError(result.error);
+    startGoldTransfer(
+      "earn",
+      result.goldDelta ?? 0,
+      selectedElement ?? fallbackElement,
+    );
     setReserveSelected(false);
     setGame(result.state);
-    playGameSound("sell");
     announce(`Verkauft für ${result.goldDelta} Gold.`);
   }
 
@@ -2837,7 +2916,16 @@ export default function Game() {
               <small>RUNDE</small>
               <b>{game.round}/{MAX_ROUNDS}</b>
             </div>
-            <div className="gold-status">
+            <div
+              ref={goldStatusRef}
+              className={`gold-status ${
+                goldTransfers.at(-1)?.kind === "spend"
+                  ? "is-spending"
+                  : goldTransfers.length > 0
+                    ? "is-earning"
+                    : ""
+              }`}
+            >
               <small>GOLD</small>
               <b><UiIcon asset="coin" className="hud-icon" /> {game.gold}</b>
             </div>
@@ -3269,7 +3357,7 @@ export default function Game() {
                 <button
                   type="button"
                   className="sell-button"
-                  onClick={handleSell}
+                  onClick={(event) => handleSell(event.currentTarget)}
                   data-audio="manual"
                 >
                   Verkaufen <b>+{getSellValue(selectedItem)}</b>
@@ -3313,7 +3401,9 @@ export default function Game() {
                     } ${
                       !offer.bought && !hasPurchaseSpace ? "is-blocked" : ""
                     }`}
-                    onClick={() => handleBuy(offer.uid)}
+                    onClick={(event) =>
+                      handleBuy(offer.uid, event.currentTarget)
+                    }
                     disabled={disabled}
                     data-audio="manual"
                     data-testid={`offer-${offer.uid}`}
@@ -3651,6 +3741,44 @@ export default function Game() {
             <span>Neue Angebote · neue Buildrichtung</span>
           </button>
         </section>
+      )}
+
+      {goldTransfers.length > 0 && (
+        <div className="gold-transfer-layer" aria-hidden="true">
+          {goldTransfers.map((transfer) => {
+            const travelX = transfer.to.x - transfer.from.x;
+            const travelY = transfer.to.y - transfer.from.y;
+            const transferStyle = {
+              left: `${transfer.from.x}px`,
+              top: `${transfer.from.y}px`,
+              "--travel-x": `${travelX}px`,
+              "--travel-y": `${travelY}px`,
+              "--arc-x": `${travelX * 0.52}px`,
+              "--arc-y": `${travelY * 0.52 - 46}px`,
+              "--hud-x": `${transfer.hud.x - transfer.from.x}px`,
+              "--hud-y": `${transfer.hud.y - transfer.from.y}px`,
+            } as CSSProperties;
+            return (
+              <div
+                className={`gold-transfer is-${transfer.kind}`}
+                style={transferStyle}
+                key={transfer.id}
+              >
+                {["one", "two", "three"].map((coin) => (
+                  <UiIcon
+                    asset="coin"
+                    className={`gold-transfer-coin coin-${coin}`}
+                    key={coin}
+                  />
+                ))}
+                <strong className="gold-transfer-delta">
+                  {transfer.kind === "spend" ? "−" : "+"}
+                  {transfer.amount}
+                </strong>
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {mergeNotice && (

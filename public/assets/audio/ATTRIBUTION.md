@@ -25,7 +25,11 @@ asset directory.
 - **Interface SFX Pack 1** — ObsydianX  
   Source: <https://obsydianx.itch.io/interface-sfx-pack-1>  
   License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)  
-  Used for interface, purchase, sale, reroll, and error sounds.
+  Used for interface, reroll, and error sounds.
+- **Free SFX Pack Vol. 3** — HZSMITH
+  - Source: <https://hzsmith.itch.io/free-sfx-pack-vol-3>
+  - License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
+  - `Shop_Cash_In_2` was trimmed and level-matched for purchase and sale coin transfers.
 - **Retro Magic Sound Effects** — NSFRL  
   Source: <https://nsfrl.itch.io/retro-magic-sound-effects>  
   License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)  
