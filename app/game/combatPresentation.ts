@@ -36,6 +36,23 @@ export interface CombatContribution {
   amountLabel: string;
 }
 
+export function selectContributionVfxEvent(
+  contribution: CombatContribution,
+): CombatEvent {
+  return (
+    contribution.events.find(
+      (event) =>
+        event.kind !== "frost" &&
+        event.kind !== "echo" &&
+        event.actor !== event.target,
+    ) ??
+    contribution.events.find(
+      (event) => event.kind !== "frost" && event.kind !== "echo",
+    ) ??
+    contribution.event
+  );
+}
+
 export interface CombatBeat {
   id: string;
   time: number;

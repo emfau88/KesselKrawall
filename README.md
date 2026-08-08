@@ -76,8 +76,8 @@ Auslöser entscheiden darüber, wie sich ein Build im Kampf verhält.
 
 | Effekt | Wirkung | Darstellung im Kampf |
 | --- | --- | --- |
-| **Froststarre** | Jede dritte Frost-Aktivierung verzögert die gegnerische Ladezeit um 0,65 Sekunden. | Blauer Familien-Callout und ein kontrolliertes Frostprojektil |
-| **Nachhall** | Jede dritte Echo-Aktivierung wiederholt 55 % der ursprünglichen Wirkung. | Violetter Echo-Callout und eine Reaktion am auslösenden Kessel |
+| **Froststarre** | Jede dritte Frost-Aktivierung verzögert die gegnerische Ladezeit um 0,65 Sekunden. | Blauer Familien-Callout und ein eigener Eisrunen-Impuls am gegnerischen Kessel |
+| **Nachhall** | Jede dritte Echo-Aktivierung wiederholt 55 % der ursprünglichen Wirkung. | Violetter Familien-Callout und ein eigener Echoimpuls am auslösenden Kessel |
 | **Zeitbruch** | Unter 50 % Leben erhält der Chronokessel +15 % Kraft und verschiebt deinen Angriffstakt einmalig um 0,9 Sekunden. | Eigene Zeitbruch-Statusanzeige statt des Kesselzorn-Buffs |
 
 Cooldown-Ringe folgen der tatsächlichen Aktivierungszeit. Dadurch bleiben
@@ -95,6 +95,11 @@ synchronisiert, statt nur eine abstrakte Zahl einzublenden.
   Standardangriffe und Nebenwirkungen. Die sichtbare Silhouette neuer Frost-
   und Echo-Projektile ist zusätzlich defensiv skaliert, damit kein einzelnes
   Projektil das Feld dominiert.
+- Frostsplitter, Eisglocke, Reifuhr, Spiegelscherbe, Hallglocke und Zeitfaden
+  besitzen eigene Projektilsilhouetten. Froststarre und Nachhall verwenden
+  separate, bewusst kurze Ziel- beziehungsweise Aktivierungsimpulse.
+- Kombinierte Schutz-Angriffe stellen Schutzaufbau und Geschoss getrennt dar,
+  damit weder der Angriff noch der defensive Anteil visuell verschluckt wird.
 - Jeder neue Gegner besitzt einen eigenen Kessel, eine eigene Farbwelt und
   fortlaufende Partikelanimationen. Trefferreaktionen unterbrechen die
   Partikel nicht.

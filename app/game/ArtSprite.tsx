@@ -72,6 +72,14 @@ export const ART_FILES = {
   "vfx-ward-bloom": "vfx-ward-bloom.png",
   "vfx-gold-spoon-projectile": "vfx-gold-spoon-projectile.png",
   "vfx-moon-salt-projectile": "vfx-moon-salt-projectile.png",
+  "vfx-frost-shard-projectile": "vfx-frost-shard-projectile.png",
+  "vfx-ice-bell-projectile": "vfx-ice-bell-projectile.png",
+  "vfx-rime-clock-projectile": "vfx-rime-clock-projectile.png",
+  "vfx-mirror-shard-projectile": "vfx-mirror-shard-projectile.png",
+  "vfx-echo-bell-projectile": "vfx-echo-bell-projectile.png",
+  "vfx-time-thread-projectile": "vfx-time-thread-projectile.png",
+  "vfx-frost-stasis": "vfx-frost-stasis.png",
+  "vfx-echo-afterimage": "vfx-echo-afterimage.png",
   "vfx-impact": "vfx-impact.png",
 } as const;
 
@@ -172,12 +180,12 @@ export const ITEM_PROJECTILE_ART: Partial<Record<string, ArtAsset>> = {
   "venom-bulb": "vfx-venom-bulb-projectile",
   "gold-spoon": "vfx-gold-spoon-projectile",
   "moon-salt": "vfx-moon-salt-projectile",
-  "frost-shard": "vfx-moon-salt-projectile",
-  "ice-bell": "vfx-moon-salt-projectile",
-  "rime-clock": "vfx-moon-salt-projectile",
-  "mirror-shard": "vfx-witch-eye-projectile",
-  "echo-bell": "vfx-gold-spoon-projectile",
-  "time-thread": "vfx-witch-eye-projectile",
+  "frost-shard": "vfx-frost-shard-projectile",
+  "ice-bell": "vfx-ice-bell-projectile",
+  "rime-clock": "vfx-rime-clock-projectile",
+  "mirror-shard": "vfx-mirror-shard-projectile",
+  "echo-bell": "vfx-echo-bell-projectile",
+  "time-thread": "vfx-time-thread-projectile",
 };
 
 export const OPPONENT_ART: Record<string, ArtAsset> = {

@@ -29,6 +29,7 @@ import {
   getCombatBeatTiming,
   getImportantCombatMessage,
   isStatusTick,
+  selectContributionVfxEvent,
   type CombatBeatTier,
   type CombatContribution,
   type CombatSideStatus,
@@ -169,6 +170,14 @@ const CAMPAIGN_PRELOAD_ASSETS: Record<CampaignId, readonly ArtAsset[]> = {
     "cauldron-resonanz-rosa",
     "cauldron-archivarin-aeva",
     "cauldron-chronokessel",
+    "vfx-frost-shard-projectile",
+    "vfx-ice-bell-projectile",
+    "vfx-rime-clock-projectile",
+    "vfx-mirror-shard-projectile",
+    "vfx-echo-bell-projectile",
+    "vfx-time-thread-projectile",
+    "vfx-frost-stasis",
+    "vfx-echo-afterimage",
   ],
 };
 type AppScreen = "menu" | "cabinet" | "game";
@@ -1207,6 +1216,7 @@ function quadraticAngle(
 
 function BattleVfx({
   event,
+  events,
   source,
   duration,
   tier,
@@ -1215,6 +1225,7 @@ function BattleVfx({
   onImpact,
 }: {
   event: CombatEvent;
+  events: readonly CombatEvent[];
   source: EventSource | null;
   duration: number;
   tier: CombatBeatTier;
@@ -1227,7 +1238,20 @@ function BattleVfx({
   const sourceFamily = source?.family;
   const sourceSlot = source?.slot;
   const isSelfEffect = event.actor === event.target;
+  const isTargetEffect = event.kind === "frost";
   const statusTick = isStatusTick(event);
+  const hasFrostStasis = events.some((candidate) => candidate.kind === "frost");
+  const hasEchoAfterimage = events.some((candidate) => candidate.kind === "echo");
+  const hasSelfBenefit =
+    !isSelfEffect &&
+    events.some(
+      (candidate) =>
+        candidate.actor === candidate.target &&
+        (candidate.kind === "shield" ||
+          candidate.kind === "heal" ||
+          candidate.kind === "cleanse" ||
+          candidate.kind === "synergy"),
+    );
   const poisonEffect =
     event.kind === "poison" ||
     event.kind === "poisonBurst" ||
@@ -1246,9 +1270,13 @@ function BattleVfx({
     ((isSelfEffect || defensiveEffect)
       ? source?.itemId === "gold-spoon"
       : Boolean(itemProjectile));
-  const projectile: ArtAsset = usesItemProjectile && itemProjectile
-    ? itemProjectile
-    : statusTick
+  const projectile: ArtAsset = event.kind === "frost"
+    ? "vfx-frost-stasis"
+    : event.kind === "echo"
+      ? "vfx-echo-afterimage"
+      : usesItemProjectile && itemProjectile
+        ? itemProjectile
+        : statusTick
       ? poisonEffect
         ? "vfx-poison"
         : "vfx-fire"
@@ -1259,9 +1287,13 @@ function BattleVfx({
           : sourceFamily === "guard"
             ? "vfx-shield"
             : "vfx-fire-projectile";
-  const projectileClass = usesItemProjectile && source
-    ? `projectile-item projectile-item-${source.itemId}`
-    : statusTick
+  const projectileClass = event.kind === "frost"
+    ? "projectile-system projectile-frost-stasis"
+    : event.kind === "echo"
+      ? "projectile-system projectile-echo-afterimage"
+      : usesItemProjectile && source
+        ? `projectile-item projectile-item-${source.itemId}`
+        : statusTick
       ? "projectile-status"
       : isSelfEffect || defensiveEffect
         ? "projectile-ward"
@@ -1290,19 +1322,28 @@ function BattleVfx({
     const sourceSelector = sourceSlot !== undefined
       ? `.cauldron-board[data-side="${event.actor}"] .board-slot[data-slot="${sourceSlot}"]`
       : `.cauldron-board[data-side="${event.actor}"] .cauldron`;
+    const actorElement = arena.querySelector<HTMLElement>(
+      `.cauldron-board[data-side="${event.actor}"] .cauldron`,
+    );
+    const opponentSide = event.actor === "player" ? "enemy" : "player";
+    const opponentElement = arena.querySelector<HTMLElement>(
+      `.cauldron-board[data-side="${opponentSide}"] .cauldron`,
+    );
     const sourceElement =
       arena.querySelector<HTMLElement>(sourceSelector) ??
-      arena.querySelector<HTMLElement>(
-        `.cauldron-board[data-side="${event.actor}"] .cauldron`,
-      );
-    const targetElement = arena.querySelector<HTMLElement>(
-      `.cauldron-board[data-side="${event.target}"] .cauldron`,
-    );
-    if (!sourceElement || !targetElement) return;
+      actorElement;
+    const targetElement = event.target === event.actor
+      ? actorElement
+      : opponentElement;
+    if (!sourceElement || !targetElement || !actorElement || !opponentElement) {
+      return;
+    }
 
     const arenaRect = arena.getBoundingClientRect();
     const sourceRect = sourceElement.getBoundingClientRect();
     const targetRect = targetElement.getBoundingClientRect();
+    const actorRect = actorElement.getBoundingClientRect();
+    const opponentRect = opponentElement.getBoundingClientRect();
     const fromX = sourceRect.left + sourceRect.width / 2 - arenaRect.left;
     const fromY = sourceRect.top + sourceRect.height / 2 - arenaRect.top;
     const toX = targetRect.left + targetRect.width / 2 - arenaRect.left;
@@ -1358,6 +1399,10 @@ function BattleVfx({
       "--point-75-y": `${point75.y}px`,
       "--to-x": `${toX}px`,
       "--to-y": `${toY}px`,
+      "--actor-x": `${actorRect.left + actorRect.width / 2 - arenaRect.left}px`,
+      "--actor-y": `${actorRect.top + actorRect.height * 0.52 - arenaRect.top}px`,
+      "--opponent-x": `${opponentRect.left + opponentRect.width / 2 - arenaRect.left}px`,
+      "--opponent-y": `${opponentRect.top + opponentRect.height * 0.52 - arenaRect.top}px`,
       "--angle-0": `${angle(0)}deg`,
       "--angle-25": `${angle(0.25)}deg`,
       "--angle-50": `${angle(0.5)}deg`,
@@ -1390,6 +1435,8 @@ function BattleVfx({
         source ? `source-slot-${source.slot}` : "",
         statusTick
           ? "is-status-tick"
+          : isTargetEffect
+            ? "is-target-effect"
           : isSelfEffect
             ? "is-self-effect"
             : "is-projectile",
@@ -1401,6 +1448,24 @@ function BattleVfx({
         asset={projectile}
         className={`battle-projectile ${projectileClass}`}
       />
+      {hasSelfBenefit && (
+        <ArtSprite
+          asset="vfx-ward-bloom"
+          className="battle-side-effect side-effect-self-benefit"
+        />
+      )}
+      {hasFrostStasis && event.kind !== "frost" && (
+        <ArtSprite
+          asset="vfx-frost-stasis"
+          className="battle-side-effect side-effect-frost-stasis"
+        />
+      )}
+      {hasEchoAfterimage && event.kind !== "echo" && (
+        <ArtSprite
+          asset="vfx-echo-afterimage"
+          className="battle-side-effect side-effect-echo-afterimage"
+        />
+      )}
       <ArtSprite asset="vfx-impact" className="battle-impact" />
       <span
         className="battle-impact-trigger"
@@ -1442,7 +1507,8 @@ function BattleVolleyVfx({
   return contributions.map((contribution, index) => (
     <BattleVfx
       key={contribution.id}
-      event={contribution.event}
+      event={selectContributionVfxEvent(contribution)}
+      events={contribution.events}
       source={findEventSource(
         contribution.event,
         playerBoard,

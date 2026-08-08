@@ -2245,6 +2245,18 @@ button.board-slot:active {
     calc(var(--shot-delay) + var(--charge-duration)) both;
 }
 
+.is-target-effect .battle-projectile {
+  top: var(--to-y);
+  left: var(--to-x);
+  animation:
+    status-bloom var(--impact-duration) ease-out
+    var(--impact-delay) both;
+}
+
+.is-target-effect .battle-impact {
+  display: none;
+}
+
 .battle-projectile.projectile-guard {
   --projectile-angle-offset: 45deg;
 }
@@ -2292,6 +2304,64 @@ button.board-slot:active {
 
 .is-status-tick .battle-impact {
   animation-name: status-impact;
+}
+
+.battle-side-effect {
+  position: absolute;
+  z-index: 2;
+  width: 68px;
+  height: 68px;
+  translate: -50% -50%;
+  object-fit: contain;
+  opacity: 0;
+  pointer-events: none;
+  filter:
+    drop-shadow(0 0 8px var(--vfx-color))
+    drop-shadow(0 3px 4px rgba(0, 0, 0, 0.42));
+  will-change: transform, opacity;
+}
+
+.side-effect-self-benefit {
+  top: var(--actor-y);
+  left: var(--actor-x);
+  width: 62px;
+  height: 62px;
+  animation:
+    defensive-bloom var(--impact-duration) ease-out
+    var(--impact-delay) both;
+}
+
+.side-effect-frost-stasis {
+  top: var(--opponent-y);
+  left: var(--opponent-x);
+  animation:
+    status-bloom var(--impact-duration) ease-out
+    var(--impact-delay) both;
+}
+
+.side-effect-echo-afterimage {
+  top: var(--actor-y);
+  left: var(--actor-x);
+  width: 64px;
+  height: 64px;
+  animation:
+    defensive-bloom var(--impact-duration) ease-out
+    var(--impact-delay) both;
+}
+
+.arena-vfx.tier-standard .battle-side-effect {
+  width: 54px;
+  height: 54px;
+}
+
+.arena-vfx.tier-standard .side-effect-self-benefit {
+  width: 50px;
+  height: 50px;
+}
+
+.arena-vfx.tier-ambient .battle-side-effect {
+  width: 38px;
+  height: 38px;
 }
 
 .arena-vfx.family-poison .battle-projectile {

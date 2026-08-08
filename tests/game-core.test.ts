@@ -6,7 +6,9 @@ import {
   getCombatBeatTiming,
   getImportantCombatMessage,
   isStatusTick,
+  selectContributionVfxEvent,
 } from "../app/game/combatPresentation";
+import { ITEM_PROJECTILE_ART } from "../app/game/ArtSprite";
 import {
   getCombatSoundPlaybackPolicy,
   getCombatSoundsEnabled,
@@ -990,6 +992,51 @@ test("campaign two has its own eight-fight roster and time-fracture boss", () =>
   assert.equal(FROSTBOUND_OPPONENTS[6].rank, "elite");
   assert.equal(FROSTBOUND_OPPONENTS[7].rank, "boss");
   assert.equal(FROSTBOUND_OPPONENTS[7].bossRule, "timeFractureAtHalf");
+});
+
+test("campaign-two attacks use dedicated projectile art", () => {
+  const expected = {
+    "frost-shard": "vfx-frost-shard-projectile",
+    "ice-bell": "vfx-ice-bell-projectile",
+    "rime-clock": "vfx-rime-clock-projectile",
+    "mirror-shard": "vfx-mirror-shard-projectile",
+    "echo-bell": "vfx-echo-bell-projectile",
+    "time-thread": "vfx-time-thread-projectile",
+  } as const;
+
+  for (const [itemId, projectile] of Object.entries(expected)) {
+    assert.equal(ITEM_PROJECTILE_ART[itemId], projectile);
+  }
+  assert.equal(new Set(Object.values(expected)).size, 6);
+});
+
+test("combined defensive attacks select their enemy-facing event for VFX", () => {
+  const shield = combatEvent({
+    kind: "shield",
+    target: "player",
+    label: "Eisglocke",
+    amount: 5,
+    playerShield: 5,
+  });
+  const damage = combatEvent({
+    kind: "damage",
+    label: "Eisglocke",
+    amount: 2,
+    playerShield: 5,
+    enemyHp: 98,
+  });
+  const frost = combatEvent({
+    kind: "frost",
+    label: "Froststarre · Takt verzögert",
+    amount: 650,
+    playerShield: 5,
+    enemyHp: 98,
+  });
+  const [beat] = createCombatBeats([shield, damage, frost]);
+  const selected = selectContributionVfxEvent(beat.contributions[0]);
+
+  assert.equal(selected.kind, "damage");
+  assert.equal(selected.target, "enemy");
 });
 
 test("campaign two keeps Frost and Echo while selecting one legacy family", () => {
