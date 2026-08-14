@@ -115,6 +115,8 @@ synchronisiert, statt nur eine abstrakte Zahl einzublenden.
 - fünf per Tap umsortierbare Zutatenplätze
 - eine passive, ab Runde 5 freigeschaltete Ablage für genau eine Zutat
 - Shop, Verkauf, neue Angebote und lokale Spielstand-Speicherung
+- antippbare Item-Detailkarten mit aktuellem Kampftakt, Synergiefortschritt
+  sowie verständlichen Hinweisen auf Buff-Quellen und betroffene Zutaten
 - fünf Familien-Synergien mit eigenen Kampfeffekten und Nachbarschaftsregeln
 - deterministische Kampfsimulation mit klarer visueller Präsentation
 - eigene, gedrosselte Familienklänge für Frost und Echo sowie gemeinsame
@@ -179,9 +181,8 @@ npm run build:pages
 ## Nächste Schwerpunkte
 
 1. Frost, Echo und den Chronokessel anhand echter Runs weiter ausbalancieren
-2. Item-Detailkarten für Buffs und gegenseitige Beeinflussung entwickeln
-3. Schaden über Zeit und Schilde auf kleinen Bildschirmen noch deutlicher zeigen
-4. Shop-Druck auf vollen Aufbauten und spätere Inhalts-Erweiterungen prüfen
+2. Schaden über Zeit und Schilde auf kleinen Bildschirmen noch deutlicher zeigen
+3. Shop-Druck auf vollen Aufbauten und spätere Inhalts-Erweiterungen prüfen
 
 Kessel-Krawall bleibt bewusst fokussiert: keine Figuren, kein Pathfinding,
 keine komplizierten Rezepte und kein Echtzeit-PvP – dafür ein verständlicher

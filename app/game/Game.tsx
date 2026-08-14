@@ -48,6 +48,7 @@ import {
   type FloatingCombatNumber,
   type FloatingCombatNumberType,
 } from "./combatFloatingNumbers";
+import { getItemInsights, type ItemInsights } from "./itemInsights";
 import {
   activateGameAudio,
   playCombatSound,
@@ -333,6 +334,10 @@ function mergeBonusLabel(definition: ItemDefinition, level: ItemLevel): string |
 }
 
 function getMergeDurationMs(level: ItemLevel): number {
+  return getMergeMotionDurationMs(level) + 350;
+}
+
+function getMergeMotionDurationMs(level: ItemLevel): number {
   return level === 3 ? 2_100 : 1_700;
 }
 
@@ -628,6 +633,8 @@ function CauldronBoard({
   combatTime = 0,
   activationTimesByUid = new Map(),
   floatingNumbers = [],
+  insightTargetSlots = [],
+  insightSourceSlots = [],
 }: {
   board: Board;
   side: "player" | "enemy";
@@ -644,6 +651,8 @@ function CauldronBoard({
   combatTime?: number;
   activationTimesByUid?: CombatActivationTimeline;
   floatingNumbers?: readonly FloatingCombatNumber[];
+  insightTargetSlots?: readonly number[];
+  insightSourceSlots?: readonly number[];
 }) {
   const reactionKey = `${hitKind ?? "idle"}-${
     activeUids.join("-") || "rest"
@@ -711,6 +720,8 @@ function CauldronBoard({
             combatActive &&
             rawCooldown > 0 &&
             rawCooldown < baseCooldown - 1;
+          const isInsightTarget = insightTargetSlots.includes(slot);
+          const isInsightSource = insightSourceSlots.includes(slot);
           const trigger = definition?.trigger;
           const activationTimes =
             instance && combatActive
@@ -744,6 +755,11 @@ function CauldronBoard({
                 cadenceLabel ? `, ${cadenceLabel}` : ""
               }${isHasted ? ", dauerhaft beschleunigt" : ""}`
             : `Slot ${slot + 1}: leer`;
+          const insightLabel = isInsightTarget
+            ? ", wird vom ausgewählten Item beeinflusst"
+            : isInsightSource
+              ? ", beeinflusst das ausgewählte Item"
+              : "";
           const content = (
             <>
               {definition ? (
@@ -800,6 +816,8 @@ function CauldronBoard({
             instance ? "is-filled" : "is-empty",
             combatActive && instance ? "is-cooling" : "",
             selectedSlot === slot ? "is-selected" : "",
+            isInsightTarget ? "is-insight-target" : "",
+            isInsightSource ? "is-insight-source" : "",
             instance && activeUids.includes(instance.uid) ? "is-active" : "",
             definition ? familyClass(definition.family) : "",
           ].join(" ");
@@ -819,7 +837,7 @@ function CauldronBoard({
               data-slot={slot}
               data-audio="manual"
               onClick={() => onSlot?.(slot)}
-              aria-label={slotLabel}
+              aria-label={`${slotLabel}${insightLabel}`}
               aria-pressed={selectedSlot === slot}
               style={slotStyle}
             >
@@ -833,7 +851,7 @@ function CauldronBoard({
               key={slot}
               className={className}
               data-slot={slot}
-              aria-label={slotLabel}
+              aria-label={`${slotLabel}${insightLabel}`}
               style={slotStyle}
             >
               {content}
@@ -1193,6 +1211,104 @@ function quadraticAngle(
     2 * inverse * (controlY - fromY) +
     2 * progress * (toY - controlY);
   return Math.atan2(tangentY, tangentX) * (180 / Math.PI);
+}
+
+function ItemInspectorCard({
+  item,
+  definition,
+  insights,
+  inReserve,
+  onClose,
+  onSell,
+}: {
+  item: NonNullable<GameState["reserve"]>;
+  definition: ItemDefinition;
+  insights: ItemInsights;
+  inReserve: boolean;
+  onClose: () => void;
+  onSell: (element: HTMLButtonElement) => void;
+}) {
+  return (
+    <section
+      className={`item-inspector ${familyClass(definition.family)}`}
+      aria-label={`Details zu ${definition.name}`}
+      data-testid="item-inspector"
+    >
+      <span className="inspector-icon" aria-hidden="true">
+        <ArtSprite
+          asset={ITEM_ART[definition.id]}
+          className="inspector-item-art"
+        />
+      </span>
+      <div className="inspector-heading">
+        <span className="inspector-family">
+          <UiIcon
+            asset={FAMILY_ICON[definition.family]}
+            className="inspector-family-icon"
+          />
+          {FAMILY_META[definition.family].name} · Stufe {ROMAN_LEVEL[item.level]}
+        </span>
+        <strong>{definition.name}</strong>
+        <p>{definition.descriptions[item.level - 1]}</p>
+      </div>
+      <button
+        type="button"
+        className="inspector-close"
+        onClick={onClose}
+        aria-label="Itemdetails schließen"
+        data-audio="manual"
+      >
+        ×
+      </button>
+
+      <div className="inspector-facts">
+        <div className={`inspector-fact ${insights.cadence.active ? "is-active" : ""}`}>
+          <UiIcon asset="speed" className="inspector-fact-icon" />
+          <span>TAKT</span>
+          <b>{insights.cadence.headline}</b>
+          <small>{insights.cadence.detail}</small>
+        </div>
+        <div className={`inspector-fact ${insights.synergy.active ? "is-active" : ""}`}>
+          <UiIcon
+            asset={FAMILY_ICON[definition.family]}
+            className="inspector-fact-icon"
+          />
+          <span>SYNERGIE</span>
+          <b>{insights.synergy.headline}</b>
+          <small>{insights.synergy.detail}</small>
+        </div>
+      </div>
+
+      <div className="inspector-influences">
+        <div className={`inspector-influence ${insights.affects.active ? "is-active" : ""}`}>
+          <span><i aria-hidden="true">→</i> WIRKT AUF</span>
+          <b>{insights.affects.headline}</b>
+          <small>{insights.affects.detail}</small>
+        </div>
+        <div className={`inspector-influence ${insights.benefits.active ? "is-active" : ""}`}>
+          <span><i aria-hidden="true">←</i> WIRD VERSTÄRKT</span>
+          <b>{insights.benefits.headline}</b>
+          <small>{insights.benefits.detail}</small>
+        </div>
+      </div>
+
+      <div className="inspector-actions">
+        <small>
+          {inReserve
+            ? "Tippe einen Kesselplatz, um diese Zutat einzusetzen."
+            : "Tippe einen zweiten Platz, um die Zutaten zu tauschen."}
+        </small>
+        <button
+          type="button"
+          className="sell-button"
+          onClick={(event) => onSell(event.currentTarget)}
+          data-audio="manual"
+        >
+          Verkaufen <b>+{getSellValue(item)}</b>
+        </button>
+      </div>
+    </section>
+  );
 }
 
 function BattleVfx({
@@ -1609,6 +1725,13 @@ export default function Game() {
       : game.board[game.selectedSlot];
   const selectedDefinition = selectedItem
     ? ITEM_BY_ID[selectedItem.itemId]
+    : null;
+  const selectedInsights = selectedItem
+    ? getItemInsights(
+        game.board,
+        selectedItem,
+        reserveSelected ? null : game.selectedSlot,
+      )
     : null;
   const playerPowerBreakdown = getPowerBreakdown(game.board);
   const playerPower = playerPowerBreakdown.total;
@@ -3671,6 +3794,8 @@ export default function Game() {
                   interactive
                   showCauldron={false}
                   onSlot={handleSlot}
+                  insightTargetSlots={selectedInsights?.affects.slots}
+                  insightSourceSlots={selectedInsights?.benefits.slots}
                 />
                 {game.round >= RESERVE_UNLOCK_ROUND && (
                   <ReservePocket
@@ -3692,37 +3817,20 @@ export default function Game() {
               </div>
             </div>
 
-            {selectedDefinition && selectedItem && (
-              <div className={`item-inspector ${familyClass(selectedDefinition.family)}`}>
-                <span className="inspector-icon" aria-hidden="true">
-                  <ArtSprite
-                    asset={ITEM_ART[selectedDefinition.id]}
-                    className="inspector-item-art"
-                  />
-                </span>
-                <div>
-                  <strong>{selectedDefinition.name} {ROMAN_LEVEL[selectedItem.level]}</strong>
-                  <p>{selectedDefinition.descriptions[selectedItem.level - 1]}</p>
-                  <small className="inspector-synergy">
-                    {reserveSelected ? (
-                      <>Ablage · passiv · zählt nicht für Kampf oder Synergie</>
-                    ) : (
-                      <>
-                        {FAMILY_META[selectedDefinition.family].name} · zählt{" "}
-                        {2 ** (selectedItem.level - 1)} für die 3er-Synergie
-                      </>
-                    )}
-                  </small>
-                </div>
-                <button
-                  type="button"
-                  className="sell-button"
-                  onClick={(event) => handleSell(event.currentTarget)}
-                  data-audio="manual"
-                >
-                  Verkaufen <b>+{getSellValue(selectedItem)}</b>
-                </button>
-              </div>
+            {selectedDefinition && selectedItem && selectedInsights && (
+              <ItemInspectorCard
+                item={selectedItem}
+                definition={selectedDefinition}
+                insights={selectedInsights}
+                inReserve={reserveSelected}
+                onClose={() => {
+                  if (reserveSelected) handleReserve();
+                  else if (game.selectedSlot !== null) {
+                    handleSlot(game.selectedSlot);
+                  }
+                }}
+                onSell={handleSell}
+              />
             )}
 
             <div className="offer-grid">
@@ -4149,6 +4257,7 @@ export default function Game() {
           key={`${mergeNotice.label}-${mergeNotice.step}`}
           style={{
             "--merge-duration": `${getMergeDurationMs(mergeNotice.toLevel)}ms`,
+            "--merge-motion-duration": `${getMergeMotionDurationMs(mergeNotice.toLevel)}ms`,
           } as CSSProperties}
         >
           <div className="merge-progress">

@@ -26,6 +26,7 @@ import {
   mergeFloatingCombatNumbers,
   pruneExpiredFloatingNumbers,
 } from "../app/game/combatFloatingNumbers";
+import { getItemInsights } from "../app/game/itemInsights";
 import { CAMPAIGNS, getCampaignFamilies } from "../app/game/campaigns";
 import {
   CAMPAIGN_OPPONENTS,
@@ -129,6 +130,56 @@ function combatEvent(
 function createShopState(seed: number): GameState {
   return enterOpeningShop(createInitialState(seed));
 }
+
+test("item details explain outgoing and incoming neighbor buffs", () => {
+  const board = [
+    item("ember", "ember-core"),
+    item("chili", "chili"),
+    null,
+    item("spoon", "gold-spoon"),
+    item("shell", "egg-shell"),
+  ];
+
+  const ember = getItemInsights(board, board[0]!, 0);
+  assert.equal(ember.affects.headline, "18 % schneller");
+  assert.equal(ember.affects.detail, "Chilischote");
+  assert.deepEqual(ember.affects.slots, [1]);
+
+  const chili = getItemInsights(board, board[1]!, 1);
+  assert.equal(chili.cadence.headline, "Alle 2,6 s");
+  assert.equal(chili.benefits.headline, "Bereits beschleunigt");
+  assert.equal(chili.benefits.detail, "Tempo durch Glutkern.");
+  assert.deepEqual(chili.benefits.slots, [0]);
+
+  const shell = getItemInsights(board, board[4]!, 4);
+  assert.equal(shell.benefits.headline, "Wirkung verstärkt");
+  assert.equal(shell.benefits.detail, "Wirkung durch Goldlöffel.");
+  assert.deepEqual(shell.benefits.slots, [3]);
+});
+
+test("item details explain family auras, synergy progress, and the reserve", () => {
+  const board = [
+    item("mirror", "mirror-shard"),
+    item("bell", "echo-bell"),
+    null,
+    null,
+    null,
+  ];
+  const bell = getItemInsights(board, board[1]!, 1);
+  assert.equal(bell.affects.headline, "6 % schneller");
+  assert.equal(
+    bell.affects.detail,
+    "Alle Echo-Zutaten – auch dieses Item.",
+  );
+  assert.deepEqual(bell.affects.slots, [0]);
+  assert.equal(bell.benefits.detail, "Tempo durch die eigene Aura.");
+  assert.equal(bell.synergy.headline, "Echo 2/3");
+
+  const reserve = getItemInsights(board, item("reserve", "time-thread"), null);
+  assert.equal(reserve.cadence.headline, "Pausiert in der Ablage");
+  assert.equal(reserve.affects.detail, "Ablage-Items buffen niemanden.");
+  assert.equal(reserve.synergy.detail, "Zählt nicht für die Synergie.");
+});
 
 test("a new run introduces the arena before opening its curated shop", () => {
   const state = createInitialState(1234);
