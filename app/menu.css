@@ -1323,6 +1323,10 @@
     grid-template-rows: auto minmax(230px, 1fr) auto;
   }
 
+  .menu-family-legend {
+    grid-row: 3;
+  }
+
   .menu-title-lockup h1 {
     font-size: clamp(58px, 6vw, 92px);
   }
@@ -1403,6 +1407,35 @@
 
   .coming-soon-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/*
+ * The desktop main-menu artwork has a fixed stone-platform centre. Anchor the
+ * cauldron stage to that point through the same cover-crop geometry as the
+ * backdrop instead of centring it inside the responsive content column.
+ */
+@media (min-width: 820px) and (orientation: landscape) {
+  .menu-cauldron-stage {
+    position: fixed;
+    z-index: 1;
+    left: 31.7vw;
+    top: calc(50vh + 12.83vw);
+    transform: translate(
+      -50%,
+      calc(-100% + 16px + min(5.25vh, 52.5px))
+    );
+    pointer-events: none;
+  }
+}
+
+@media
+  (min-width: 820px) and
+  (orientation: landscape) and
+  (max-aspect-ratio: 1672 / 941) {
+  .menu-cauldron-stage {
+    left: calc(50vw - 32.53vh);
+    top: 72.8vh;
   }
 }
 
