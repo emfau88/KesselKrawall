@@ -75,6 +75,17 @@ button:focus-visible {
   object-fit: cover;
 }
 
+.backdrop-picture {
+  display: block;
+  overflow: hidden;
+}
+
+.backdrop-picture > .backdrop-image {
+  width: 100%;
+  height: 100%;
+  object-position: center;
+}
+
 .game-shell {
   position: relative;
   isolation: isolate;

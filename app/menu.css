@@ -32,9 +32,11 @@
 }
 
 .main-menu-backdrop {
-  object-fit: cover;
-  object-position: 50% 62%;
   filter: saturate(0.92) contrast(1.02);
+}
+
+.main-menu-backdrop > .backdrop-image {
+  object-position: 50% 62%;
 }
 
 .main-menu-shade {
@@ -153,6 +155,7 @@
 }
 
 .audio-settings-button {
+  position: relative;
   min-width: 48px;
   height: 48px;
   padding: 4px 10px;
@@ -212,6 +215,35 @@
   font-size: 22px;
   font-weight: 900;
   line-height: 1;
+}
+
+.settings-button-glyph {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  font-family: system-ui, sans-serif;
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.settings-language-badge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  min-width: 18px;
+  height: 14px;
+  padding: 0 3px;
+  display: grid;
+  place-items: center;
+  color: #291607;
+  font: 900 7px/1 system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  border: 1px solid rgba(255, 231, 167, 0.82);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffe49c, #c98b35);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
 .main-menu-layout {
@@ -1141,7 +1173,7 @@
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 819px) {
   .menu-build-hash {
     display: none;
   }
@@ -1149,8 +1181,36 @@
   .menu-save-state {
     display: none;
   }
+}
 
+@media (max-width: 600px) {
   .game-header .fullscreen-button {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-menu-topbar {
+    padding-right: max(10px, env(safe-area-inset-right));
+    padding-left: max(10px, env(safe-area-inset-left));
+  }
+
+  .menu-edition {
+    max-width: 160px;
+    white-space: normal;
+    line-height: 1.25;
+  }
+
+  .menu-fullscreen-button,
+  .main-menu-topbar .audio-settings-button {
+    width: 48px;
+    min-width: 48px;
+    padding: 0;
+    grid-template-columns: 1fr;
+  }
+
+  .menu-fullscreen-button > span:last-child,
+  .main-menu-topbar .audio-settings-button > span:last-child {
     display: none;
   }
 }
@@ -1231,8 +1291,8 @@
     overflow: hidden;
   }
 
-  .main-menu-backdrop {
-    object-position: 50% 63%;
+  .main-menu-backdrop > .backdrop-image {
+    object-position: center;
   }
 
   .main-menu-shade {
@@ -1432,7 +1492,6 @@
 }
 
 .cabinet-backdrop {
-  object-fit: cover;
   filter: saturate(0.7) contrast(1.08) brightness(0.62);
 }
 

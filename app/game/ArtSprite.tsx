@@ -143,7 +143,9 @@ export type UiAsset = keyof typeof UI_FILES;
 export const BACKDROP_FILES = {
   arena: "tournament-arena.webp",
   menu: "main-menu-stage.webp",
+  "menu-desktop": "main-menu-stage-desktop.webp",
   market: "witch-market.webp",
+  "market-desktop": "witch-market-desktop.webp",
 } as const;
 
 export type BackdropAsset = keyof typeof BACKDROP_FILES;
@@ -270,11 +272,33 @@ export function UiIcon({
 
 export function BackdropImage({
   backdrop,
+  desktopBackdrop,
   className = "",
 }: {
   backdrop: BackdropAsset;
+  desktopBackdrop?: BackdropAsset;
   className?: string;
 }) {
+  if (desktopBackdrop) {
+    return (
+      <picture
+        className={`backdrop-picture ${className}`.trim()}
+      >
+        <source
+          media="(min-width: 700px) and (orientation: landscape)"
+          srcSet={`assets/backgrounds/${BACKDROP_FILES[desktopBackdrop]}`}
+        />
+        <img
+          className="backdrop-image"
+          src={`assets/backgrounds/${BACKDROP_FILES[backdrop]}`}
+          alt=""
+          draggable={false}
+          decoding="async"
+        />
+      </picture>
+    );
+  }
+
   return (
     // A relative URL keeps public assets valid at both / and the GitHub Pages base path.
     // eslint-disable-next-line @next/next/no-img-element

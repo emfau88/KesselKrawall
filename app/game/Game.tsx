@@ -3164,7 +3164,11 @@ function GameContent() {
         ref={shellRef}
         onClickCapture={handleUiButtonClick}
       >
-        <BackdropImage backdrop="menu" className="cabinet-backdrop" />
+        <BackdropImage
+          backdrop="menu"
+          desktopBackdrop="menu-desktop"
+          className="cabinet-backdrop"
+        />
         <div className="cabinet-shade" aria-hidden="true" />
         <header className="cabinet-topbar">
           <button
@@ -3184,8 +3188,11 @@ function GameContent() {
             onClick={handleOpenAudioSettings}
             aria-label={t("openSettings")}
           >
-            <span className="audio-button-glyph" aria-hidden="true">♪</span>
-            <span>{t("audio")}</span>
+            <span className="settings-button-glyph" aria-hidden="true">⚙</span>
+            <span className="settings-language-badge" aria-hidden="true">
+              {language.toUpperCase()}
+            </span>
+            <span>{t("settingsTitle")}</span>
           </button>
         </header>
 
@@ -3344,7 +3351,11 @@ function GameContent() {
         ref={shellRef}
         onClickCapture={handleUiButtonClick}
       >
-        <BackdropImage backdrop="menu" className="main-menu-backdrop" />
+        <BackdropImage
+          backdrop="menu"
+          desktopBackdrop="menu-desktop"
+          className="main-menu-backdrop"
+        />
         <div className="main-menu-shade" aria-hidden="true" />
 
         <header className="main-menu-topbar">
@@ -3377,8 +3388,11 @@ function GameContent() {
               aria-expanded={showAudioSettings}
               title={audioSettingsLabel}
             >
-              <span className="audio-button-glyph" aria-hidden="true">♪</span>
-              <span>{audioSettingsLabel}</span>
+              <span className="settings-button-glyph" aria-hidden="true">⚙</span>
+              <span className="settings-language-badge" aria-hidden="true">
+                {language.toUpperCase()}
+              </span>
+              <span>{t("settingsTitle")}</span>
             </button>
             <button
               type="button"
@@ -3907,7 +3921,11 @@ function GameContent() {
           className="shop-sheet preparation-screen"
           aria-label={t("preparationPhase")}
         >
-          <BackdropImage backdrop="market" className="panel-backdrop market-backdrop" />
+          <BackdropImage
+            backdrop="market"
+            desktopBackdrop="market-desktop"
+            className="panel-backdrop market-backdrop"
+          />
           <div className="preparation-overview">
             <OpponentPreparationCard
               opponent={opponent}
