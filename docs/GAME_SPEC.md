@@ -28,6 +28,9 @@ Online-Systeme.
 - drei Schutzsiegel; nur die erste Niederlage in Runde 1 ist geschützt
 - Hochformat ist vollständig unterstützt; mobiles Querformat fordert zum
   Drehen auf, Desktop-Querformat bleibt funktional
+- Im Desktop-Querformat nutzt der Hexenmarkt eine inszenierte, interaktive
+  Kesselwerkbank und kompakte Aktionsbuttons; die mobile Aufbauansicht bleibt
+  davon unberührt.
 - Meta-Fortschritt schaltet Inhalte und Trophäen frei, gewährt aber keine
   dauerhaften Kampfkraft-Boni; keine Online-Funktion
 
@@ -143,6 +146,9 @@ damit ein schlechter Zufallsstart die Kampagne nicht entscheidet.
 - Runde 1 startet zur Lesbarkeit mit 1× Wiedergabe. Ab Runde 2 ist 2× der
   Standard; 1×, 2× und 4× bleiben jederzeit frei wählbar.
 - Gleichzeitiger K. O. ist ein Unentschieden.
+- Bei einem eindeutigen K. O. kollabiert der besiegte Kessel kurz sichtbar und
+  dunkelt vor der Ergebnisansicht ab. Dieser Effekt ist reine Präsentation und
+  verändert weder Ereignislog noch Kampfzeitpunkt oder Ergebnis.
 - Drachenzahn wächst mit jeder eigenen Aktivierung. Mondsalz kontert
   abgefangene oder ungeschützte Treffer nur gemäß seiner Abklingzeit.
   Heilknolle heilt einmalig unter 50 % LP mit einem kleineren Multiplikator,

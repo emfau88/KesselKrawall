@@ -682,6 +682,7 @@ function CauldronBoard({
   floatingNumbers = [],
   insightTargetSlots = [],
   insightSourceSlots = [],
+  defeated = false,
 }: {
   board: Board;
   side: "player" | "enemy";
@@ -700,6 +701,7 @@ function CauldronBoard({
   floatingNumbers?: readonly FloatingCombatNumber[];
   insightTargetSlots?: readonly number[];
   insightSourceSlots?: readonly number[];
+  defeated?: boolean;
 }) {
   const { language, t } = useI18n();
   const reactionKey = `${hitKind ?? "idle"}-${
@@ -713,6 +715,7 @@ function CauldronBoard({
         compact ? "is-compact" : "",
         showCauldron ? "" : "without-cauldron",
         hitKind ? `is-reacting reaction-${hitKind}` : "",
+        defeated ? "is-defeated" : "",
       ].join(" ")}
       data-side={side}
       data-cauldron-variant={cauldronVariant}
@@ -3719,6 +3722,9 @@ function GameContent() {
             floatingNumbers={floatingNumbers.filter(
               (number) => number.target === "enemy",
             )}
+            defeated={
+              battleEnding === "knockout" && combat?.winner === "player"
+            }
           />
         </article>
 
@@ -3878,6 +3884,9 @@ function GameContent() {
             floatingNumbers={floatingNumbers.filter(
               (number) => number.target === "player",
             )}
+            defeated={
+              battleEnding === "knockout" && combat?.winner === "enemy"
+            }
           />
           <HealthBar
             hp={playerHp}
@@ -3964,7 +3973,7 @@ function GameContent() {
               <div
                 className={`workbench-inventory-row ${
                   game.round >= RESERVE_UNLOCK_ROUND ? "has-reserve" : ""
-                }`}
+                } workbench-inventory-compact`}
               >
                 <CauldronBoard
                   board={game.board}
@@ -3975,6 +3984,32 @@ function GameContent() {
                   hitKind={null}
                   interactive
                   showCauldron={false}
+                  onSlot={handleSlot}
+                  insightTargetSlots={selectedInsights?.affects.slots}
+                  insightSourceSlots={selectedInsights?.benefits.slots}
+                />
+                {game.round >= RESERVE_UNLOCK_ROUND && (
+                  <ReservePocket
+                    item={game.reserve}
+                    selected={reserveSelected}
+                    onClick={handleReserve}
+                  />
+                )}
+              </div>
+              <div className="market-brew-stage">
+                <span className="market-brew-stage__halo" aria-hidden="true" />
+                <span className="market-brew-stage__label">
+                  {t("prepareCauldron")}
+                </span>
+                <CauldronBoard
+                  board={game.board}
+                  side="player"
+                  cauldronAsset="cauldron-player"
+                  cauldronVariant="player"
+                  selectedSlot={game.selectedSlot}
+                  activeUids={[]}
+                  hitKind={null}
+                  interactive
                   onSlot={handleSlot}
                   insightTargetSlots={selectedInsights?.affects.slots}
                   insightSourceSlots={selectedInsights?.benefits.slots}

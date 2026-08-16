@@ -108,6 +108,9 @@ synchronisiert, statt nur eine abstrakte Zahl einzublenden.
 - Jeder neue Gegner besitzt einen eigenen Kessel, eine eigene Farbwelt und
   fortlaufende Partikelanimationen. Trefferreaktionen unterbrechen die
   Partikel nicht.
+- Ein K. O. erhält einen eigenen visuellen Abschluss: Der besiegte Kessel
+  zuckt zusammen, stößt einen kurzen Ring- und Funkenimpuls aus und dunkelt
+  anschließend ab, bevor die Ergebnisansicht übernimmt.
 
 ## Aktueller spielbarer Stand
 
@@ -131,6 +134,9 @@ synchronisiert, statt nur eine abstrakte Zahl einzublenden.
 - lesbare Kampfmeldungen, reaktive Lebensbalken und Itembeiträge nach der Runde
 - individuelle Projektilgrafiken, gestaffelte Merge-Inszenierung und
   responsive Layouts
+- eine eigenständige Desktop-Werkbank im Hexenmarkt mit interaktivem Kessel,
+  Ritualkreis und kompakten Aktionsbuttons; die mobile Vorbereitung bleibt
+  bewusst platzsparend
 - Fullscreen-Modus, Safe Areas und große Touchziele für moderne Smartphones
 - vollständige DE/EN-Lokalisierung für Menüs, Kampagnen, Gegner, Zutaten,
   Tooltips, Kampfmeldungen und barrierefreie Beschriftungen
