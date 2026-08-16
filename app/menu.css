@@ -1390,6 +1390,22 @@
     box-shadow: -22px 0 60px rgba(0, 0, 0, 0.38);
   }
 
+  .menu-command-panel .eyebrow {
+    font-size: 11px;
+  }
+
+  .menu-primary-button > span,
+  .menu-secondary-button > span {
+    font-size: 16px;
+  }
+
+  .menu-primary-button small,
+  .menu-secondary-button small {
+    font-size: 12px;
+    line-height: 1.4;
+    opacity: 0.82;
+  }
+
   .menu-primary-button,
   .menu-secondary-button {
     min-height: 70px;
@@ -1403,6 +1419,39 @@
     min-height: 126px;
     grid-template-columns: 1fr;
     align-content: start;
+  }
+
+  .menu-explainer-grid h2 {
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  .menu-explainer-grid p {
+    color: #ddd3bd;
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
+  .menu-section-heading h2 {
+    font-size: 18px;
+  }
+
+  .coming-soon-badge {
+    font-size: 11px;
+  }
+
+  .coming-soon-grid article {
+    opacity: 0.86;
+  }
+
+  .coming-soon-grid strong {
+    font-size: 13px;
+  }
+
+  .coming-soon-grid small {
+    color: #c4bcab;
+    font-size: 11px;
+    line-height: 1.35;
   }
 
   .coming-soon-grid {
@@ -1848,6 +1897,10 @@
 }
 
 @media (min-width: 820px) {
+  .cabinet-back-button {
+    font-size: 11px;
+  }
+
   .cabinet-content {
     padding: 24px 24px 36px;
   }
@@ -1862,7 +1915,9 @@
   }
 
   .cabinet-intro p {
-    font-size: 12px;
+    color: #d5ccb9;
+    font-size: 14px;
+    line-height: 1.6;
   }
 
   .cabinet-cauldron {
@@ -1878,6 +1933,68 @@
 
   .campaign-card {
     min-height: 430px;
-    padding: 18px;
+    padding: 20px;
+  }
+
+  .campaign-card.is-locked {
+    opacity: 0.84;
+  }
+
+  .campaign-number,
+  .campaign-state,
+  .legacy-family-choice > span {
+    font-size: 11px;
+  }
+
+  .campaign-card h2 {
+    font-size: 25px;
+  }
+
+  .campaign-card > strong {
+    font-size: 14px;
+    line-height: 1.35;
+  }
+
+  .campaign-card > p {
+    color: #d5ccb9;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .campaign-family-row > span {
+    font-size: 11px;
+  }
+
+  .legacy-family-choice button {
+    min-height: 42px;
+    font-size: 11px;
+  }
+
+  .legacy-family-choice small {
+    color: #c8beaa;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .campaign-record span {
+    font-size: 12px;
+  }
+
+  .campaign-record small {
+    font-size: 11px;
+  }
+
+  .campaign-action-button {
+    min-height: 48px;
+    font-size: 12px;
+  }
+
+  .cabinet-collection strong {
+    font-size: 13px;
+  }
+
+  .cabinet-collection small {
+    font-size: 11px;
+    line-height: 1.35;
   }
 }
