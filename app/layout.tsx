@@ -2,7 +2,10 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./menu.css";
 
-const publicUrl = "https://emfau88.github.io/KesselKrawall/";
+const publicUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  process.env.URL ??
+  "https://emfau88.github.io/KesselKrawall/";
 
 export const metadata: Metadata = {
   metadataBase: new URL(publicUrl),

@@ -1,6 +1,7 @@
 # Kessel-Krawall
 
-[![Kessel-Krawall spielen](https://img.shields.io/badge/SPIELEN-GitHub%20Pages-f5c55b?style=for-the-badge&labelColor=21172b)](https://emfau88.github.io/KesselKrawall/)
+[![Kessel-Krawall auf Netlify spielen](https://img.shields.io/badge/SPIELEN-Netlify-f5c55b?style=for-the-badge&labelColor=21172b)](https://kessel-krawall.netlify.app/)
+[![GitHub-Pages-Spiegel](https://img.shields.io/badge/SPIEGEL-GitHub%20Pages-6f587c?style=for-the-badge&labelColor=21172b)](https://emfau88.github.io/KesselKrawall/)
 
 ![Kessel-Krawall – magischer Mobile-Autobattler](public/og.png)
 
@@ -14,7 +15,10 @@ funktioniert.
 
 ## Direkt spielen
 
-[**Öffentliche Version auf GitHub Pages öffnen**](https://emfau88.github.io/KesselKrawall/)
+[**Kessel-Krawall auf Netlify öffnen**](https://kessel-krawall.netlify.app/)
+
+Als unabhängiger Spiegel bleibt die
+[GitHub-Pages-Version](https://emfau88.github.io/KesselKrawall/) erreichbar.
 
 Das Spiel läuft ohne Installation im Browser. Der Kampagnenstand wird lokal auf
 dem Gerät gespeichert.
