@@ -1,4 +1,5 @@
 import { FAMILY_META, ITEM_BY_ID } from "./data";
+import { familyText, itemName, type Language } from "./i18n";
 import { getItemCooldownMs } from "./simulation";
 import { getFamilyWeights } from "./state";
 import type {
@@ -22,33 +23,46 @@ export interface ItemInsights {
   synergy: ItemInsightSection;
 }
 
-function formatSeconds(seconds: number): string {
-  return seconds.toFixed(1).replace(".", ",");
+function copy(language: Language, german: string, english: string): string {
+  return language === "en" ? english : german;
 }
 
-function formatPercent(value: number): string {
-  return `${Math.round(value * 100)} %`;
+function formatSeconds(seconds: number, language: Language): string {
+  return seconds.toFixed(1).replace(".", language === "de" ? "," : ".");
 }
 
-function joinLabels(labels: readonly string[]): string {
+function formatPercent(value: number, language: Language): string {
+  return `${Math.round(value * 100)}${language === "en" ? "%" : " %"}`;
+}
+
+function joinLabels(labels: readonly string[], language: Language): string {
   if (labels.length === 0) return "";
   if (labels.length === 1) return labels[0];
-  if (labels.length === 2) return `${labels[0]} und ${labels[1]}`;
-  return `${labels.slice(0, -1).join(", ")} und ${labels.at(-1)}`;
+  if (labels.length === 2) {
+    return `${labels[0]} ${language === "en" ? "and" : "und"} ${labels[1]}`;
+  }
+  return `${labels.slice(0, -1).join(", ")} ${
+    language === "en" ? "and" : "und"
+  } ${labels.at(-1)}`;
 }
 
-function itemNames(board: Board, slots: readonly number[]): string {
+function itemNames(
+  board: Board,
+  slots: readonly number[],
+  language: Language,
+): string {
   const counts = new Map<string, number>();
   for (const slot of slots) {
     const instance = board[slot];
     if (!instance) continue;
-    const name = ITEM_BY_ID[instance.itemId].name;
+    const name = itemName(ITEM_BY_ID[instance.itemId], language);
     counts.set(name, (counts.get(name) ?? 0) + 1);
   }
   return joinLabels(
     [...counts.entries()].map(([name, count]) =>
       count > 1 ? `${count}× ${name}` : name,
     ),
+    language,
   );
 }
 
@@ -131,11 +145,12 @@ function cadenceInsight(
   item: ItemInstance,
   definition: ItemDefinition,
   slot: number | null,
+  language: Language,
 ): ItemInsightSection {
   if (slot === null) {
     return {
-      headline: "Pausiert in der Ablage",
-      detail: "Wirkt erst wieder im Kessel.",
+      headline: copy(language, "Pausiert in der Ablage", "Paused in reserve"),
+      detail: copy(language, "Wirkt erst wieder im Kessel.", "Active again once placed in the cauldron."),
       slots: [],
       active: false,
     };
@@ -147,25 +162,41 @@ function cadenceInsight(
 
   if (definition.trigger?.type === "emergency") {
     return {
-      headline: `Einmal unter ${Math.round(definition.trigger.threshold * 100)} % LP`,
-      detail: "Löst automatisch aus.",
+      headline: copy(
+        language,
+        `Einmal unter ${Math.round(definition.trigger.threshold * 100)} % LP`,
+        `Once below ${Math.round(definition.trigger.threshold * 100)}% HP`,
+      ),
+      detail: copy(language, "Löst automatisch aus.", "Triggers automatically."),
       slots: [],
       active: true,
     };
   }
   if (definition.trigger?.type === "onGuardedHit") {
     return {
-      headline: "Reagiert auf Treffer",
-      detail: `${formatSeconds(effectiveSeconds)} s Pause danach.`,
+      headline: copy(language, "Reagiert auf Treffer", "Reacts to hits"),
+      detail: copy(
+        language,
+        `${formatSeconds(effectiveSeconds, language)} s Pause danach.`,
+        `${formatSeconds(effectiveSeconds, language)}s lockout afterwards.`,
+      ),
       slots: [],
       active: isFaster,
     };
   }
   return {
-    headline: `Alle ${formatSeconds(effectiveSeconds)} s`,
+    headline: copy(
+      language,
+      `Alle ${formatSeconds(effectiveSeconds, language)} s`,
+      `Every ${formatSeconds(effectiveSeconds, language)}s`,
+    ),
     detail: isFaster
-      ? `Ohne Tempo-Buffs: ${formatSeconds(baseSeconds)} s.`
-      : "Aktueller Kampftakt.",
+      ? copy(
+          language,
+          `Ohne Tempo-Buffs: ${formatSeconds(baseSeconds, language)} s.`,
+          `Without speed buffs: ${formatSeconds(baseSeconds, language)}s.`,
+        )
+      : copy(language, "Aktueller Kampftakt.", "Current combat rhythm."),
     slots: [],
     active: isFaster,
   };
@@ -176,15 +207,19 @@ function affectsInsight(
   item: ItemInstance,
   definition: ItemDefinition,
   slot: number | null,
+  language: Language,
 ): ItemInsightSection {
   const passive = definition.passive;
   if (!passive || slot === null) {
     return {
-      headline: slot === null ? "Im Kessel inaktiv" : "Wirkt für sich",
+      headline:
+        slot === null
+          ? copy(language, "Im Kessel inaktiv", "Inactive outside cauldron")
+          : copy(language, "Wirkt für sich", "Self-contained"),
       detail:
         slot === null
-          ? "Ablage-Items buffen niemanden."
-          : "Bufft keine anderen Zutaten.",
+          ? copy(language, "Ablage-Items buffen niemanden.", "Reserve items do not buff anything.")
+          : copy(language, "Bufft keine anderen Zutaten.", "Does not buff other ingredients."),
       slots: [],
       active: false,
     };
@@ -193,30 +228,34 @@ function affectsInsight(
   const value = passive.values[item.level - 1];
   const targets = passiveTargetSlots(board, slot, definition);
   const visibleTargets = targets.filter((targetSlot) => targetSlot !== slot);
-  const names = itemNames(board, visibleTargets);
+  const names = itemNames(board, visibleTargets, language);
 
   if (passive.type === "hasteFamily") {
     const familyName = passive.family
-      ? FAMILY_META[passive.family].name
-      : "passenden";
+      ? familyText(passive.family, language, FAMILY_META[passive.family]).name
+      : copy(language, "passenden", "matching");
     return {
-      headline: `${formatPercent(value)} schneller`,
-      detail: `Alle ${familyName}-Zutaten – auch dieses Item.`,
+      headline: copy(language, `${formatPercent(value, language)} schneller`, `${formatPercent(value, language)} faster`),
+      detail: copy(
+        language,
+        `Alle ${familyName}-Zutaten – auch dieses Item.`,
+        `All ${familyName} ingredients — including this one.`,
+      ),
       slots: visibleTargets,
       active: true,
     };
   }
   if (passive.type === "hasteAdjacent") {
     return {
-      headline: `${formatPercent(value)} schneller`,
-      detail: names || "Passende direkte Nachbarn.",
+      headline: copy(language, `${formatPercent(value, language)} schneller`, `${formatPercent(value, language)} faster`),
+      detail: names || copy(language, "Passende direkte Nachbarn.", "Matching adjacent ingredients."),
       slots: visibleTargets,
       active: true,
     };
   }
   return {
-    headline: `${formatPercent(value)} stärker`,
-    detail: names || "Passende direkte Nachbarn.",
+    headline: copy(language, `${formatPercent(value, language)} stärker`, `${formatPercent(value, language)} stronger`),
+    detail: names || copy(language, "Passende direkte Nachbarn.", "Matching adjacent ingredients."),
     slots: visibleTargets,
     active: true,
   };
@@ -226,11 +265,12 @@ function benefitsInsight(
   board: Board,
   definition: ItemDefinition,
   slot: number | null,
+  language: Language,
 ): ItemInsightSection {
   if (slot === null) {
     return {
-      headline: "Keine Buffs aktiv",
-      detail: "Die Ablage pausiert alle Einflüsse.",
+      headline: copy(language, "Keine Buffs aktiv", "No buffs active"),
+      detail: copy(language, "Die Ablage pausiert alle Einflüsse.", "Reserve pauses all influences."),
       slots: [],
       active: false,
     };
@@ -242,30 +282,33 @@ function benefitsInsight(
   const hasSelfSpeed = sources.speed.includes(slot);
   const details: string[] = [];
   if (externalSpeed.length > 0 || hasSelfSpeed) {
-    const names = itemNames(board, externalSpeed);
+    const names = itemNames(board, externalSpeed, language);
     details.push(
       names && hasSelfSpeed
-        ? `Tempo durch eigene Aura und ${names}.`
+        ? copy(language, `Tempo durch eigene Aura und ${names}.`, `Speed from its own aura and ${names}.`)
         : names
-          ? `Tempo durch ${names}.`
-          : "Tempo durch die eigene Aura.",
+          ? copy(language, `Tempo durch ${names}.`, `Speed from ${names}.`)
+          : copy(language, "Tempo durch die eigene Aura.", "Speed from its own aura."),
     );
   }
   if (externalPower.length > 0) {
-    details.push(`Wirkung durch ${itemNames(board, externalPower)}.`);
+    const names = itemNames(board, externalPower, language);
+    details.push(copy(language, `Wirkung durch ${names}.`, `Power from ${names}.`));
   }
 
   const slots = [...new Set([...externalSpeed, ...externalPower])];
   return {
     headline:
       sources.speed.length > 0 && sources.power.length > 0
-        ? "Schneller und stärker"
+        ? copy(language, "Schneller und stärker", "Faster and stronger")
         : sources.speed.length > 0
-          ? "Bereits beschleunigt"
+          ? copy(language, "Bereits beschleunigt", "Already accelerated")
           : sources.power.length > 0
-            ? "Wirkung verstärkt"
-            : "Kein Platzierungs-Buff",
-    detail: details.join(" ") || "Aktuell wirkt kein anderes Item darauf.",
+            ? copy(language, "Wirkung verstärkt", "Effect empowered")
+            : copy(language, "Kein Platzierungs-Buff", "No placement buff"),
+    detail:
+      details.join(" ") ||
+      copy(language, "Aktuell wirkt kein anderes Item darauf.", "No other item currently affects it."),
     slots,
     active: sources.speed.length > 0 || sources.power.length > 0,
   };
@@ -276,11 +319,12 @@ function synergyInsight(
   item: ItemInstance,
   definition: ItemDefinition,
   slot: number | null,
+  language: Language,
 ): ItemInsightSection {
   if (slot === null) {
     return {
-      headline: "Ablage",
-      detail: "Zählt nicht für die Synergie.",
+      headline: copy(language, "Ablage", "Reserve"),
+      detail: copy(language, "Zählt nicht für die Synergie.", "Does not count toward synergy."),
       slots: [],
       active: false,
     };
@@ -288,13 +332,22 @@ function synergyInsight(
   const total = getFamilyWeights(board)[definition.family];
   const contribution = 2 ** (item.level - 1);
   const active = total >= 3;
+  const family = familyText(
+    definition.family,
+    language,
+    FAMILY_META[definition.family],
+  );
   return {
     headline: active
-      ? `${FAMILY_META[definition.family].name} aktiv`
-      : `${FAMILY_META[definition.family].name} ${total}/3`,
+      ? copy(language, `${family.name} aktiv`, `${family.name} active`)
+      : `${family.name} ${total}/3`,
     detail: active
-      ? FAMILY_META[definition.family].shortBonus
-      : `Dieses Item zählt ${contribution}. Noch ${Math.max(0, 3 - total)} bis zum Bonus.`,
+      ? family.shortBonus
+      : copy(
+          language,
+          `Dieses Item zählt ${contribution}. Noch ${Math.max(0, 3 - total)} bis zum Bonus.`,
+          `This item counts as ${contribution}. ${Math.max(0, 3 - total)} more to activate the bonus.`,
+        ),
     slots: [],
     active,
   };
@@ -304,12 +357,13 @@ export function getItemInsights(
   board: Board,
   item: ItemInstance,
   slot: number | null,
+  language: Language = "de",
 ): ItemInsights {
   const definition = ITEM_BY_ID[item.itemId];
   return {
-    cadence: cadenceInsight(board, item, definition, slot),
-    affects: affectsInsight(board, item, definition, slot),
-    benefits: benefitsInsight(board, definition, slot),
-    synergy: synergyInsight(board, item, definition, slot),
+    cadence: cadenceInsight(board, item, definition, slot, language),
+    affects: affectsInsight(board, item, definition, slot, language),
+    benefits: benefitsInsight(board, definition, slot, language),
+    synergy: synergyInsight(board, item, definition, slot, language),
   };
 }

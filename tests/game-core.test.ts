@@ -27,6 +27,18 @@ import {
   pruneExpiredFloatingNumbers,
 } from "../app/game/combatFloatingNumbers";
 import { getItemInsights } from "../app/game/itemInsights";
+import {
+  campaignText,
+  englishTranslationKeys,
+  itemDescription,
+  itemName,
+  opponentText,
+  translate,
+  translateCombatAmount,
+  translateCombatLabel,
+  translateGameError,
+  translationKeys,
+} from "../app/game/i18n";
 import { CAMPAIGNS, getCampaignFamilies } from "../app/game/campaigns";
 import {
   CAMPAIGN_OPPONENTS,
@@ -130,6 +142,61 @@ function combatEvent(
 function createShopState(seed: number): GameState {
   return enterOpeningShop(createInitialState(seed));
 }
+
+test("German and English dictionaries expose the same complete key set", () => {
+  assert.deepEqual(
+    [...englishTranslationKeys].sort(),
+    [...translationKeys].sort(),
+  );
+  assert.equal(translate("de", "fightStart"), "KAMPF STARTEN");
+  assert.equal(translate("en", "fightStart"), "START BATTLE");
+  assert.equal(
+    translate("en", "roundOf", { round: 2, max: 8 }),
+    "Round 2 of 8",
+  );
+});
+
+test("English localization covers gameplay data and generated combat text", () => {
+  assert.equal(itemName(ITEM_BY_ID.chili, "en"), "Chili Pepper");
+  assert.match(itemDescription(ITEM_BY_ID.chili, 3, "en"), /Burn/);
+  assert.equal(
+    opponentText(CAMPAIGN_OPPONENTS[0], "en").title,
+    "The Firestarter",
+  );
+  assert.equal(
+    campaignText(CAMPAIGNS[1], "en").name,
+    "The Frostbound Archive",
+  );
+  assert.equal(
+    translateGameError("Nicht genug Gold.", "en"),
+    "Not enough gold.",
+  );
+  assert.equal(
+    translateCombatLabel("Spiegelscherbe · Nachhall", "en"),
+    "Mirror Shard · aftershock",
+  );
+  assert.equal(
+    translateCombatAmount("+0,65 s gegnerische Ladezeit", "en"),
+    "+0.65s enemy cooldown",
+  );
+});
+
+test("item insights switch language without changing gameplay values", () => {
+  const board = [
+    item("p1", "chili", 1),
+    item("p2", "ember-core", 1),
+    null,
+    null,
+    null,
+  ];
+  const german = getItemInsights(board, board[1]!, 1, "de");
+  const english = getItemInsights(board, board[1]!, 1, "en");
+
+  assert.match(german.affects.headline, /schneller/);
+  assert.match(english.affects.headline, /faster/);
+  assert.deepEqual(english.affects.slots, german.affects.slots);
+  assert.equal(english.affects.active, german.affects.active);
+});
 
 test("item details explain outgoing and incoming neighbor buffs", () => {
   const board = [

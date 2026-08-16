@@ -19,6 +19,11 @@ funktioniert.
 Das Spiel läuft ohne Installation im Browser. Der Kampagnenstand wird lokal auf
 dem Gerät gespeichert.
 
+Die Oberfläche ist vollständig auf **Deutsch und Englisch** spielbar. Beim
+ersten Besuch wird die Browsersprache verwendet; danach bleibt die Auswahl aus
+den Einstellungen lokal auf dem Gerät gespeichert. Spielstand und Sprache sind
+bewusst getrennt, sodass ein Sprachwechsel keinen Run verändert.
+
 ## Ingame-Eindrücke
 
 <p align="center">
@@ -127,6 +132,8 @@ synchronisiert, statt nur eine abstrakte Zahl einzublenden.
 - individuelle Projektilgrafiken, gestaffelte Merge-Inszenierung und
   responsive Layouts
 - Fullscreen-Modus, Safe Areas und große Touchziele für moderne Smartphones
+- vollständige DE/EN-Lokalisierung für Menüs, Kampagnen, Gegner, Zutaten,
+  Tooltips, Kampfmeldungen und barrierefreie Beschriftungen
 
 ## Produktvision
 
@@ -154,8 +161,14 @@ Dabei gelten fünf Leitlinien:
 - statischer Build für GitHub Pages
 - getrennte, deterministische Kampfsimulation und UI-Präsentation
 - datengetriebene Zutaten und Gegner
+- leichtgewichtige, typisierte DE/EN-Sprachschicht ohne Serverabhängigkeit;
+  Balancewerte bleiben sprachunabhängig und werden nur einmal gepflegt
 - lokal versionierter Spielstand mit Validierung
-- automatisierte Tests für Shop, Kampagne, Simulation und Kampfdarstellung
+- automatisierte Tests für Shop, Kampagne, Simulation, Kampfdarstellung und
+  Übersetzungsabdeckung
+
+Der statische Sprachansatz funktioniert unverändert auf GitHub Pages, Netlify,
+Vercel und klassischem Static Hosting.
 
 Die verbindlichen Produkt- und Spielregeln stehen in
 [`docs/GAME_SPEC.md`](docs/GAME_SPEC.md).

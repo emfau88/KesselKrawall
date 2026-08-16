@@ -19,6 +19,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "de_DE",
+    alternateLocale: ["en_US"],
     url: "./",
     siteName: "Kessel-Krawall",
     title: "Kessel-Krawall – Magischer Mobile-Autobattler",

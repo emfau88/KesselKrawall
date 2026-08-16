@@ -46,9 +46,23 @@ import {
   mergeFloatingCombatNumbers,
   pruneExpiredFloatingNumbers,
   type FloatingCombatNumber,
-  type FloatingCombatNumberType,
 } from "./combatFloatingNumbers";
 import { getItemInsights, type ItemInsights } from "./itemInsights";
+import {
+  campaignText,
+  familyText,
+  formatDecimal,
+  I18nProvider,
+  itemDescription,
+  itemName,
+  opponentText,
+  translate,
+  translateCombatAmount,
+  translateCombatLabel,
+  translateGameError,
+  useI18n,
+  type Language,
+} from "./i18n";
 import {
   activateGameAudio,
   playCombatSound,
@@ -304,32 +318,41 @@ function eventIcon(kind: CombatEventKind): UiAsset {
   }
 }
 
-function mergeValueLabel(definition: ItemDefinition): string {
+function mergeValueLabel(
+  definition: ItemDefinition,
+  language: Language,
+): string {
+  const t = (key: Parameters<typeof translate>[1]) => translate(language, key);
   switch (definition.effect) {
     case "poison":
-      return "Giftstapel";
+      return t("poisonStacks");
     case "shield":
     case "shieldDamage":
-      return "Schild";
+      return t("shield");
     case "heal":
     case "hybrid":
-      return "Heilung";
+      return t("healing");
     default:
-      return "Schaden";
+      return t("damage");
   }
 }
 
-function mergeBonusLabel(definition: ItemDefinition, level: ItemLevel): string | null {
+function mergeBonusLabel(
+  definition: ItemDefinition,
+  level: ItemLevel,
+  language: Language,
+): string | null {
+  const t = (key: Parameters<typeof translate>[1]) => translate(language, key);
   if (level !== 3) return null;
   switch (definition.levelThreeBonus) {
     case "burn":
-      return "NEU: Verursacht Brand";
+      return t("newBurn");
     case "cleansePoison":
-      return "NEU: Entfernt Gift";
+      return t("newCleanse");
     case "overhealShield":
-      return "NEU: Überheilung wird Schild";
+      return t("newOverheal");
     default:
-      return "MAXIMALSTUFE ERREICHT";
+      return t("maxLevel");
   }
 }
 
@@ -345,6 +368,7 @@ function findEventSource(
   event: CombatEvent | null,
   playerBoard: Board,
   enemyBoard: Board,
+  language: Language,
 ): EventSource | null {
   if (!event) return null;
   const board = event.actor === "player" ? playerBoard : enemyBoard;
@@ -354,38 +378,45 @@ function findEventSource(
   const definition = ITEM_BY_ID[instance.itemId];
   return {
     itemId: definition.id,
-    name: definition.name,
+    name: itemName(definition, language),
     art: ITEM_ART[definition.id],
     family: definition.family,
     slot,
     side: event.actor,
     cadenceLabel:
       definition.trigger?.type === "onGuardedHit"
-        ? `Trefferkonter · ${formatCooldown(getItemCooldownMs(board, slot))} Sperre`
+        ? translate(language, "counterCooldown", {
+            time: formatCooldown(getItemCooldownMs(board, slot), language),
+          })
         : definition.trigger?.type === "emergency"
-          ? `einmal unter ${Math.round(definition.trigger.threshold * 100)} % LP`
+          ? translate(language, "emergencyOnce", {
+              percent: Math.round(definition.trigger.threshold * 100),
+            })
           : definition.trigger?.type === "ramp"
-            ? `alle ${formatCooldown(getItemCooldownMs(board, slot))} · wird stärker`
-            : `alle ${formatCooldown(getItemCooldownMs(board, slot))}`,
+            ? translate(language, "growsStronger", {
+                time: formatCooldown(getItemCooldownMs(board, slot), language),
+              })
+            : translate(language, "everyCadence", {
+                time: formatCooldown(getItemCooldownMs(board, slot), language),
+              }),
   };
 }
 
-function formatCooldown(milliseconds: number): string {
-  return `${(milliseconds / 1_000).toFixed(1).replace(".", ",")} s`;
+function formatCooldown(milliseconds: number, language: Language): string {
+  return `${formatDecimal(milliseconds / 1_000, language)}${
+    language === "en" ? "s" : " s"
+  }`;
 }
 
-function formatEffectDuration(milliseconds: number): string {
-  if (milliseconds < 1_000) return "<1 s";
-  return `${String(Math.ceil(milliseconds / 100) / 10).replace(".", ",")} s`;
+function formatEffectDuration(
+  milliseconds: number,
+  language: Language,
+): string {
+  if (milliseconds < 1_000) return language === "en" ? "<1s" : "<1 s";
+  return `${formatDecimal(Math.ceil(milliseconds / 100) / 10, language)}${
+    language === "en" ? "s" : " s"
+  }`;
 }
-
-const FLOATING_NUMBER_LABEL: Record<FloatingCombatNumberType, string> = {
-  damage: "Treffer",
-  heal: "Heilung",
-  shield: "Schild",
-  poison: "Gift",
-  burn: "Brand",
-};
 
 function TimedStatusBadge({
   label,
@@ -400,6 +431,7 @@ function TimedStatusBadge({
   battleTime: number;
   className: string;
 }) {
+  const { language, t } = useI18n();
   const remaining = Math.max(0, status.expiresAt - battleTime);
   if (status.stacks <= 0 || remaining <= 0) return null;
 
@@ -408,13 +440,19 @@ function TimedStatusBadge({
     ? Math.max(0, Math.min(1, 1 - untilTick / status.interval))
     : 0;
   const description =
-    label === "Gift"
-      ? `Gift: ${status.stacks} gemeinsame Stapel von maximal 12. ` +
-        `Bei ${POISON_BURST_THRESHOLD} Stapeln entsteht ein Toxinschock. ` +
-        `Nächster Tick verursacht ${Math.ceil(status.stacks / 2)} Schaden, ` +
-        `danach verfallen 2 Stapel. Tick in ${formatEffectDuration(untilTick)}`
-      : `${label}: ${status.stacks} Stapel, noch etwa ${formatEffectDuration(remaining)}, ` +
-        `nächster Tick in ${formatEffectDuration(untilTick)}`;
+    label === t("poison")
+      ? t("poisonDescription", {
+          stacks: status.stacks,
+          threshold: POISON_BURST_THRESHOLD,
+          damage: Math.ceil(status.stacks / 2),
+          tick: formatEffectDuration(untilTick, language),
+        })
+      : t("timedStatusDescription", {
+          label,
+          stacks: status.stacks,
+          remaining: formatEffectDuration(remaining, language),
+          tick: formatEffectDuration(untilTick, language),
+        });
   const style = {
     "--status-progress": `${progress * 100}%`,
   } as CSSProperties;
@@ -434,7 +472,7 @@ function TimedStatusBadge({
         <small>{label}</small>
       </span>
       <span className="status-timing" aria-hidden="true">
-        <small>Tick {formatEffectDuration(untilTick)}</small>
+        <small>{t("tickTime", { time: formatEffectDuration(untilTick, language) })}</small>
         <i className="status-progress">
           <span />
         </i>
@@ -452,33 +490,34 @@ function CombatStatusRow({
   shield: number;
   battleTime: number;
 }) {
+  const { t } = useI18n();
   return (
-    <div className="combat-status-row" aria-label="Aktive Kampfeffekte">
+    <div className="combat-status-row" aria-label={t("activeCombatEffects")}>
       {shield > 0 && (
         <span
           className="combat-status status-shield"
-          title={`Schild: ${shield}. Maximal 50 % der maximalen Lebenspunkte.`}
-          aria-label={`Schild ${shield}, begrenzt auf 50 Prozent der maximalen Lebenspunkte`}
+          title={t("shieldDescription", { shield })}
+          aria-label={t("shieldAria", { shield })}
         >
           <span className="status-icon-shell">
             <UiIcon asset="shield" className="status-icon" />
           </span>
           <span className="status-value">
             <b>{shield}</b>
-            <small>Schild</small>
+            <small>{t("shield")}</small>
           </span>
-          <small className="status-duration">bleibt</small>
+          <small className="status-duration">{t("remains")}</small>
         </span>
       )}
       <TimedStatusBadge
-        label="Gift"
+        label={t("poison")}
         asset="status-poison"
         status={status.poison}
         battleTime={battleTime}
         className="status-poison"
       />
       <TimedStatusBadge
-        label="Brand"
+        label={t("burn")}
         asset="status-burn"
         status={status.burn}
         battleTime={battleTime}
@@ -487,33 +526,33 @@ function CombatStatusRow({
       {status.rage && (
         <span
           className="combat-status status-rage"
-          title="Kesselzorn: +25 % Kraft für den restlichen Kampf."
-          aria-label="Kesselzorn, 25 Prozent mehr Kraft, dauerhaft"
+          title={t("rageDescription")}
+          aria-label={t("rageAria")}
         >
           <span className="status-icon-shell">
             <UiIcon asset="status-rage" className="status-icon" />
           </span>
           <span className="status-value">
             <b>+25%</b>
-            <small>Zorn</small>
+            <small>{t("rage")}</small>
           </span>
-          <small className="status-duration">dauerhaft</small>
+          <small className="status-duration">{t("permanent")}</small>
         </span>
       )}
       {status.timeFracture && (
         <span
           className="combat-status status-time-fracture"
-          title="Zeitbruch: +15 % Kraft für den Chronokessel. Dein nächster Angriffstakt wurde einmalig um 0,9 Sekunden verschoben."
-          aria-label="Zeitbruch, Chronokessel dauerhaft 15 Prozent stärker, dein Angriffstakt wurde einmalig verzögert"
+          title={t("timeFractureDescription")}
+          aria-label={t("timeFractureAria")}
         >
           <span className="status-icon-shell">
             <UiIcon asset="speed" className="status-icon" />
           </span>
           <span className="status-value">
             <b>+15%</b>
-            <small>Zeitbruch</small>
+            <small>{t("timeFracture")}</small>
           </span>
-          <small className="status-duration">dauerhaft</small>
+          <small className="status-duration">{t("permanent")}</small>
         </span>
       )}
     </div>
@@ -537,11 +576,12 @@ function HealthBar({
   battleTime: number;
   showStatuses: boolean;
 }) {
+  const { t } = useI18n();
   const hpPercent = Math.max(0, Math.min(100, (hp / maxHp) * 100));
   const healthHue = Math.round(hpPercent * 1.15);
   const healthColor = `hsl(${healthHue} 72% 50%)`;
   return (
-    <div className="health-cluster" aria-label={`${label}: ${hp} Leben, ${shield} Schild`}>
+    <div className="health-cluster" aria-label={t("healthAria", { label, hp, shield })}>
       <div className="health-meta">
         <UiIcon asset="health" className="health-icon" />
         <span>{label}</span>
@@ -578,6 +618,7 @@ function CombatFloatingNumberLayer({
 }: {
   numbers: readonly FloatingCombatNumber[];
 }) {
+  const { t } = useI18n();
   if (numbers.length === 0) return null;
 
   return (
@@ -609,7 +650,13 @@ function CombatFloatingNumberLayer({
           </strong>
           <small>
             {number.hitCount > 1 ? `${number.hitCount}× ` : ""}
-            {FLOATING_NUMBER_LABEL[number.type]}
+            {t(
+              number.type === "damage"
+                ? "hit"
+                : number.type === "heal"
+                  ? "healing"
+                  : number.type,
+            )}
           </small>
         </span>
       ))}
@@ -654,6 +701,7 @@ function CauldronBoard({
   insightTargetSlots?: readonly number[];
   insightSourceSlots?: readonly number[];
 }) {
+  const { language, t } = useI18n();
   const reactionKey = `${hitKind ?? "idle"}-${
     activeUids.join("-") || "rest"
   }`;
@@ -742,23 +790,34 @@ function CauldronBoard({
               : cooldownState.progress;
           const cadenceLabel =
             trigger?.type === "onGuardedHit"
-              ? `Konter nach abgefangenem oder ungeschütztem Treffer, ${formatCooldown(cooldown)} Sperre`
+              ? t("counterCadence", {
+                  time: formatCooldown(cooldown, language),
+                })
               : trigger?.type === "emergency"
-                ? `einmal unter ${Math.round(trigger.threshold * 100)} Prozent Leben${
-                    emergencyUsed ? ", bereits ausgelöst" : ""
-                  }`
+                ? t("emergencyLife", {
+                    percent: Math.round(trigger.threshold * 100),
+                    used: emergencyUsed ? t("alreadyTriggered") : "",
+                  })
                 : cooldown > 0
-                  ? `aktiviert alle ${formatCooldown(cooldown)}`
+                  ? t("everyCadence", {
+                      time: formatCooldown(cooldown, language),
+                    })
                   : "";
           const slotLabel = definition
-            ? `Slot ${slot + 1}: ${definition.name}, Level ${instance!.level}${
-                cadenceLabel ? `, ${cadenceLabel}` : ""
-              }${isHasted ? ", dauerhaft beschleunigt" : ""}`
-            : `Slot ${slot + 1}: leer`;
+            ? t("slotItem", {
+                slot: slot + 1,
+                item: itemName(definition, language),
+                level: instance!.level,
+                cadence: cadenceLabel
+                  ? t("cadenceSuffix", { cadence: cadenceLabel })
+                  : "",
+                haste: isHasted ? t("permanentlyHastedSuffix") : "",
+              })
+            : t("slotEmpty", { slot: slot + 1 });
           const insightLabel = isInsightTarget
-            ? ", wird vom ausgewählten Item beeinflusst"
+            ? t("affectsSelectedSuffix")
             : isInsightSource
-              ? ", beeinflusst das ausgewählte Item"
+              ? t("benefitsSelectedSuffix")
               : "";
           const content = (
             <>
@@ -773,7 +832,9 @@ function CauldronBoard({
                   {combatActive && trigger?.type === "onGuardedHit" && (
                     <span
                       className="slot-trigger-badge is-reactive"
-                      title={`Trefferkonter · ${formatCooldown(cooldown)} Sperre`}
+                      title={t("counterCooldown", {
+                        time: formatCooldown(cooldown, language),
+                      })}
                       aria-hidden="true"
                     >
                       <UiIcon asset="speed" className="slot-trigger-icon" />
@@ -786,10 +847,10 @@ function CauldronBoard({
                       }`}
                       title={
                         emergencyUsed
-                          ? "Notfallwirkung bereits ausgelöst"
-                          : `Einmalige Notfallwirkung unter ${Math.round(
-                              trigger.threshold * 100,
-                            )} % Leben`
+                          ? t("emergencyUsed")
+                          : t("emergencyAvailable", {
+                              percent: Math.round(trigger.threshold * 100),
+                            })
                       }
                       aria-hidden="true"
                     >
@@ -799,7 +860,7 @@ function CauldronBoard({
                   {isHasted && (
                     <span
                       className="slot-haste-badge"
-                      title="Dauerhaft beschleunigt"
+                      title={t("permanentlyHasted")}
                       aria-hidden="true"
                     >
                       <UiIcon asset="speed" className="slot-haste-icon" />
@@ -875,16 +936,20 @@ function ReservePocket({
   selected: boolean;
   onClick: () => void;
 }) {
+  const { language, t } = useI18n();
   const definition = item ? ITEM_BY_ID[item.itemId] : null;
   const label = definition
-    ? `Ablage: ${definition.name}, Level ${item!.level}. Passiv, zählt nicht für Kampf oder Synergie.`
-    : "Ablage: leer. Hier kann eine Zutat passiv aufbewahrt werden.";
+    ? t("reserveItemAria", {
+        item: itemName(definition, language),
+        level: item!.level,
+      })
+    : t("reserveEmptyAria");
 
   return (
     <div className="reserve-pocket">
       <span className="reserve-pocket-label" aria-hidden="true">
-        ABLAGE
-        <small>PASSIV</small>
+        {t("reserve")}
+        <small>{t("passive")}</small>
       </span>
       <button
         type="button"
@@ -925,11 +990,16 @@ function SynergyStrip({
   board: Board;
   families: readonly Family[];
 }) {
+  const { language, t } = useI18n();
   const weights = getFamilyWeights(board);
   return (
-    <div className="synergy-strip" aria-label="Familien-Synergien">
+    <div className="synergy-strip" aria-label={t("familySynergies")}>
       {families.map((family) => {
-        const meta = FAMILY_META[family];
+        const rawMeta = FAMILY_META[family];
+        const meta = {
+          ...rawMeta,
+          ...familyText(family, language, rawMeta),
+        };
         const active = weights[family] >= 3;
         const shownWeight = Math.min(weights[family], 3);
         return (
@@ -937,8 +1007,10 @@ function SynergyStrip({
             key={family}
             className={`synergy-pill ${familyClass(family)} ${active ? "is-active" : ""}`}
             title={meta.shortBonus}
-            aria-label={`${meta.name}: ${shownWeight} von 3. ${
-              active ? `Aktiv: ${meta.shortBonus}` : `Noch ${3 - shownWeight} bis zur Synergie`
+            aria-label={`${meta.name}: ${shownWeight}/3. ${
+              active
+                ? t("familyAriaActive", { bonus: meta.shortBonus })
+                : t("familyAriaMissing", { count: 3 - shownWeight })
             }`}
           >
             <span className="synergy-heading">
@@ -947,7 +1019,9 @@ function SynergyStrip({
               <strong>{shownWeight}/3</strong>
             </span>
             <span className="synergy-bonus">
-              {active ? meta.shortBonus : `Noch ${3 - shownWeight} bis zum Bonus`}
+              {active
+                ? meta.shortBonus
+                : t("missingToBonus", { count: 3 - shownWeight })}
             </span>
             <span className="synergy-progress" aria-hidden="true">
               <i style={{ width: `${(shownWeight / 3) * 100}%` }} />
@@ -968,6 +1042,8 @@ function OpponentPreparationCard({
   power: number;
   variant: number;
 }) {
+  const { language, t } = useI18n();
+  const localizedOpponent = opponentText(opponent, language);
   return (
     <details className="next-opponent-card">
       <summary>
@@ -982,35 +1058,38 @@ function OpponentPreparationCard({
         </span>
         <span className="prep-opponent-copy">
           <span className="eyebrow">
-            NÄCHSTER GEGNER
+            {t("nextOpponent")}
             {opponent.rank === "boss"
               ? " · BOSS"
               : opponent.rank === "elite"
                 ? " · ELITE"
                 : ""}
           </span>
-          <strong>{opponent.name}</strong>
-          <small>{opponent.title}</small>
+          <strong>{localizedOpponent.name}</strong>
+          <small>{localizedOpponent.title}</small>
         </span>
         <span className="prep-details-label">
-          Details <i aria-hidden="true">⌄</i>
+          {t("details")} <i aria-hidden="true">⌄</i>
         </span>
       </summary>
       <div className="prep-opponent-details">
         <div className="prep-opponent-meta">
           <span>
             <UiIcon asset="health" className="prep-stat-icon" />
-            {opponent.baseHp} LP
+            {opponent.baseHp} {language === "en" ? "HP" : "LP"}
           </span>
           <span>
             <UiIcon asset="power" className="prep-stat-icon" />
             ≈ {power}
           </span>
           <span>
-            Variante {variant + 1}/{1 + (opponent.boardVariants?.length ?? 0)}
+            {t("variant", {
+              current: variant + 1,
+              total: 1 + (opponent.boardVariants?.length ?? 0),
+            })}
           </span>
         </div>
-        <p>{opponent.threat}</p>
+        <p>{localizedOpponent.threat}</p>
         <ul>
           {opponent.board.map((instance, slot) => {
             const definition = instance
@@ -1018,7 +1097,7 @@ function OpponentPreparationCard({
               : null;
             return (
               <li key={slot}>
-                <span>Slot {slot + 1}</span>
+                <span>{t("slot", { slot: slot + 1 })}</span>
                 {definition ? (
                   <>
                     <ArtSprite
@@ -1026,14 +1105,14 @@ function OpponentPreparationCard({
                       className="prep-detail-item"
                     />
                     <strong>
-                      {definition.name} {ROMAN_LEVEL[instance!.level]}
+                      {itemName(definition, language)} {ROMAN_LEVEL[instance!.level]}
                     </strong>
                     <small>
-                      {definition.descriptions[instance!.level - 1]}
+                      {itemDescription(definition, instance!.level, language)}
                     </small>
                   </>
                 ) : (
-                  <em>leer</em>
+                  <em>{t("empty")}</em>
                 )}
               </li>
             );
@@ -1044,15 +1123,28 @@ function OpponentPreparationCard({
   );
 }
 
-function offerSynergyLabel(board: Board, family: Family): string {
+function offerSynergyLabel(
+  board: Board,
+  family: Family,
+  language: Language,
+): string {
   const current = Math.min(getFamilyWeights(board)[family], 3);
-  const familyName = FAMILY_META[family].name;
-  if (current >= 3) return `${familyName}-Synergie aktiv`;
-  if (current === 2) return `Aktiviert ${familyName}-Synergie`;
-  return `${familyName} ${current} → ${current + 1}/3`;
+  const familyName = familyText(family, language, FAMILY_META[family]).name;
+  if (current >= 3) {
+    return translate(language, "synergyActive", { family: familyName });
+  }
+  if (current === 2) {
+    return translate(language, "activatesSynergy", { family: familyName });
+  }
+  return translate(language, "synergyProgress", {
+    family: familyName,
+    current,
+    next: current + 1,
+  });
 }
 
 function StatsList({ stats }: { stats: ItemCombatStats[] }) {
+  const { language, t } = useI18n();
   const meaningful = stats.filter(
     (stat) =>
       stat.triggers > 0 ||
@@ -1061,7 +1153,7 @@ function StatsList({ stats }: { stats: ItemCombatStats[] }) {
       stat.shield > 0,
   );
   if (meaningful.length === 0) {
-    return <p className="empty-stats">Noch keine auswertbaren Aktionen.</p>;
+    return <p className="empty-stats">{t("noActions")}</p>;
   }
   const sorted = [...meaningful].sort(
     (left, right) =>
@@ -1080,8 +1172,8 @@ function StatsList({ stats }: { stats: ItemCombatStats[] }) {
   return (
     <div className="stats-list">
       <div className="stats-heading">
-        <span>KAMPFBEITRÄGE</span>
-        <small>stärkste Zutat zuerst</small>
+        <span>{t("battleContributions")}</span>
+        <small>{t("strongestIngredientFirst")}</small>
       </div>
       {sorted.map((stat) => {
         const definition = ITEM_BY_ID[stat.itemId];
@@ -1093,23 +1185,25 @@ function StatsList({ stats }: { stats: ItemCombatStats[] }) {
               : stat.shield;
         const primaryLabel =
           stat.totalDamage > 0
-            ? "Schaden"
+            ? t("damage")
             : stat.healing > 0
-              ? "Heilung"
-              : "Schild";
-        const details = [`${stat.triggers}× ausgelöst`];
+              ? t("healing")
+              : t("shield");
+        const details = [t("triggered", { count: stat.triggers })];
         if (stat.shieldDamage > 0) {
-          if (stat.hpDamage > 0) details.push(`${stat.hpDamage} LP`);
-          details.push(`${stat.shieldDamage} Schild`);
+          if (stat.hpDamage > 0) {
+            details.push(`${stat.hpDamage} ${language === "en" ? "HP" : "LP"}`);
+          }
+          details.push(`${stat.shieldDamage} ${t("shield")}`);
         }
         if (stat.totalDamage > 0 && stat.healing > 0) {
-          details.push(`+${stat.healing} Heilung`);
+          details.push(`+${stat.healing} ${t("healing")}`);
         }
         if (stat.totalDamage > 0 && stat.shield > 0) {
-          details.push(`+${stat.shield} Schild`);
+          details.push(`+${stat.shield} ${t("shield")}`);
         }
         if (stat.poisonApplied > 0) {
-          details.push(`${stat.poisonApplied} Gift`);
+          details.push(`${stat.poisonApplied} ${t("poison")}`);
         }
         const barWidth = Math.max(
           8,
@@ -1133,7 +1227,7 @@ function StatsList({ stats }: { stats: ItemCombatStats[] }) {
               />
             </span>
             <span className="stat-name">
-              {definition.name} {ROMAN_LEVEL[stat.level]}
+              {itemName(definition, language)} {ROMAN_LEVEL[stat.level]}
               <small>{details.join(" · ")}</small>
             </span>
             <span className="stat-primary">
@@ -1228,10 +1322,17 @@ function ItemInspectorCard({
   onClose: () => void;
   onSell: (element: HTMLButtonElement) => void;
 }) {
+  const { language, t } = useI18n();
+  const family = familyText(
+    definition.family,
+    language,
+    FAMILY_META[definition.family],
+  );
+  const localizedItemName = itemName(definition, language);
   return (
     <section
       className={`item-inspector ${familyClass(definition.family)}`}
-      aria-label={`Details zu ${definition.name}`}
+      aria-label={t("itemDetails", { item: localizedItemName })}
       data-testid="item-inspector"
     >
       <span className="inspector-icon" aria-hidden="true">
@@ -1246,16 +1347,16 @@ function ItemInspectorCard({
             asset={FAMILY_ICON[definition.family]}
             className="inspector-family-icon"
           />
-          {FAMILY_META[definition.family].name} · Stufe {ROMAN_LEVEL[item.level]}
+          {family.name} · {t("level", { level: ROMAN_LEVEL[item.level] })}
         </span>
-        <strong>{definition.name}</strong>
-        <p>{definition.descriptions[item.level - 1]}</p>
+        <strong>{localizedItemName}</strong>
+        <p>{itemDescription(definition, item.level, language)}</p>
       </div>
       <button
         type="button"
         className="inspector-close"
         onClick={onClose}
-        aria-label="Itemdetails schließen"
+        aria-label={t("closeItemDetails")}
         data-audio="manual"
       >
         ×
@@ -1264,7 +1365,7 @@ function ItemInspectorCard({
       <div className="inspector-facts">
         <div className={`inspector-fact ${insights.cadence.active ? "is-active" : ""}`}>
           <UiIcon asset="speed" className="inspector-fact-icon" />
-          <span>TAKT</span>
+          <span>{t("cadence")}</span>
           <b>{insights.cadence.headline}</b>
           <small>{insights.cadence.detail}</small>
         </div>
@@ -1273,7 +1374,7 @@ function ItemInspectorCard({
             asset={FAMILY_ICON[definition.family]}
             className="inspector-fact-icon"
           />
-          <span>SYNERGIE</span>
+          <span>{t("synergy")}</span>
           <b>{insights.synergy.headline}</b>
           <small>{insights.synergy.detail}</small>
         </div>
@@ -1281,12 +1382,12 @@ function ItemInspectorCard({
 
       <div className="inspector-influences">
         <div className={`inspector-influence ${insights.affects.active ? "is-active" : ""}`}>
-          <span><i aria-hidden="true">→</i> WIRKT AUF</span>
+          <span><i aria-hidden="true">→</i> {t("affects")}</span>
           <b>{insights.affects.headline}</b>
           <small>{insights.affects.detail}</small>
         </div>
         <div className={`inspector-influence ${insights.benefits.active ? "is-active" : ""}`}>
-          <span><i aria-hidden="true">←</i> WIRD VERSTÄRKT</span>
+          <span><i aria-hidden="true">←</i> {t("benefits")}</span>
           <b>{insights.benefits.headline}</b>
           <small>{insights.benefits.detail}</small>
         </div>
@@ -1295,8 +1396,8 @@ function ItemInspectorCard({
       <div className="inspector-actions">
         <small>
           {inReserve
-            ? "Tippe einen Kesselplatz, um diese Zutat einzusetzen."
-            : "Tippe einen zweiten Platz, um die Zutaten zu tauschen."}
+            ? t("reserveUseHint")
+            : t("swapHint")}
         </small>
         <button
           type="button"
@@ -1304,7 +1405,7 @@ function ItemInspectorCard({
           onClick={(event) => onSell(event.currentTarget)}
           data-audio="manual"
         >
-          Verkaufen <b>+{getSellValue(item)}</b>
+          {t("sell")} <b>+{getSellValue(item)}</b>
         </button>
       </div>
     </section>
@@ -1601,6 +1702,7 @@ function BattleVolleyVfx({
   tier: CombatBeatTier;
   onImpact: (beatId: string, contributionId: string) => void;
 }) {
+  const { language } = useI18n();
   return contributions.map((contribution, index) => (
     <BattleVfx
       key={contribution.id}
@@ -1610,6 +1712,7 @@ function BattleVolleyVfx({
         contribution.event,
         playerBoard,
         enemyBoard,
+        language,
       )}
       duration={shotDurationMs}
       tier={tier}
@@ -1648,7 +1751,8 @@ function createBattleViewState(
   };
 }
 
-export default function Game() {
+function GameContent() {
+  const { language, setLanguage, t } = useI18n();
   const [game, setGame] = useState<GameState>(() => createInitialState());
   const [screen, setScreen] = useState<AppScreen>("menu");
   const [progress, setProgress] = useState<PlayerProgress>(() =>
@@ -1674,7 +1778,7 @@ export default function Game() {
       return true;
     }
   });
-  const [feedback, setFeedback] = useState("Bereite deinen Kessel vor.");
+  const [feedback, setFeedback] = useState(() => t("prepareCauldron"));
   const [mergeNotices, setMergeNotices] = useState<MergeNotice[]>([]);
   const [busy, setBusy] = useState(false);
   const [combat, setCombat] = useState<CombatResult | null>(null);
@@ -1705,8 +1809,16 @@ export default function Game() {
   const mergeNotice = mergeNotices[0] ?? null;
 
   const campaign = useMemo(() => getCampaign(game.campaignId), [game.campaignId]);
+  const localizedCampaign = useMemo(
+    () => campaignText(campaign, language),
+    [campaign, language],
+  );
   const maxRounds = campaign.opponents.length;
   const opponent = useMemo(() => getCurrentOpponent(game), [game]);
+  const localizedOpponent = useMemo(
+    () => opponentText(opponent, language),
+    [language, opponent],
+  );
   const combatActivationTimes = useMemo(
     () => ({
       player: combat
@@ -1731,6 +1843,7 @@ export default function Game() {
         game.board,
         selectedItem,
         reserveSelected ? null : game.selectedSlot,
+        language,
       )
     : null;
   const playerPowerBreakdown = getPowerBreakdown(game.board);
@@ -1814,6 +1927,13 @@ export default function Game() {
   useEffect(() => {
     setCombatSoundsPlaybackEnabled(combatSoundsEnabled);
   }, [combatSoundsEnabled]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setFeedback(t("prepareCauldron"));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [language, t]);
 
   useEffect(() => {
     const markAudioActivated = () => {
@@ -1992,10 +2112,12 @@ export default function Game() {
       });
       setFeedback(
         combat.winner === "player"
-          ? "Dein Kessel gewinnt den Schlagabtausch!"
+          ? t("playerWinsFeedback")
           : combat.winner === "enemy"
-            ? `${opponent.name} behält die Oberhand.`
-            : "Beide Kessel sind gleichauf – unentschieden.",
+            ? t("opponentWinsFeedback", {
+                opponent: localizedOpponent.name,
+              })
+            : t("drawFeedback"),
       );
     };
 
@@ -2180,6 +2302,7 @@ export default function Game() {
                   soundCue.event,
                   game.board,
                   opponent.board,
+                  language,
                 )?.family ?? null,
               ),
               speedRef.current,
@@ -2331,8 +2454,10 @@ export default function Game() {
     game.board,
     game.phase,
     opponent.board,
-    opponent.name,
+    localizedOpponent.name,
+    language,
     screen,
+    t,
   ]);
 
   function announce(message: string) {
@@ -2340,8 +2465,13 @@ export default function Game() {
   }
 
   function announceActionError(message: string) {
-    playGameSound(message.toLocaleLowerCase("de").includes("voll") ? "cauldronFull" : "error");
-    announce(message);
+    const lowerMessage = message.toLocaleLowerCase(language);
+    playGameSound(
+      lowerMessage.includes("voll") || lowerMessage.includes("full")
+        ? "cauldronFull"
+        : "error",
+    );
+    announce(translateGameError(message, language));
   }
 
   function handleUiButtonClick(event: ReactMouseEvent<HTMLElement>) {
@@ -2421,19 +2551,19 @@ export default function Game() {
       const notices = result.merges.map((merge, index): MergeNotice => {
         const definition = ITEM_BY_ID[merge.itemId];
         return {
-          label: `${definition.name} ${ROMAN_LEVEL[merge.toLevel]}`,
+          label: `${itemName(definition, language)} ${ROMAN_LEVEL[merge.toLevel]}`,
           art: ITEM_ART[definition.id],
           family: definition.family,
           fromLevel: merge.fromLevel,
           toLevel: merge.toLevel,
-          valueLabel: mergeValueLabel(definition),
+          valueLabel: mergeValueLabel(definition, language),
           oldValue: definition.values[merge.fromLevel - 1],
           newValue: definition.values[merge.toLevel - 1],
           oldCooldown: definition.cooldown[merge.fromLevel - 1],
           newCooldown: definition.cooldown[merge.toLevel - 1],
           powerBefore,
           powerAfter,
-          bonus: mergeBonusLabel(definition, merge.toLevel),
+          bonus: mergeBonusLabel(definition, merge.toLevel, language),
           targetArea: merge.target.area,
           step: index + 1,
           total,
@@ -2442,19 +2572,21 @@ export default function Game() {
       setMergeNotices(notices);
       announce(
         total > 1
-          ? `${total}-stufige Merge-Kaskade!`
-          : `${notices[0].label} ist ${
-              notices[0].targetArea === "reserve"
-                ? "in der Ablage "
-                : ""
-            }verschmolzen.`,
+          ? t("mergeCascadeFeedback", { count: total })
+          : t("mergedFeedback", {
+              item: notices[0].label,
+              reserve:
+                notices[0].targetArea === "reserve"
+                  ? t("inReserveFragment")
+                  : "",
+            }),
       );
       setBusy(true);
     } else {
       announce(
         result.purchaseLocation?.area === "reserve"
-          ? "Zutat in der Ablage geparkt. Dort wirkt sie nicht im Kampf."
-          : "Zutat gekauft.",
+          ? t("parkedFeedback")
+          : t("boughtFeedback"),
       );
     }
   }
@@ -2465,7 +2597,7 @@ export default function Game() {
     if (result.error) return announceActionError(result.error);
     setGame(result.state);
     playGameSound("reroll");
-    announce(game.rerollsUsed === 0 ? "Kostenlos neu gewürfelt." : "Shop neu gewürfelt.");
+    announce(game.rerollsUsed === 0 ? t("freeRerollFeedback") : t("rerollFeedback"));
   }
 
   function handleSlot(slot: number) {
@@ -2476,7 +2608,7 @@ export default function Game() {
       setReserveSelected(false);
       setGame(result.state);
       playGameSound("uiSelect");
-      announce("Zutat zwischen Kessel und Ablage verschoben.");
+      announce(t("movedReserveFeedback"));
       return;
     }
     const wasSelected = game.selectedSlot;
@@ -2484,9 +2616,9 @@ export default function Game() {
     setGame(result.state);
     playGameSound("uiSelect");
     if (wasSelected === null && game.board[slot]) {
-      announce("Zutat gewählt. Tippe einen zweiten Platz zum Tauschen.");
+      announce(t("selectedFeedback"));
     } else if (wasSelected !== null && wasSelected !== slot) {
-      announce("Zutaten umsortiert.");
+      announce(t("rearrangedFeedback"));
     }
   }
 
@@ -2498,19 +2630,19 @@ export default function Game() {
       setReserveSelected(false);
       setGame(result.state);
       playGameSound("uiSelect");
-      announce("Zutat zwischen Kessel und Ablage verschoben.");
+      announce(t("movedReserveFeedback"));
       return;
     }
     if (!game.reserve) {
-      announceActionError("Die Ablage ist leer. Wähle zuerst eine Zutat im Kessel.");
+      announceActionError(t("reserveEmptyFeedback"));
       return;
     }
     setReserveSelected((current) => !current);
     playGameSound("uiSelect");
     announce(
       reserveSelected
-        ? "Auswahl aufgehoben."
-        : "Ablage gewählt. Tippe einen Kesselplatz zum Tauschen.",
+        ? t("selectionCleared")
+        : t("reserveSelected"),
     );
   }
 
@@ -2532,7 +2664,7 @@ export default function Game() {
     );
     setReserveSelected(false);
     setGame(result.state);
-    announce(`Verkauft für ${result.goldDelta} Gold.`);
+    announce(t("soldFeedback", { gold: result.goldDelta ?? 0 }));
   }
 
   function updateCombatPause(paused: boolean) {
@@ -2563,7 +2695,7 @@ export default function Game() {
     setBattleEnding(null);
     setBattleView(createBattleViewState(battle));
     setGame(battleState);
-    announce("Der Kessel-Krawall beginnt!");
+    announce(t("battleBegins"));
   }
 
   function handleContinue() {
@@ -2592,29 +2724,29 @@ export default function Game() {
         persistPlayerProgress(window.localStorage, updated);
         return updated;
       });
-      announce(`${opponent.name} fällt. Die Kampagnentrophäe gehört dir!`);
+      announce(t("trophyFeedback", { opponent: localizedOpponent.name }));
     } else if (nextGame.phase === "gameover") {
-      announce("Das letzte Siegel ist gebrochen. Die Kampagne endet.");
+      announce(t("campaignLostFeedback"));
     } else if (outcome === "player") {
       announce(
         nextGame.round === RESERVE_UNLOCK_ROUND
-          ? "Ablage freigeschaltet! Dort kannst du eine Zutat passiv parken."
-          : "Siegbonus erhalten. Nächster Gegner!",
+          ? t("reserveUnlockedFeedback")
+          : t("nextOpponentFeedback"),
       );
     } else if (outcome === "draw") {
-      announce(`Unentschieden. ${opponent.name} wartet auf die Revanche.`);
+      announce(t("drawRevengeFeedback", { opponent: localizedOpponent.name }));
     } else {
       announce(
         openingLossProtected
-          ? `Der erste Fehlversuch ist geschützt. Revanche gegen ${opponent.name}!`
-          : `Ein Siegel ist gebrochen. Revanche gegen ${opponent.name}!`,
+          ? t("protectedRevengeFeedback", { opponent: localizedOpponent.name })
+          : t("sealRevengeFeedback", { opponent: localizedOpponent.name }),
       );
     }
   }
 
   function handleEnterOpeningShop() {
     setGame((current) => enterOpeningShop(current));
-    announce("Wähle jetzt deine ersten Zutaten für den Kessel.");
+    announce(t("chooseOpeningFeedback"));
   }
 
   function handleReset() {
@@ -2633,7 +2765,7 @@ export default function Game() {
     setMergeNotices([]);
     setReserveSelected(false);
     setBusy(false);
-    announce("Ein neuer Kessel betritt den Wettstreit.");
+    announce(t("newCauldronFeedback"));
   }
 
   function startCampaign(
@@ -2658,7 +2790,11 @@ export default function Game() {
     setConfirmNewRun(false);
     setHasStoredRun(true);
     setScreen("game");
-    announce(`${getCampaign(campaignId).name} beginnt.`);
+    announce(
+      t("campaignBeginsFeedback", {
+        campaign: campaignText(getCampaign(campaignId), language).name,
+      }),
+    );
   }
 
   function startRequestedCampaign() {
@@ -2670,7 +2806,7 @@ export default function Game() {
       campaignId === "frostbound-vault" &&
       !hasCompletedCampaign(progress, "grand-tournament")
     ) {
-      announceActionError("Besiege zuerst den Großkessel in Kampagne I.");
+      announceActionError(t("unlockCampaignError"));
       return;
     }
     setRequestedCampaign(campaignId);
@@ -2684,7 +2820,7 @@ export default function Game() {
   function handleContinueRun() {
     setConfirmNewRun(false);
     setScreen("game");
-    announce("Willkommen zurück im Kesselturnier.");
+    announce(t("welcomeBack"));
   }
 
   function handleReturnToMenu() {
@@ -2737,7 +2873,7 @@ export default function Game() {
 
     try {
       if (!fullscreenElement && isStandalone) {
-        announce("Kessel-Krawall läuft bereits bildschirmfüllend.");
+        announce(t("alreadyFullscreenFeedback"));
         return;
       }
 
@@ -2747,7 +2883,7 @@ export default function Game() {
         } else {
           await fullscreenDocument.webkitExitFullscreen?.();
         }
-        announce("Vollbild verlassen.");
+        announce(t("fullscreenLeftFeedback"));
         return;
       }
 
@@ -2758,7 +2894,7 @@ export default function Game() {
         await target.webkitRequestFullscreen();
       } else {
         announce(
-          "Vollbild ist hier nicht verfügbar. Auf dem iPhone: Teilen → Zum Home-Bildschirm.",
+          t("fullscreenUnavailable"),
         );
         return;
       }
@@ -2769,7 +2905,7 @@ export default function Game() {
       } catch {
         // Orientation locking is optional and not supported by every browser.
       }
-      announce("Vollbild aktiv. Viel Erfolg im Kesselturnier!");
+      announce(t("fullscreenActiveFeedback"));
       window.setTimeout(() => {
         setIsFullscreen(
           Boolean(
@@ -2779,7 +2915,7 @@ export default function Game() {
         );
       }, 300);
     } catch {
-      announce("Vollbild konnte vom Browser nicht aktiviert werden.");
+      announce(t("fullscreenFailed"));
     }
   }
 
@@ -2823,14 +2959,16 @@ export default function Game() {
     focusedContribution?.event ?? battleView?.event ?? null,
     game.board,
     opponent.board,
+    language,
   );
   const importantEventSource = findEventSource(
     importantCombatMessage?.event ?? null,
     game.board,
     opponent.board,
+    language,
   );
   const sideLabel = (side: Side) =>
-    side === "player" ? "Dein Kessel" : opponent.name;
+    side === "player" ? t("yourCauldron") : localizedOpponent.name;
   const focusedEventRoute = focusedContribution
     ? `${eventSource?.name ?? sideLabel(focusedContribution.event.actor)} → ${sideLabel(
         focusedContribution.event.target,
@@ -2870,13 +3008,13 @@ export default function Game() {
     combat?.enemyStats.reduce((sum, stat) => sum + stat.hpDamage, 0) ?? 0;
   const fullscreenActive = isFullscreen || isStandalone;
   const fullscreenLabel = isStandalone
-    ? "App läuft bereits im Vollbild"
+    ? t("fullscreenAlready")
     : isFullscreen
-      ? "Vollbild verlassen"
-      : "Vollbild aktivieren";
+      ? t("fullscreenExit")
+      : t("fullscreenEnter");
   const audioSettingsLabel = audioActivated
-    ? "Audio"
-    : "Ton aktivieren";
+    ? t("audio")
+    : t("soundEnable");
   const audioSettingsDialog = showAudioSettings ? (
     <div
       className="audio-settings-backdrop"
@@ -2896,15 +3034,14 @@ export default function Game() {
           type="button"
           className="audio-settings-close"
           onClick={() => setShowAudioSettings(false)}
-          aria-label="Audio-Einstellungen schließen"
+          aria-label={t("settingsClose")}
         >
           ×
         </button>
-        <span className="eyebrow">TON &amp; ATMOSPHÄRE</span>
-        <h2 id="audio-settings-title">Audio-Einstellungen</h2>
+        <span className="eyebrow">{t("settingsKicker")}</span>
+        <h2 id="audio-settings-title">{t("settingsTitle")}</h2>
         <p id="audio-settings-description">
-          Der Ton ist aktiviert. Kampfeffekte kannst du unabhängig von Musik,
-          Menü- und Ergebnissounds einstellen.
+          {t("settingsDescription")}
         </p>
         <button
           type="button"
@@ -2914,16 +3051,42 @@ export default function Game() {
           onClick={handleCombatSoundsToggle}
         >
           <span className="audio-setting-copy">
-            <strong>Kampfsounds</strong>
-            <small>Magie, Treffer, Heilung und Schutz</small>
+            <strong>{t("combatSounds")}</strong>
+            <small>{t("combatSoundsDetail")}</small>
           </span>
           <span className="audio-switch" aria-hidden="true">
             <i />
           </span>
-          <b>{combatSoundsEnabled ? "AN" : "AUS"}</b>
+          <b>{combatSoundsEnabled ? t("on") : t("off")}</b>
         </button>
+        <div className="language-setting-row">
+          <span className="audio-setting-copy">
+            <strong>{t("language")}</strong>
+            <small>{t("languageDetail")}</small>
+          </span>
+          <div className="language-choice" role="group" aria-label={t("language")}>
+            <button
+              type="button"
+              className={language === "de" ? "is-active" : ""}
+              aria-pressed={language === "de"}
+              onClick={() => setLanguage("de")}
+              data-audio="manual"
+            >
+              DE <small>{t("german")}</small>
+            </button>
+            <button
+              type="button"
+              className={language === "en" ? "is-active" : ""}
+              aria-pressed={language === "en"}
+              onClick={() => setLanguage("en")}
+              data-audio="manual"
+            >
+              EN <small>{t("english")}</small>
+            </button>
+          </div>
+        </div>
         <small className="audio-settings-note">
-          Die Auswahl wird auf diesem Gerät gespeichert.
+          {t("savedOnDevice")}
         </small>
       </section>
     </div>
@@ -2931,15 +3094,19 @@ export default function Game() {
 
   const runStateLabel =
     game.phase === "victory"
-      ? "Kampagne gewonnen"
+      ? t("campaignWon")
       : game.phase === "gameover"
-        ? "Kampagne beendet"
+        ? t("campaignEnded")
         : game.phase === "battle"
-          ? `Kampf läuft · Runde ${game.round}`
+          ? t("battleRunningRound", { round: game.round })
           : game.phase === "result"
-            ? `Ergebnis bereit · Runde ${game.round}`
-            : `Runde ${game.round} von ${maxRounds}`;
+            ? t("resultReadyRound", { round: game.round })
+            : t("roundOf", { round: game.round, max: maxRounds });
   const requestedCampaignDefinition = getCampaign(requestedCampaign);
+  const localizedRequestedCampaign = campaignText(
+    requestedCampaignDefinition,
+    language,
+  );
   const newRunDialog = confirmNewRun ? (
     <div
       className="new-run-dialog-backdrop"
@@ -2958,12 +3125,12 @@ export default function Game() {
         <span className="dialog-seal" aria-hidden="true">
           <UiIcon asset="run-seal" className="dialog-seal-icon" />
         </span>
-        <span className="eyebrow">SPIELSTAND ERSETZEN</span>
-        <h2 id="new-run-dialog-title">Neue Kampagne beginnen?</h2>
+        <span className="eyebrow">{t("replaceSave")}</span>
+        <h2 id="new-run-dialog-title">{t("startNewCampaignQuestion")}</h2>
         <p id="new-run-dialog-description">
-          Dein gespeicherter Stand ({runStateLabel}) wird durch
-          <strong> {requestedCampaignDefinition.name}</strong> mit 7 Gold und
-          3 Siegeln ersetzt.
+          {t("replaceSavePrefix", { state: runStateLabel })}
+          <strong> {localizedRequestedCampaign.name}</strong>{" "}
+          {t("replaceSaveSuffix")}
         </p>
         <div className="dialog-actions">
           <button
@@ -2971,7 +3138,7 @@ export default function Game() {
             className="dialog-cancel-button"
             onClick={() => setConfirmNewRun(false)}
           >
-            ABBRECHEN
+            {t("cancel")}
           </button>
           <button
             type="button"
@@ -2979,7 +3146,7 @@ export default function Game() {
             onClick={startRequestedCampaign}
             ref={confirmNewRunRef}
           >
-            KAMPAGNE STARTEN
+            {t("startCampaign")}
           </button>
         </div>
       </section>
@@ -3005,39 +3172,36 @@ export default function Game() {
             className="cabinet-back-button"
             onClick={() => setScreen("menu")}
           >
-            ← HAUPTMENÜ
+            ← {t("mainMenu")}
           </button>
           <div>
-            <span className="eyebrow">DEIN FORTSCHRITT</span>
-            <h1>Kesselkabinett</h1>
+            <span className="eyebrow">{t("yourProgress")}</span>
+            <h1>{t("cabinet")}</h1>
           </div>
           <button
             type="button"
             className="audio-settings-button"
             onClick={handleOpenAudioSettings}
-            aria-label="Audio-Einstellungen öffnen"
+            aria-label={t("openSettings")}
           >
             <span className="audio-button-glyph" aria-hidden="true">♪</span>
-            <span>Audio</span>
+            <span>{t("audio")}</span>
           </button>
         </header>
 
         <div className="cabinet-content">
           <section className="cabinet-intro">
             <div>
-              <span className="eyebrow">KAMPAGNENWAHL</span>
-              <h2>Jeder Wettstreit beginnt mit einem frischen Kessel.</h2>
-              <p>
-                Gold, Zutaten und Siegel werden nicht übertragen. Freigeschaltet
-                werden neue Regeln, Familien und Trophäen – keine dauerhaften
-                Schadensboni.
-              </p>
+              <span className="eyebrow">{t("campaignChoice")}</span>
+              <h2>{t("freshCauldronHeading")}</h2>
+              <p>{t("freshCauldronBody")}</p>
             </div>
             <ArtSprite asset="cauldron-player" className="cabinet-cauldron" />
           </section>
 
-          <section className="campaign-grid" aria-label="Verfügbare Kampagnen">
+          <section className="campaign-grid" aria-label={t("availableCampaigns")}>
             {CAMPAIGNS.map((entry) => {
+              const localizedEntry = campaignText(entry, language);
               const unlocked =
                 entry.id === "grand-tournament" || firstCampaignComplete;
               const completed = hasCompletedCampaign(progress, entry.id);
@@ -3058,18 +3222,18 @@ export default function Game() {
                   key={entry.id}
                 >
                   <div className="campaign-card-heading">
-                    <span className="campaign-number">KAMPAGNE {entry.number}</span>
+                    <span className="campaign-number">{t("campaign", { number: entry.number })}</span>
                     <span className="campaign-state">
-                      {completed ? "TROPHÄE ERHALTEN" : unlocked ? "BEREIT" : "GESPERRT"}
+                      {completed ? t("trophyReceived") : unlocked ? t("ready") : t("locked")}
                     </span>
                   </div>
-                  <h2>{entry.name}</h2>
-                  <strong>{entry.subtitle}</strong>
-                  <p>{entry.description}</p>
+                  <h2>{localizedEntry.name}</h2>
+                  <strong>{localizedEntry.subtitle}</strong>
+                  <p>{localizedEntry.description}</p>
 
                   {entry.selectableLegacyFamily && unlocked && (
                     <div className="legacy-family-choice">
-                      <span>DEINE GEMEISTERTE FAMILIE</span>
+                      <span>{t("masteredFamily")}</span>
                       <div>
                         {LEGACY_FAMILIES.map((family) => (
                           <button
@@ -3085,34 +3249,36 @@ export default function Game() {
                               asset={FAMILY_ICON[family]}
                               className="campaign-family-icon"
                             />
-                            {FAMILY_META[family].name}
+                            {familyText(family, language, FAMILY_META[family]).name}
                           </button>
                         ))}
                       </div>
                       <small>
-                        Frost und Echo sind fest. So bleibt der Shop bei genau
-                        drei Familien lesbar.
+                        {t("fixedFamilyHint")}
                       </small>
                     </div>
                   )}
 
-                  <div className="campaign-family-row" aria-label="Aktive Familien">
+                  <div className="campaign-family-row" aria-label={t("activeFamilies")}>
                     {entryFamilies.map((family) => (
                       <span className={familyClass(family)} key={family}>
                         <UiIcon
                           asset={FAMILY_ICON[family]}
                           className="campaign-family-icon"
                         />
-                        {FAMILY_META[family].name}
+                        {familyText(family, language, FAMILY_META[family]).name}
                       </span>
                     ))}
                   </div>
 
                   {record && (
                     <div className="campaign-record">
-                      <span>{entry.trophyName}</span>
+                      <span>{localizedEntry.trophyName}</span>
                       <small>
-                        {record.wins}× gewonnen · bestes Ergebnis: {record.bestSeals} Siegel
+                        {t("campaignRecord", {
+                          wins: record.wins,
+                          seals: record.bestSeals,
+                        })}
                       </small>
                     </div>
                   )}
@@ -3128,34 +3294,36 @@ export default function Game() {
                     }
                   >
                     {isCurrentRun
-                      ? `RUN FORTSETZEN · RUNDE ${game.round}`
+                      ? t("continueRunRound", { round: game.round })
                       : unlocked
-                        ? "FRISCHEN RUN STARTEN"
-                        : "BESIEGE ZUERST DEN GROSSKESSEL"}
+                        ? t("startFreshRun")
+                        : t("defeatBossFirst")}
                   </button>
                 </article>
               );
             })}
           </section>
 
-          <section className="cabinet-collection" aria-label="Sammlung">
+          <section className="cabinet-collection" aria-label={t("collection")}>
             <article>
               <UiIcon asset="elite" className="cabinet-collection-icon" />
               <div>
-                <strong>Trophäen</strong>
+                <strong>{t("trophies")}</strong>
                 <small>
-                  {CAMPAIGNS.filter((entry) =>
-                    hasCompletedCampaign(progress, entry.id),
-                  ).length}
-                  /{CAMPAIGNS.length} Kampagnen gemeistert
+                  {t("campaignsMastered", {
+                    done: CAMPAIGNS.filter((entry) =>
+                      hasCompletedCampaign(progress, entry.id),
+                    ).length,
+                    total: CAMPAIGNS.length,
+                  })}
                 </small>
               </div>
             </article>
             <article>
               <UiIcon asset="power" className="cabinet-collection-icon" />
               <div>
-                <strong>Rezeptbuch</strong>
-                <small>{firstCampaignComplete ? "5" : "3"} Familien entdeckt</small>
+                <strong>{t("recipeBook")}</strong>
+                <small>{t("familiesDiscovered", { count: firstCampaignComplete ? 5 : 3 })}</small>
               </div>
             </article>
           </section>
@@ -3168,6 +3336,7 @@ export default function Game() {
 
   if (screen === "menu") {
     const menuOpponent = getCurrentOpponent(game);
+    const localizedMenuOpponent = opponentText(menuOpponent, language);
 
     return (
       <main
@@ -3181,14 +3350,14 @@ export default function Game() {
         <header className="main-menu-topbar">
           <span className="menu-edition">
             <i aria-hidden="true">✦</i>
-            MAGISCHER AUTOBATTLER
+            {t("magicalAutobattler")}
           </span>
           <div className="menu-top-actions">
             <span className="menu-build-hash" aria-label={`Build ${BUILD_HASH}`}>
               Build {BUILD_HASH}
             </span>
             {hasStoredRun && hydrated && (
-              <span className="menu-save-state" aria-label={`Gespeichert: ${runStateLabel}`}>
+              <span className="menu-save-state" aria-label={t("saved", { state: runStateLabel })}>
                 <UiIcon asset="run-seal" className="menu-save-icon" />
                 {runStateLabel}
               </span>
@@ -3201,8 +3370,8 @@ export default function Game() {
               onClick={handleOpenAudioSettings}
               aria-label={
                 audioActivated
-                  ? "Audio-Einstellungen öffnen"
-                  : "Ton aktivieren und Einstellungen öffnen"
+                  ? t("openSettings")
+                  : t("enableSoundAndOpen")
               }
               aria-haspopup="dialog"
               aria-expanded={showAudioSettings}
@@ -3223,7 +3392,7 @@ export default function Game() {
                 className={`fullscreen-glyph ${fullscreenActive ? "is-exit" : "is-enter"}`}
                 aria-hidden="true"
               />
-              <span>{fullscreenActive ? "Fenster" : "Vollbild"}</span>
+              <span>{fullscreenActive ? t("window") : t("fullscreen")}</span>
             </button>
           </div>
         </header>
@@ -3231,13 +3400,13 @@ export default function Game() {
         <div className="main-menu-layout">
           <section className="menu-hero" aria-labelledby="main-menu-title">
             <div className="menu-title-lockup">
-              <span className="menu-title-kicker">DAS GROSSE KESSELTURNIER</span>
+              <span className="menu-title-kicker">{t("grandTournament")}</span>
               <h1 id="main-menu-title">
                 <span>Kessel</span>
                 <i aria-hidden="true">–</i>
                 <span>Krawall</span>
               </h1>
-              <p>Zutaten wählen. Magie entfesseln. Den Großkessel bezwingen.</p>
+              <p>{t("tagline")}</p>
             </div>
 
             <div className="menu-cauldron-stage" aria-hidden="true">
@@ -3258,14 +3427,14 @@ export default function Game() {
               <span className="menu-stage-glow" />
             </div>
 
-            <div className="menu-family-legend" aria-label="Baue Synergien aus Feuer, Gift und Schutz">
-              <span><UiIcon asset="family-fire" className="menu-family-icon" /> Feuer</span>
-              <span><UiIcon asset="family-poison" className="menu-family-icon" /> Gift</span>
-              <span><UiIcon asset="family-guard" className="menu-family-icon" /> Schutz</span>
+            <div className="menu-family-legend" aria-label={t("synergyLegend")}>
+              <span><UiIcon asset="family-fire" className="menu-family-icon" /> {familyText("fire", language, FAMILY_META.fire).name}</span>
+              <span><UiIcon asset="family-poison" className="menu-family-icon" /> {familyText("poison", language, FAMILY_META.poison).name}</span>
+              <span><UiIcon asset="family-guard" className="menu-family-icon" /> {familyText("guard", language, FAMILY_META.guard).name}</span>
             </div>
           </section>
 
-          <section className="menu-command-panel" aria-label="Hauptmenü">
+          <section className="menu-command-panel" aria-label={t("mainMenu")}>
             <div className="menu-primary-actions">
               {hasStoredRun && hydrated && (
                 <button
@@ -3275,13 +3444,16 @@ export default function Game() {
                 >
                   <span>
                     <UiIcon asset="battle" className="menu-button-icon" />
-                    KAMPAGNE FORTSETZEN
+                    {t("campaignContinue")}
                   </span>
                   <small>
                     {runStateLabel}
                     {game.phase !== "victory" && game.phase !== "gameover"
-                      ? ` · ${game.seals} Siegel · gegen ${menuOpponent.name}`
-                      : ` · ${game.victories} Siege`}
+                       ? ` · ${t("sealsAgainst", {
+                           seals: game.seals,
+                           opponent: localizedMenuOpponent.name,
+                         })}`
+                       : ` · ${t("victories", { count: game.victories })}`}
                   </small>
                 </button>
               )}
@@ -3293,12 +3465,12 @@ export default function Game() {
               >
                 <span>
                   <UiIcon asset="elite" className="menu-button-icon" />
-                  KESSELKABINETT ÖFFNEN
+                  {t("openCabinet")}
                 </span>
                 <small>
                   {hydrated
-                    ? "Kampagnen, Trophäen und Familien wählen"
-                    : "Fortschritt wird geprüft …"}
+                    ? t("chooseCampaigns")
+                    : t("checkingProgress")}
                 </small>
               </button>
             </div>
@@ -3309,11 +3481,8 @@ export default function Game() {
                   <UiIcon asset="battle" className="menu-card-icon" />
                 </span>
                 <div>
-                  <h2>Was ist die Kampagne?</h2>
-                  <p>
-                    Eine Reise durch acht Kämpfe. Du kaufst Zutaten, mergst sie
-                    und baust Synergien. Dein Kessel kämpft danach automatisch.
-                  </p>
+                  <h2>{t("whatCampaign")}</h2>
+                  <p>{t("whatCampaignBody")}</p>
                 </div>
               </article>
               <article>
@@ -3321,13 +3490,8 @@ export default function Game() {
                   <UiIcon asset="run-seal" className="menu-card-icon" />
                 </span>
                 <div>
-                  <h2>Siegel &amp; Niederlagen</h2>
-                  <p>
-                    Drei Siegel schützen deine Kampagne. Die erste Niederlage
-                    in Runde 1 ist geschützt;
-                    danach bricht eine Niederlage ein Siegel. Du bereitest
-                    anschließend die Revanche gegen denselben Gegner vor.
-                  </p>
+                  <h2>{t("sealsAndDefeats")}</h2>
+                  <p>{t("sealsAndDefeatsBody")}</p>
                 </div>
               </article>
             </div>
@@ -3335,23 +3499,23 @@ export default function Game() {
             <section className="menu-coming-soon" aria-labelledby="coming-soon-title">
               <div className="menu-section-heading">
                 <div>
-                  <span className="eyebrow">DEIN WEG GEHT WEITER</span>
-                  <h2 id="coming-soon-title">Das Kesselkabinett ist geöffnet</h2>
+                  <span className="eyebrow">{t("pathContinues")}</span>
+                  <h2 id="coming-soon-title">{t("cabinetOpened")}</h2>
                 </div>
-                <span className="coming-soon-badge">2 KAMPAGNEN</span>
+                <span className="coming-soon-badge">{t("twoCampaigns")}</span>
               </div>
               <div className="coming-soon-grid">
                 <article>
                   <UiIcon asset="battle" className="coming-soon-icon" />
-                  <div><strong>Frost &amp; Echo</strong><small>Neue Familien nach Kampagne I</small></div>
+                  <div><strong>Frost &amp; Echo</strong><small>{t("newFamiliesAfterOne")}</small></div>
                 </article>
                 <article>
                   <UiIcon asset="power" className="coming-soon-icon" />
-                  <div><strong>Eigene Build-Pools</strong><small>Immer genau drei aktive Familien</small></div>
+                  <div><strong>{t("ownBuildPools")}</strong><small>{t("exactlyThreeFamilies")}</small></div>
                 </article>
                 <article>
                   <UiIcon asset="elite" className="coming-soon-icon" />
-                  <div><strong>Trophäen</strong><small>Fortschritt ohne dauerhaften Schadensbonus</small></div>
+                  <div><strong>{t("trophies")}</strong><small>{t("progressNoDamageBonus")}</small></div>
                 </article>
               </div>
             </section>
@@ -3372,11 +3536,11 @@ export default function Game() {
     >
       <header className="game-header">
         <div className="brand-lockup" aria-label="Kessel-Krawall">
-          <span className="brand-kicker">MAGISCHER AUTOBATTLER</span>
+          <span className="brand-kicker">{t("magicalAutobattler")}</span>
           <strong>KESSEL <i>•</i> KRAWALL</strong>
           <span
             className="round-pips"
-            aria-label={`Kampagnenfortschritt: Runde ${game.round} von ${maxRounds}`}
+            aria-label={t("campaignProgress", { round: game.round, max: maxRounds })}
           >
             {Array.from({ length: maxRounds }, (_, index) => (
               <i
@@ -3396,7 +3560,7 @@ export default function Game() {
         <div className="header-hud">
           <div className="run-status">
             <div>
-              <small>RUNDE</small>
+              <small>{t("round")}</small>
               <b>{game.round}/{maxRounds}</b>
             </div>
             <div
@@ -3409,12 +3573,12 @@ export default function Game() {
                     : ""
               }`}
             >
-              <small>GOLD</small>
+              <small>{t("gold")}</small>
               <b><UiIcon asset="coin" className="hud-icon" /> {game.gold}</b>
             </div>
             <div>
-              <small>SIEGEL</small>
-              <b aria-label={`${game.seals} Schutzsiegel`}>
+              <small>{t("seals")}</small>
+              <b aria-label={t("protectionSeals", { count: game.seals })}>
                 {Array.from({ length: 3 }, (_, index) => (
                   <span
                     className={index < game.seals ? "seal-on" : "seal-off"}
@@ -3431,11 +3595,11 @@ export default function Game() {
             type="button"
             className="menu-return-button"
             onClick={handleReturnToMenu}
-            aria-label="Zum Hauptmenü"
-            title="Zum Hauptmenü"
+            aria-label={t("toMainMenu")}
+            title={t("toMainMenu")}
           >
             <span className="menu-return-glyph" aria-hidden="true" />
-            <small>MENÜ</small>
+            <small>{t("menu")}</small>
           </button>
           <button
             type="button"
@@ -3462,7 +3626,7 @@ export default function Game() {
               ? "combat--paused"
               : ""
           } ${kesselHeatActive ? "is-kessel-heated" : ""}`}
-          aria-label="Kampfarena"
+          aria-label={t("combatArena")}
           data-combat-paused={
             game.phase === "battle" ? combatPaused : undefined
           }
@@ -3499,19 +3663,21 @@ export default function Game() {
                   : opponent.rank === "elite"
                     ? "ELITE · "
                     : ""}
-                {opponent.title} · Variante {game.opponentVariant + 1}/
-                {1 + (opponent.boardVariants?.length ?? 0)}
+                {localizedOpponent.title} · {t("variant", {
+                  current: game.opponentVariant + 1,
+                  total: 1 + (opponent.boardVariants?.length ?? 0),
+                })}
               </span>
-              <h2>{opponent.name}</h2>
-              <p>{opponent.threat}</p>
+              <h2>{localizedOpponent.name}</h2>
+              <p>{localizedOpponent.threat}</p>
             </div>
-            {!isCombatPhase && <blockquote>„{opponent.quote}“</blockquote>}
+            {!isCombatPhase && <blockquote>“{localizedOpponent.quote}”</blockquote>}
           </div>
           <HealthBar
             hp={enemyHp}
             maxHp={enemyMaxHp}
             shield={enemyShield}
-            label={opponent.name}
+            label={localizedOpponent.name}
             status={combatStatuses.enemy}
             battleTime={battleClock}
             showStatuses={isCombatPhase}
@@ -3553,15 +3719,17 @@ export default function Game() {
                 asset={battleEnding === "timeout" ? "speed" : "battle"}
                 className="resolution-icon"
               />
-              <span>{battleEnding === "timeout" ? "ZEITENTSCHEIDUNG" : "K. O."}</span>
+              <span>{battleEnding === "timeout" ? t("timeDecision") : t("knockout")}</span>
               <strong>
                 {battleEnding === "timeout"
                   ? `${playerHpPercent}% : ${enemyHpPercent}%`
                   : combat?.winner === "player"
-                    ? "DEIN KESSEL SIEGT"
+                    ? t("yourCauldronWins")
                     : combat?.winner === "draw"
-                      ? "UNENTSCHIEDEN"
-                      : `${opponent.name.toUpperCase()} SIEGT`}
+                      ? t("drawUpper")
+                      : t("winsUpper", {
+                          opponent: localizedOpponent.name.toUpperCase(),
+                        })}
               </strong>
             </div>
           ) : importantCombatMessage ? (
@@ -3587,24 +3755,24 @@ export default function Game() {
                 />
               )}
               <strong>
-                {importantCombatMessage.label}
+                {translateCombatLabel(importantCombatMessage.label, language)}
                 {importantEventRoute && (
                   <small className="callout-timing">
                     {importantEventRoute}
                   </small>
                 )}
               </strong>
-              <span>{importantCombatMessage.amountLabel}</span>
+              <span>{translateCombatAmount(importantCombatMessage.amountLabel, language)}</span>
             </div>
           ) : decisionCountdown ? (
             <div className="decision-countdown" role="timer">
               <UiIcon asset="speed" className="countdown-icon" />
-              <span>ZEITENTSCHEIDUNG IN</span>
+              <span>{t("timeDecisionIn")}</span>
               <strong>{remainingBattleSeconds}</strong>
             </div>
           ) : (
             isCombatPhase ? (
-              <div className="versus-mark">KRAWALL!</div>
+              <div className="versus-mark">{t("brawl")}</div>
             ) : (
               <div className="phase-message" aria-live="polite">
                 <span aria-hidden="true">✦</span>
@@ -3618,7 +3786,7 @@ export default function Game() {
           <div className="player-heading">
             <div className="power-heading-wrap">
               {!isCombatPhase && (
-                <span className="eyebrow">DEIN ZAUBERKESSEL</span>
+                <span className="eyebrow">{t("yourCauldron")}</span>
               )}
               {!isCombatPhase && (
                 <h2>
@@ -3629,34 +3797,34 @@ export default function Game() {
                     aria-expanded={showPowerHelp}
                     aria-controls="power-explainer"
                   >
-                    Buildstärke ≈ {playerPower}
+                    {t("buildStrength", { power: playerPower })}
                     <i aria-hidden="true">i</i>
                   </button>
                 </h2>
               )}
               {!isCombatPhase && showPowerHelp && (
                 <div className="power-explainer" id="power-explainer">
-                  <strong>Buildstärke ist eine grobe Schätzung</strong>
-                  <p>
-                    Eine grobe Stärkeeinschätzung zum Vergleichen – kein eigener
-                    Kampfbonus.
-                  </p>
+                  <strong>{t("buildEstimate")}</strong>
+                  <p>{t("buildEstimateBody")}</p>
                   <dl>
                     <div>
-                      <dt>Zutaten &amp; Tempo</dt>
+                      <dt>{t("ingredientsAndTempo")}</dt>
                       <dd>{playerPowerBreakdown.itemValue}</dd>
                     </div>
                     <div>
                       <dt>
-                        {playerPowerBreakdown.synergyCount} aktive{" "}
                         {playerPowerBreakdown.synergyCount === 1
-                          ? "Synergie"
-                          : "Synergien"}
+                          ? t("activeSynergyOne", {
+                              count: playerPowerBreakdown.synergyCount,
+                            })
+                          : t("activeSynergyMany", {
+                              count: playerPowerBreakdown.synergyCount,
+                            })}
                       </dt>
                       <dd>+{playerPowerBreakdown.synergyBonus}</dd>
                     </div>
                     <div>
-                      <dt>Grobe Buildstärke</dt>
+                      <dt>{t("roughBuildStrength")}</dt>
                       <dd>{playerPower}</dd>
                     </div>
                   </dl>
@@ -3668,12 +3836,12 @@ export default function Game() {
                 type="button"
                 className="power-compare"
                 onClick={() => setShowPowerHelp((current) => !current)}
-                aria-label={`Gegnerische grobe Buildstärke ungefähr ${enemyPower}. Erklärung öffnen`}
+                aria-label={t("enemyPowerAria", { power: enemyPower })}
                 aria-expanded={showPowerHelp}
                 aria-controls="power-explainer"
               >
                 <UiIcon asset="power" className="compare-icon" />
-                Gegner ≈ {enemyPower}
+                {t("enemy")} ≈ {enemyPower}
               </button>
             )}
           </div>
@@ -3701,7 +3869,7 @@ export default function Game() {
             hp={playerHp}
             maxHp={100}
             shield={playerShield}
-            label="Dein Kessel"
+            label={t("yourCauldron")}
             status={combatStatuses.player}
             battleTime={battleClock}
             showStatuses={isCombatPhase}
@@ -3712,25 +3880,24 @@ export default function Game() {
 
       {game.phase === "intro" && (
         <section className="intro-sheet" aria-labelledby="run-intro-title">
-          <span className="eyebrow">DEINE ERSTE RUNDE</span>
-          <h2 id="run-intro-title">Erst orientieren. Dann brauen.</h2>
+          <span className="eyebrow">{t("firstRound")}</span>
+          <h2 id="run-intro-title">{t("orientThenBrew")}</h2>
           <p>
-            Oben wartet <strong>{opponent.name}</strong> mit seinem fertigen
-            Kessel. Unten steht dein noch leerer Kessel. Auf dem Hexenmarkt
-            stellst du gleich fünf Zutaten für den automatischen Kampf zusammen.
+            {t("introPrefix")} <strong>{localizedOpponent.name}</strong>{" "}
+            {t("introSuffix")}
           </p>
-          <div className="intro-facts" aria-label="Ablauf der ersten Runde">
-            <span><b>1</b> Zutaten wählen</span>
-            <span><b>2</b> Synergien bauen</span>
-            <span><b>3</b> Kampf starten</span>
+          <div className="intro-facts" aria-label={t("firstRoundFlow")}>
+            <span><b>1</b> {t("chooseIngredients")}</span>
+            <span><b>2</b> {t("buildSynergies")}</span>
+            <span><b>3</b> {t("startFight")}</span>
           </div>
           <button
             type="button"
             className="intro-button"
             onClick={handleEnterOpeningShop}
           >
-            ZUM HEXENMARKT
-            <span>7 Gold · drei Startzutaten zur Auswahl →</span>
+            {t("toMarket")}
+            <span>{t("openingOfferHint")}</span>
           </button>
         </section>
       )}
@@ -3738,7 +3905,7 @@ export default function Game() {
       {game.phase === "shop" && (
         <section
           className="shop-sheet preparation-screen"
-          aria-label="Einkaufs- und Vorbereitungsphase"
+          aria-label={t("preparationPhase")}
         >
           <BackdropImage backdrop="market" className="panel-backdrop market-backdrop" />
           <div className="preparation-overview">
@@ -3751,13 +3918,13 @@ export default function Game() {
             <section className="player-workbench" aria-labelledby="player-workbench-title">
               <div className="workbench-heading">
                 <div>
-                  <span className="eyebrow">DEIN AUFBAU</span>
-                  <h2 id="player-workbench-title">Fünf Zutaten für den Kampf</h2>
+                  <span className="eyebrow">{t("yourBuild")}</span>
+                  <h2 id="player-workbench-title">{t("fiveIngredients")}</h2>
                 </div>
                 <div className="workbench-stats">
                   <span>
                     <UiIcon asset="health" className="prep-stat-icon" />
-                    100 LP
+                    100 {language === "en" ? "HP" : "LP"}
                   </span>
                   <button
                     type="button"
@@ -3766,17 +3933,14 @@ export default function Game() {
                     aria-controls="power-explainer"
                   >
                     <UiIcon asset="power" className="prep-stat-icon" />
-                    Build ≈ {playerPower}
+                    {t("buildStrength", { power: playerPower })}
                   </button>
                 </div>
               </div>
               {showPowerHelp && (
                 <div className="power-explainer prep-power-explainer" id="power-explainer">
-                  <strong>Buildstärke ist eine grobe Schätzung</strong>
-                  <p>
-                    Sie fasst Zutaten, Tempo und aktive Synergien zusammen,
-                    verändert den Kampf aber nicht.
-                  </p>
+                  <strong>{t("buildEstimate")}</strong>
+                  <p>{t("buildEstimateShop")}</p>
                 </div>
               )}
               <div
@@ -3812,8 +3976,8 @@ export default function Game() {
           <div className="shop-scroll">
             <div className="shop-topline">
               <div>
-                <span className="eyebrow">HEXENMARKT</span>
-                <h2>Wähle aus drei frischen Zutaten</h2>
+                <span className="eyebrow">{t("witchesMarket")}</span>
+                <h2>{t("chooseThree")}</h2>
               </div>
             </div>
 
@@ -3881,7 +4045,11 @@ export default function Game() {
                         asset={FAMILY_ICON[definition.family]}
                         className="offer-family-icon"
                       />
-                      {FAMILY_META[definition.family].name}
+                      {familyText(
+                        definition.family,
+                        language,
+                        FAMILY_META[definition.family],
+                      ).name}
                     </span>
                     <span className="offer-icon" aria-hidden="true">
                       <ArtSprite
@@ -3889,30 +4057,32 @@ export default function Game() {
                         className="offer-item-art"
                       />
                     </span>
-                    <strong>{definition.name}</strong>
-                    <small>{definition.descriptions[0]}</small>
+                    <strong>{itemName(definition, language)}</strong>
+                    <small>{itemDescription(definition, 1, language)}</small>
                     <span className="offer-synergy">
-                      {offerSynergyLabel(game.board, definition.family)}
+                      {offerSynergyLabel(game.board, definition.family, language)}
                     </span>
                     {mergePreview && (
                       <span className="offer-merge-target">
                         {mergePreview.target.area === "board"
-                          ? `Merge bleibt auf Platz ${mergePreview.target.slot + 1}`
-                          : "Merge in der Ablage"}
+                          ? t("mergeStaysSlot", {
+                              slot: mergePreview.target.slot + 1,
+                            })
+                          : t("mergeInReserve")}
                         {" · "}
                         {ROMAN_LEVEL[mergePreview.resultLevel]}
                       </span>
                     )}
                     {!mergePreview && parksInReserve && (
                       <span className="offer-merge-target is-reserve-target">
-                        Landet passiv in der Ablage
+                        {t("landsInReserve")}
                       </span>
                     )}
                     <span className="offer-price">
                       {offer.bought ? (
-                        "GEKAUFT"
+                        t("bought")
                       ) : !hasPurchaseSpace ? (
-                        "VOLL"
+                        t("full")
                       ) : (
                         <>
                           <UiIcon asset="coin" className="price-icon" />
@@ -3935,10 +4105,10 @@ export default function Game() {
               data-audio="manual"
             >
               <UiIcon asset="reroll" className="button-icon" />
-              Neu würfeln
+              {t("reroll")}
               <b>
                 {game.rerollsUsed === 0 ? (
-                  "GRATIS"
+                  t("free")
                 ) : (
                   <>
                     <UiIcon asset="coin" className="price-icon" /> 1
@@ -3952,8 +4122,8 @@ export default function Game() {
               onClick={handleFight}
               disabled={busy || !game.board.some(Boolean)}
             >
-              <span><UiIcon asset="battle" className="button-icon" /> KAMPF STARTEN</span>
-              <b>{opponent.rank === "boss" ? "BOSS: " : "Gegen "}{opponent.name}</b>
+              <span><UiIcon asset="battle" className="button-icon" /> {t("fightStart")}</span>
+              <b>{opponent.rank === "boss" ? t("bossPrefix") : t("againstPrefix")}{localizedOpponent.name}</b>
             </button>
           </div>
         </section>
@@ -3966,7 +4136,7 @@ export default function Game() {
           } ${combatPaused ? "combat--paused is-paused" : ""} ${
             kesselHeatActive ? "is-kessel-heated" : ""
           }`}
-          aria-label="Kampfsteuerung"
+          aria-label={t("combatControls")}
           data-combat-paused={combatPaused}
         >
           <BackdropImage backdrop="arena" className="panel-backdrop battle-backdrop" />
@@ -3975,34 +4145,34 @@ export default function Game() {
             <span className="live-dot" aria-hidden="true" />
             <strong>
               {combatPaused
-                ? "Kampf pausiert"
+                ? t("battlePaused")
                 : kesselHeatActive
-                  ? `Kesselhitze +${kesselHeatPercent}%`
-                  : "Kampf läuft"}
+                  ? t("cauldronHeat", { percent: kesselHeatPercent })
+                  : t("battleRunning")}
             </strong>
             <small>
               {combatPaused
-                ? "Wiedergabe und Effekte stehen sicher"
+                ? t("playbackPaused")
                 : decisionCountdown
-                ? `${remainingBattleSeconds} s bis zur Zeitentscheidung`
+                ? t("secondsToDecision", { seconds: remainingBattleSeconds })
                 : focusedEventRoute
                   ? focusedEventRoute
                 : kesselHeatActive
-                  ? `Schaden für beide +${kesselHeatPercent} %`
+                  ? t("damageForBoth", { percent: kesselHeatPercent })
                 : speed === 1
-                  ? "Lesemodus · Salven werden klar gestaffelt"
-                  : `Beschleunigte Regie auf ${speed}×`}
+                  ? t("readingMode")
+                  : t("directedSpeed", { speed })}
             </small>
           </div>
           <div className="battle-score-grid">
             <div>
-              <span>{opponent.name}</span>
+              <span>{localizedOpponent.name}</span>
               <strong>{Math.max(0, enemyHp)}</strong>
               <small><UiIcon asset="shield" className="score-icon" /> {enemyShield}</small>
             </div>
             <UiIcon asset="power" className="score-versus-icon" />
             <div>
-              <span>Dein Kessel</span>
+              <span>{t("yourCauldron")}</span>
               <strong>{Math.max(0, playerHp)}</strong>
               <small><UiIcon asset="shield" className="score-icon" /> {playerShield}</small>
             </div>
@@ -4037,24 +4207,24 @@ export default function Game() {
                       : `${sideLabel(
                           focusedContribution.event.actor,
                         )} → ${sideLabel(focusedContribution.event.target)} · `
-                  }${focusedContribution.label}`
+                  }${translateCombatLabel(focusedContribution.label, language)}`
                 : decisionCountdown
-                  ? `Zeitentscheidung in ${remainingBattleSeconds}`
-                  : "Kessel laden ihre Zauber"}
+                  ? t("timeDecisionInSeconds", { seconds: remainingBattleSeconds })
+                  : t("cauldronsCharging")}
             </span>
             <strong>
               {focusedContribution
                 ? focusedContributionLanded
-                  ? focusedContribution.amountLabel
-                  : "im Anflug …"
+                  ? translateCombatAmount(focusedContribution.amountLabel, language)
+                  : t("incoming")
                 : "…"}
             </strong>
           </div>
           <div className="battle-speed">
-            <span><UiIcon asset="speed" className="speed-icon" /> TEMPO</span>
+            <span><UiIcon asset="speed" className="speed-icon" /> {t("tempo")}</span>
             <div
               className="speed-control"
-              aria-label="Pause und Kampfgeschwindigkeit"
+              aria-label={t("pauseAndSpeed")}
             >
               <button
                 type="button"
@@ -4063,7 +4233,7 @@ export default function Game() {
                 }`}
                 onClick={handleCombatPause}
                 aria-label={
-                  combatPaused ? "Kampf fortsetzen" : "Kampf pausieren"
+                  combatPaused ? t("resumeFight") : t("pauseFight")
                 }
                 aria-pressed={combatPaused}
                 data-testid="combat-pause-toggle"
@@ -4071,7 +4241,7 @@ export default function Game() {
                 <span aria-hidden="true">
                   {combatPaused ? "▶" : "Ⅱ"}
                 </span>
-                <small>{combatPaused ? "WEITER" : "PAUSE"}</small>
+                <small>{combatPaused ? t("resume") : t("pause")}</small>
               </button>
               {[1, 2, 4].map((value) => (
                 <button
@@ -4080,7 +4250,7 @@ export default function Game() {
                   className={speed === value ? "is-active" : ""}
                   onClick={() => updateCombatSpeed(value)}
                 >
-                  {value}×{value === 1 ? <small>KLAR</small> : null}
+                  {value}×{value === 1 ? <small>{t("clear")}</small> : null}
                 </button>
               ))}
             </div>
@@ -4108,39 +4278,49 @@ export default function Game() {
               className="result-emblem"
             />
             <div>
-              <span className="eyebrow">{combat.reason === "knockout" ? "K.O." : "ZEITENTSCHEIDUNG"}</span>
+              <span className="eyebrow">{combat.reason === "knockout" ? t("koShort") : t("timeDecision")}</span>
               <h2>
                 {combat.winner === "player"
-                  ? "Kessel-Sieg!"
+                  ? t("cauldronVictory")
                   : combat.winner === "draw"
-                    ? "Unentschieden"
+                    ? t("draw")
                     : isOpeningDefeatProtected(game, combat.winner)
-                      ? "Noch geschützt!"
+                      ? t("stillProtected")
                       : game.seals <= 1
-                        ? "Letztes Siegel gebrochen"
-                        : "Siegelbruch"}
+                        ? t("lastSealBroken")
+                        : t("sealBreak")}
               </h2>
               <p>
                 {combat.winner === "player"
                   ? game.round >= maxRounds
-                    ? `${campaign.trophyName} gehört dir.`
-                    : `+${getRoundReward(game, true)} Gold in der nächsten Runde`
+                    ? t("trophyYours", { trophy: localizedCampaign.trophyName })
+                    : t("nextRoundGold", { gold: getRoundReward(game, true) })
                   : combat.winner === "draw"
-                    ? `Kein Siegelverlust und kein Gold. ${opponent.name} wartet erneut.`
+                    ? t("drawResult", { opponent: localizedOpponent.name })
                     : isOpeningDefeatProtected(game, combat.winner)
-                      ? `Der erste Fehlversuch kostet kein Siegel. +${getBattleReward(game, combat.winner)} Trostgold für die Revanche.`
+                      ? t("protectedLossResult", {
+                          gold: getBattleReward(game, combat.winner),
+                        })
                       : game.seals <= 1
-                        ? `${opponent.name} war diesmal stärker. Deine Kampagne endet.`
-                        : `${opponent.name} war diesmal stärker. +${getBattleReward(game, combat.winner)} Trostgold für die Revanche.`}
+                        ? t("campaignEndsResult", {
+                            opponent: localizedOpponent.name,
+                          })
+                        : t("revengeGoldResult", {
+                            opponent: localizedOpponent.name,
+                            gold: getBattleReward(game, combat.winner),
+                          })}
               </p>
               {combat.reason === "timeout" && (
-                <div className="decision-result" aria-label="Relative Lebensenergie bei Zeitablauf">
-                  <span>Dein Kessel <b>{playerHpPercent}%</b></span>
-                  <i aria-hidden="true">gegen</i>
-                  <span>{opponent.name} <b>{enemyHpPercent}%</b></span>
+                <div className="decision-result" aria-label={t("relativeHealth")}>
+                  <span>{t("yourCauldron")} <b>{playerHpPercent}%</b></span>
+                  <i aria-hidden="true">{t("versus")}</i>
+                  <span>{localizedOpponent.name} <b>{enemyHpPercent}%</b></span>
                   {playerHpPercent === enemyHpPercent && (
                     <small>
-                      LP-Schaden: {playerHpDamageTotal} zu {enemyHpDamageTotal}
+                      {t("hpDamage", {
+                        player: playerHpDamageTotal,
+                        enemy: enemyHpDamageTotal,
+                      })}
                     </small>
                   )}
                 </div>
@@ -4151,23 +4331,25 @@ export default function Game() {
           <button type="button" className="continue-button" onClick={handleContinue}>
             {combat.winner === "player"
               ? game.round >= maxRounds
-                ? "KAMPAGNE ABSCHLIESSEN"
-                : `BELOHNUNG NEHMEN · +${getBattleReward(game, combat.winner)} GOLD`
+                ? t("finishCampaign")
+                : t("takeReward", { gold: getBattleReward(game, combat.winner) })
               : combat.winner === "draw"
-                ? "REVANCHE VORBEREITEN"
+                ? t("prepareRevenge")
                 : !isOpeningDefeatProtected(game, combat.winner) && game.seals <= 1
-                  ? "KAMPAGNE ABSCHLIESSEN"
-                  : `REVANCHE VORBEREITEN · +${getBattleReward(game, combat.winner)} GOLD`}
+                  ? t("finishCampaign")
+                  : t("prepareRevengeGold", {
+                      gold: getBattleReward(game, combat.winner),
+                    })}
             <span>
               {combat.winner === "player"
                 ? game.round >= maxRounds
-                  ? "Kampagnenergebnis ansehen →"
-                  : `Runde ${game.round + 1} vorbereiten →`
+                  ? t("viewCampaignResult")
+                  : t("prepareRound", { round: game.round + 1 })
                 : combat.winner === "enemy" &&
                     !isOpeningDefeatProtected(game, combat.winner) &&
                     game.seals <= 1
-                  ? "Kampagnenergebnis ansehen →"
-                  : `${opponent.name} erneut herausfordern →`}
+                  ? t("viewCampaignResult")
+                  : t("challengeAgain", { opponent: localizedOpponent.name })}
             </span>
           </button>
         </section>
@@ -4177,20 +4359,25 @@ export default function Game() {
         <section className="gameover-sheet">
           <ArtSprite asset="result-defeat" className="gameover-icon" />
           <span className="eyebrow">
-            {game.round >= maxRounds ? "DER BOSS BLEIBT STEHEN" : "DER KESSEL IST ERKALTET"}
+            {game.round >= maxRounds ? t("bossStanding") : t("cauldronCold")}
           </span>
           <h2>
             {game.round >= maxRounds
-              ? `${opponent.name} verteidigt ${campaign.trophyName}.`
-              : `Die Kampagne endet in Runde ${game.round}.`}
+              ? t("defendsTrophy", {
+                  opponent: localizedOpponent.name,
+                  trophy: localizedCampaign.trophyName,
+                })
+              : t("campaignEndsRound", { round: game.round })}
           </h2>
           <p>
-            {game.victories} Siege · grobe Buildstärke {playerPower}. Deine Zutaten warten
-            schon auf den nächsten Versuch.
+            {t("gameoverSummary", {
+              wins: game.victories,
+              power: playerPower,
+            })}
           </p>
           <button type="button" className="continue-button" onClick={handleReset}>
-            NEUE KAMPAGNE STARTEN
-            <span>7 Gold · 3 Siegel · frischer Shop</span>
+            {t("startNewCampaign")}
+            <span>{t("freshShopHint")}</span>
           </button>
         </section>
       )}
@@ -4198,15 +4385,18 @@ export default function Game() {
       {game.phase === "victory" && (
         <section className="gameover-sheet victory-sheet">
           <ArtSprite asset="result-victory" className="gameover-icon" />
-          <span className="eyebrow">KESSELMEISTER!</span>
-          <h2>Du meisterst „{campaign.name}“.</h2>
+          <span className="eyebrow">{t("cauldronMaster")}</span>
+          <h2>{t("masteredCampaign", { campaign: localizedCampaign.name })}</h2>
           <p>
-            {game.victories} Siege · {game.seals} Siegel übrig · finale Buildstärke{" "}
-            {playerPower}
+            {t("victorySummary", {
+              wins: game.victories,
+              seals: game.seals,
+              power: playerPower,
+            })}
           </p>
           <button type="button" className="continue-button" onClick={handleOpenCabinet}>
-            TROPHÄE INS KESSELKABINETT BRINGEN
-            <span>Nächste Kampagne und neue Familien ansehen</span>
+            {t("bringTrophy")}
+            <span>{t("seeNextCampaign")}</span>
           </button>
         </section>
       )}
@@ -4261,9 +4451,12 @@ export default function Game() {
           } as CSSProperties}
         >
           <div className="merge-progress">
-            <span>MERGE</span>
+            <span>{t("merge")}</span>
             {mergeNotice.total > 1 && (
-              <b>KASKADE {mergeNotice.step}/{mergeNotice.total}</b>
+              <b>{t("cascade", {
+                step: mergeNotice.step,
+                total: mergeNotice.total,
+              })}</b>
             )}
           </div>
           <div className="merge-stage" aria-hidden="true">
@@ -4282,7 +4475,7 @@ export default function Game() {
               <b>{ROMAN_LEVEL[mergeNotice.toLevel]}</b>
             </div>
           </div>
-          <span className="merge-kicker">VERSCHMOLZEN</span>
+          <span className="merge-kicker">{t("merged")}</span>
           <strong className="merge-title">{mergeNotice.label}</strong>
           <div className="merge-comparison">
             <span>{mergeNotice.valueLabel}</span>
@@ -4291,10 +4484,10 @@ export default function Game() {
             <strong>{mergeNotice.newValue}</strong>
           </div>
           <div className="merge-comparison is-cooldown">
-            <span>Abklingzeit</span>
-            <b>{mergeNotice.oldCooldown.toFixed(1).replace(".", ",")} s</b>
+            <span>{t("cooldown")}</span>
+            <b>{formatDecimal(mergeNotice.oldCooldown, language)}{language === "en" ? "s" : " s"}</b>
             <i aria-hidden="true">→</i>
-            <strong>{mergeNotice.newCooldown.toFixed(1).replace(".", ",")} s</strong>
+            <strong>{formatDecimal(mergeNotice.newCooldown, language)}{language === "en" ? "s" : " s"}</strong>
           </div>
           {mergeNotice.bonus && (
             <div className="merge-bonus">{mergeNotice.bonus}</div>
@@ -4302,12 +4495,12 @@ export default function Game() {
           {mergeNotice.step === mergeNotice.total &&
             (mergeNotice.targetArea === "reserve" ? (
               <div className="merge-bonus">
-                In der Ablage · wirkt erst im Kessel
+                {t("inReserveInactive")}
               </div>
             ) : (
               <div className="merge-power">
                 <UiIcon asset="power" className="merge-power-icon" />
-                <span>MACHT</span>
+                <span>{t("power")}</span>
                 <b>{mergeNotice.powerBefore}</b>
                 <i aria-hidden="true">→</i>
                 <strong>{mergeNotice.powerAfter}</strong>
@@ -4319,9 +4512,17 @@ export default function Game() {
 
       <div className="rotate-device" role="status">
         <span aria-hidden="true">↻</span>
-        <strong>Bitte ins Hochformat drehen</strong>
-        <small>Kessel-Krawall ist für eine Hand im Hochformat gebaut.</small>
+        <strong>{t("rotatePortrait")}</strong>
+        <small>{t("portraitHint")}</small>
       </div>
     </main>
+  );
+}
+
+export default function Game() {
+  return (
+    <I18nProvider>
+      <GameContent />
+    </I18nProvider>
   );
 }
