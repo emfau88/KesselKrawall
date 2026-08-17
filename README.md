@@ -180,6 +180,24 @@ Dabei gelten fünf Leitlinien:
 Der statische Sprachansatz funktioniert unverändert auf GitHub Pages, Netlify,
 Vercel und klassischem Static Hosting.
 
+### CrazyGames-Paket
+
+Für CrazyGames gibt es einen isolierten **Basic-Launch-Build** unter dem
+englischen Titel **Cauldron Rumble**. Er nutzt dieselbe Codebasis, startet
+standardmäßig auf Englisch, arbeitet ausschließlich mit relativen Asset-Pfaden
+und blendet die eigenen Vollbildschalter aus, da CrazyGames die
+Vollbildsteuerung übernimmt. Netlify und GitHub Pages bleiben davon
+unverändert.
+
+```powershell
+npm.cmd run build:crazygames
+```
+
+Der Befehl erstellt `dist/crazygames/cauldron-rumble-crazygames-basic.zip` und
+prüft dabei automatisch Dateianzahl, Paketgröße, ZIP-Wurzel, Ressourcenpfade,
+Titel und Credits. Weitere Hinweise und der englische Einreichungstext stehen
+in [`platforms/crazygames/README.md`](platforms/crazygames/README.md).
+
 Die verbindlichen Produkt- und Spielregeln stehen in
 [`docs/GAME_SPEC.md`](docs/GAME_SPEC.md).
 

@@ -9,6 +9,7 @@
     "dev": "vinext dev",
     "build": "vinext build",
     "build:pages": "next build",
+    "build:crazygames": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/package-crazygames.ps1",
     "start": "vinext start",
     "test": "npm run build && tsx --test tests/*.test.*",
     "balance:analysis": "tsx tools/balance-analysis.ts",

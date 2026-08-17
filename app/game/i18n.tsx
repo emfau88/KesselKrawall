@@ -210,6 +210,7 @@ const DE = {
   introSuffix:
     "mit seinem fertigen Kessel. Unten steht dein noch leerer Kessel. Auf dem Hexenmarkt stellst du gleich fünf Zutaten für den automatischen Kampf zusammen.",
   firstRoundFlow: "Ablauf der ersten Runde",
+  quickStartHint: "Ersten Gegner ansehen und den Run beginnen",
   chooseIngredients: "Zutaten wählen",
   buildSynergies: "Synergien bauen",
   startFight: "Kampf starten",
@@ -534,6 +535,7 @@ const EN: Record<MessageKey, string> = {
   introSuffix:
     "is waiting with a finished cauldron. Your empty cauldron is below. At the Witches' Market, you will choose five ingredients for the automatic battle.",
   firstRoundFlow: "Flow of the first round",
+  quickStartHint: "Meet your first opponent and begin the run",
   chooseIngredients: "Choose ingredients",
   buildSynergies: "Build synergies",
   startFight: "Start battle",
@@ -1047,6 +1049,8 @@ interface I18nContextValue {
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null);
+const IS_CRAZYGAMES_BUILD =
+  process.env.NEXT_PUBLIC_DISTRIBUTION === "crazygames";
 
 function preferredLanguage(): Language {
   try {
@@ -1059,8 +1063,10 @@ function preferredLanguage(): Language {
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  // German is deterministic for server rendering; browser preference is applied after hydration.
-  const [language, updateLanguage] = useState<Language>("de");
+  // Each distribution has a deterministic server language; browser preference follows hydration.
+  const [language, updateLanguage] = useState<Language>(
+    IS_CRAZYGAMES_BUILD ? "en" : "de",
+  );
 
   useEffect(() => {
     const preferred = preferredLanguage();
@@ -1072,7 +1078,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = language;
     document.title =
       language === "en"
-        ? "Kessel-Krawall · Magical Autobattler"
+        ? "Cauldron Rumble · Magical Autobattler"
         : "Kessel-Krawall · Magischer Autobattler";
     const description = document.querySelector<HTMLMetaElement>('meta[name="description"]');
     if (description) {

@@ -1,0 +1,31 @@
+CAULDRON RUMBLE - AUDIO CREDITS
+================================
+
+Music
+-----
+A Welcome Haunting - Fablefly Music
+https://fablefly-music.itch.io/a-welcome-haunting
+License: Creative Commons Attribution 4.0
+https://creativecommons.org/licenses/by/4.0/
+
+Daydream of a Deity - Fablefly Music
+https://fablefly-music.itch.io/daydream-of-a-deity
+License: Creative Commons Attribution 4.0
+https://creativecommons.org/licenses/by/4.0/
+
+Fairy Battles - MintoDog
+https://opengameart.org/content/fairy-battles
+License: CC0 1.0
+
+Sound effects
+-------------
+Interface SFX Pack 1 - ObsydianX (CC0 1.0)
+Free SFX Pack Vol. 3 - HZSMITH (CC0 1.0)
+Retro Magic Sound Effects - NSFRL (CC0 1.0)
+Bubble Sound Effects - BMacZero / Brian MacIntosh (CC0 1.0)
+Basic Spell Impacts - Lentikula (CC0 1.0)
+Healing Spell Impacts - Lentikula (CC0 1.0)
+
+Gameplay files are edited and level-matched derivatives of the credited
+sources. Full source links and usage notes are included in
+assets/audio/ATTRIBUTION.md inside the package.

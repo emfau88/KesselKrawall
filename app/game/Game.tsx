@@ -146,6 +146,8 @@ import type {
 
 const ROMAN_LEVEL = ["", "I", "II", "III"] as const;
 const BUILD_HASH = process.env.NEXT_PUBLIC_BUILD_SHA ?? "local";
+const IS_CRAZYGAMES_BUILD =
+  process.env.NEXT_PUBLIC_DISTRIBUTION === "crazygames";
 const COMBAT_SOUNDS_STORAGE_KEY = "kessel-krawall:combat-sounds";
 const SHARED_COMBAT_PRELOAD_ASSETS = [
   "vfx-fire",
@@ -3397,20 +3399,22 @@ function GameContent() {
               </span>
               <span>{t("settingsTitle")}</span>
             </button>
-            <button
-              type="button"
-              className="menu-fullscreen-button"
-              onClick={handleFullscreen}
-              aria-label={fullscreenLabel}
-              aria-pressed={fullscreenActive}
-              title={fullscreenLabel}
-            >
-              <span
-                className={`fullscreen-glyph ${fullscreenActive ? "is-exit" : "is-enter"}`}
-                aria-hidden="true"
-              />
-              <span>{fullscreenActive ? t("window") : t("fullscreen")}</span>
-            </button>
+            {!IS_CRAZYGAMES_BUILD && (
+              <button
+                type="button"
+                className="menu-fullscreen-button"
+                onClick={handleFullscreen}
+                aria-label={fullscreenLabel}
+                aria-pressed={fullscreenActive}
+                title={fullscreenLabel}
+              >
+                <span
+                  className={`fullscreen-glyph ${fullscreenActive ? "is-exit" : "is-enter"}`}
+                  aria-hidden="true"
+                />
+                <span>{fullscreenActive ? t("window") : t("fullscreen")}</span>
+              </button>
+            )}
           </div>
         </header>
 
@@ -3419,9 +3423,9 @@ function GameContent() {
             <div className="menu-title-lockup">
               <span className="menu-title-kicker">{t("grandTournament")}</span>
               <h1 id="main-menu-title">
-                <span>Kessel</span>
+                <span>{language === "en" ? "Cauldron" : "Kessel"}</span>
                 <i aria-hidden="true">–</i>
-                <span>Krawall</span>
+                <span>{language === "en" ? "Rumble" : "Krawall"}</span>
               </h1>
               <p>{t("tagline")}</p>
             </div>
@@ -3477,16 +3481,24 @@ function GameContent() {
               <button
                 type="button"
                 className={hasStoredRun ? "menu-secondary-button" : "menu-primary-button"}
-                onClick={handleOpenCabinet}
+                onClick={() =>
+                  IS_CRAZYGAMES_BUILD && !hasStoredRun
+                    ? requestCampaignStart("grand-tournament")
+                    : handleOpenCabinet()
+                }
                 disabled={!hydrated}
               >
                 <span>
                   <UiIcon asset="elite" className="menu-button-icon" />
-                  {t("openCabinet")}
+                  {IS_CRAZYGAMES_BUILD && !hasStoredRun
+                    ? t("startFreshRun")
+                    : t("openCabinet")}
                 </span>
                 <small>
                   {hydrated
-                    ? t("chooseCampaigns")
+                    ? IS_CRAZYGAMES_BUILD && !hasStoredRun
+                      ? t("quickStartHint")
+                      : t("chooseCampaigns")
                     : t("checkingProgress")}
                 </small>
               </button>
@@ -3618,20 +3630,22 @@ function GameContent() {
             <span className="menu-return-glyph" aria-hidden="true" />
             <small>{t("menu")}</small>
           </button>
-          <button
-            type="button"
-            className="fullscreen-button"
-            onClick={handleFullscreen}
-            aria-label={fullscreenLabel}
-            aria-pressed={fullscreenActive}
-            title={fullscreenLabel}
-            data-testid="fullscreen-toggle"
-          >
-            <span
-              className={`fullscreen-glyph ${fullscreenActive ? "is-exit" : "is-enter"}`}
-              aria-hidden="true"
-            />
-          </button>
+          {!IS_CRAZYGAMES_BUILD && (
+            <button
+              type="button"
+              className="fullscreen-button"
+              onClick={handleFullscreen}
+              aria-label={fullscreenLabel}
+              aria-pressed={fullscreenActive}
+              title={fullscreenLabel}
+              data-testid="fullscreen-toggle"
+            >
+              <span
+                className={`fullscreen-glyph ${fullscreenActive ? "is-exit" : "is-enter"}`}
+                aria-hidden="true"
+              />
+            </button>
+          )}
         </div>
       </header>
       {audioSettingsDialog}

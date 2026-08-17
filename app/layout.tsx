@@ -6,8 +6,9 @@ const publicUrl =
   process.env.NEXT_PUBLIC_SITE_URL ??
   process.env.URL ??
   "https://emfau88.github.io/KesselKrawall/";
+const isCrazyGamesBuild = process.env.CRAZYGAMES_BUILD === "true";
 
-export const metadata: Metadata = {
+const webMetadata: Metadata = {
   metadataBase: new URL(publicUrl),
   title: {
     default: "Kessel-Krawall",
@@ -46,6 +47,17 @@ export const metadata: Metadata = {
   },
 };
 
+const crazyGamesMetadata: Metadata = {
+  title: "Cauldron Rumble",
+  description:
+    "Build a magical cauldron, merge ingredients and master powerful synergies in a compact fantasy autobattler.",
+  applicationName: "Cauldron Rumble",
+};
+
+export const metadata: Metadata = isCrazyGamesBuild
+  ? crazyGamesMetadata
+  : webMetadata;
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -59,8 +71,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="de">
-      <body>{children}</body>
+    <html lang={isCrazyGamesBuild ? "en" : "de"}>
+      <body className={isCrazyGamesBuild ? "platform-crazygames" : undefined}>
+        {children}
+      </body>
     </html>
   );
 }

@@ -42,6 +42,11 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
+body.platform-crazygames {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 button {
   color: inherit;
   font: inherit;
@@ -7378,6 +7383,16 @@ button.board-slot:active {
     justify-content: center;
     gap: 12px;
     padding: 10px 16px max(12px, var(--safe-bottom));
+  }
+}
+
+@media (min-width: 700px) and (max-width: 859px) and (orientation: landscape) {
+  .game-shell.phase-shop {
+    grid-template-columns: minmax(300px, 0.82fr) minmax(0, 1.18fr);
+  }
+
+  .phase-shop .shop-sheet {
+    grid-template-columns: minmax(300px, 0.82fr) minmax(0, 1.18fr);
   }
 }
 
