@@ -622,7 +622,7 @@ const EN: Record<MessageKey, string> = {
   inReserveInactive: "In reserve · active only in the cauldron",
   power: "POWER",
   rotatePortrait: "Please rotate to portrait",
-  portraitHint: "Kessel-Krawall is designed for one-handed portrait play.",
+  portraitHint: "Cauldron Rumble is designed for one-handed portrait play.",
   prepareCauldron: "Prepare your cauldron.",
   playerWinsFeedback: "Your cauldron wins the exchange!",
   opponentWinsFeedback: "{opponent} keeps the upper hand.",
@@ -656,7 +656,7 @@ const EN: Record<MessageKey, string> = {
   campaignBeginsFeedback: "{campaign} begins.",
   unlockCampaignError: "Defeat the Grand Cauldron in Campaign I first.",
   welcomeBack: "Welcome back to the cauldron tournament.",
-  alreadyFullscreenFeedback: "Kessel-Krawall is already filling the screen.",
+  alreadyFullscreenFeedback: "Cauldron Rumble is already filling the screen.",
   fullscreenLeftFeedback: "Exited fullscreen.",
   fullscreenUnavailable:
     "Fullscreen is not available here. On iPhone: Share → Add to Home Screen.",
@@ -1049,8 +1049,9 @@ interface I18nContextValue {
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null);
-const IS_CRAZYGAMES_BUILD =
-  process.env.NEXT_PUBLIC_DISTRIBUTION === "crazygames";
+const IS_ENGLISH_PORTAL_BUILD = ["crazygames", "kongregate"].includes(
+  process.env.NEXT_PUBLIC_DISTRIBUTION ?? "",
+);
 
 function preferredLanguage(): Language {
   try {
@@ -1059,13 +1060,14 @@ function preferredLanguage(): Language {
   } catch {
     // A blocked store should not prevent browser-language detection.
   }
+  if (IS_ENGLISH_PORTAL_BUILD) return "en";
   return navigator.language.toLowerCase().startsWith("de") ? "de" : "en";
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   // Each distribution has a deterministic server language; browser preference follows hydration.
   const [language, updateLanguage] = useState<Language>(
-    IS_CRAZYGAMES_BUILD ? "en" : "de",
+    IS_ENGLISH_PORTAL_BUILD ? "en" : "de",
   );
 
   useEffect(() => {

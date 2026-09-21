@@ -7,6 +7,8 @@ const publicUrl =
   process.env.URL ??
   "https://emfau88.github.io/KesselKrawall/";
 const isCrazyGamesBuild = process.env.CRAZYGAMES_BUILD === "true";
+const isKongregateBuild = process.env.KONGREGATE_BUILD === "true";
+const isPortalBuild = isCrazyGamesBuild || isKongregateBuild;
 
 const webMetadata: Metadata = {
   metadataBase: new URL(publicUrl),
@@ -54,7 +56,7 @@ const crazyGamesMetadata: Metadata = {
   applicationName: "Cauldron Rumble",
 };
 
-export const metadata: Metadata = isCrazyGamesBuild
+export const metadata: Metadata = isPortalBuild
   ? crazyGamesMetadata
   : webMetadata;
 
@@ -71,8 +73,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang={isCrazyGamesBuild ? "en" : "de"}>
-      <body className={isCrazyGamesBuild ? "platform-crazygames" : undefined}>
+    <html lang={isPortalBuild ? "en" : "de"}>
+      <body
+        className={
+          isCrazyGamesBuild
+            ? "platform-crazygames"
+            : isKongregateBuild
+              ? "platform-kongregate"
+              : undefined
+        }
+      >
         {children}
       </body>
     </html>

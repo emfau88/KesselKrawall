@@ -145,7 +145,7 @@ export const BACKDROP_FILES = {
   menu: "main-menu-stage.webp",
   "menu-desktop": "main-menu-stage-desktop.webp",
   market: "witch-market.webp",
-  "market-desktop": "witch-market-desktop.webp",
+  "market-desktop": "witch-market-scene-desktop-v2.webp",
 } as const;
 
 export type BackdropAsset = keyof typeof BACKDROP_FILES;

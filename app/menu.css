@@ -1459,6 +1459,15 @@
   }
 }
 
+/* Kongregate embeds the game in a compact desktop frame. Keep the English
+ * title inside the hero column at every supported frame width. */
+@media (min-width: 820px) {
+  body.platform-kongregate .menu-title-lockup h1 {
+    gap: 5px;
+    font-size: clamp(36px, 4.4vw, 64px);
+  }
+}
+
 /*
  * The desktop main-menu artwork has a fixed stone-platform centre. Anchor the
  * cauldron stage to that point through the same cover-crop geometry as the

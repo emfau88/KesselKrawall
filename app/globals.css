@@ -42,7 +42,8 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
-body.platform-crazygames {
+body.platform-crazygames,
+body.platform-kongregate {
   user-select: none;
   -webkit-user-select: none;
 }
@@ -7144,6 +7145,17 @@ button.board-slot:active {
     grid-template-rows: minmax(0, 1fr) auto;
   }
 
+  .phase-shop .market-backdrop {
+    opacity: 0.82;
+    filter: saturate(0.72) brightness(0.62) contrast(1.08);
+  }
+
+  .phase-shop .shop-sheet::after {
+    background:
+      linear-gradient(90deg, rgba(9, 6, 14, 0.08) 0 41%, rgba(14, 8, 20, 0.24) 41% 100%),
+      linear-gradient(180deg, rgba(18, 10, 24, 0.16), rgba(7, 5, 11, 0.46));
+  }
+
   .phase-shop .preparation-overview {
     grid-column: 1;
     grid-row: 1;
@@ -7153,6 +7165,9 @@ button.board-slot:active {
     overflow: hidden;
     border-right: 1px solid rgba(245, 197, 91, 0.2);
     border-bottom: 0;
+    background:
+      linear-gradient(180deg, rgba(13, 9, 18, 0.5), rgba(13, 9, 18, 0.62)),
+      radial-gradient(circle at 50% 100%, rgba(141, 215, 91, 0.07), transparent 58%);
   }
 
   .phase-shop .player-workbench {
@@ -7160,6 +7175,9 @@ button.board-slot:active {
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
     overflow: hidden;
+    background:
+      radial-gradient(circle at 50% 72%, rgba(141, 215, 91, 0.08), transparent 32%),
+      rgba(8, 6, 12, 0.34);
   }
 
   .phase-shop .workbench-inventory-compact {
@@ -7193,6 +7211,7 @@ button.board-slot:active {
       0 0 46px rgba(141, 215, 91, 0.09),
       inset 0 0 28px rgba(0, 0, 0, 0.5);
     transform: translate(-50%, -44%) perspective(280px) rotateX(62deg);
+    opacity: 0;
   }
 
   .phase-shop .market-brew-stage::after {

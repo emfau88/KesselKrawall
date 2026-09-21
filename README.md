@@ -198,6 +198,25 @@ prüft dabei automatisch Dateianzahl, Paketgröße, ZIP-Wurzel, Ressourcenpfade,
 Titel und Credits. Weitere Hinweise und der englische Einreichungstext stehen
 in [`platforms/crazygames/README.md`](platforms/crazygames/README.md).
 
+### Kongregate-Paket
+
+Für Kongregate gibt es ebenfalls einen isolierten HTML5-Build unter dem Titel
+**Cauldron Rumble**. Er enthält alle Laufzeitdateien, Grafiken und Audiodateien,
+startet bei neuen Plattformspielern auf Englisch, behält Deutsch als
+Sprachoption und speichert den Fortschritt lokal im Browser. Die eingebettete
+Variante blendet ihre eigene Vollbildsteuerung aus; die normalen Netlify- und
+GitHub-Pages-Builds werden dadurch nicht verändert.
+
+```powershell
+npm.cmd run build:kongregate
+```
+
+Der Befehl erstellt und validiert
+`dist/kongregate/cauldron-rumble-kongregate.zip`. Portaltexte, AI-Hinweis,
+Credits, Upload-Checkliste, Icon und fünf aktuelle Screenshots liegen danach
+unter `dist/kongregate/submission/`. Die reproduzierbaren Quelldateien dafür
+stehen in [`platforms/kongregate/README.md`](platforms/kongregate/README.md).
+
 Die verbindlichen Produkt- und Spielregeln stehen in
 [`docs/GAME_SPEC.md`](docs/GAME_SPEC.md).
 

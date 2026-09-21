@@ -148,6 +148,9 @@ const ROMAN_LEVEL = ["", "I", "II", "III"] as const;
 const BUILD_HASH = process.env.NEXT_PUBLIC_BUILD_SHA ?? "local";
 const IS_CRAZYGAMES_BUILD =
   process.env.NEXT_PUBLIC_DISTRIBUTION === "crazygames";
+const IS_EMBEDDED_PORTAL_BUILD =
+  IS_CRAZYGAMES_BUILD ||
+  process.env.NEXT_PUBLIC_DISTRIBUTION === "kongregate";
 const COMBAT_SOUNDS_STORAGE_KEY = "kessel-krawall:combat-sounds";
 const SHARED_COMBAT_PRELOAD_ASSETS = [
   "vfx-fire",
@@ -3399,7 +3402,7 @@ function GameContent() {
               </span>
               <span>{t("settingsTitle")}</span>
             </button>
-            {!IS_CRAZYGAMES_BUILD && (
+            {!IS_EMBEDDED_PORTAL_BUILD && (
               <button
                 type="button"
                 className="menu-fullscreen-button"
@@ -3564,9 +3567,15 @@ function GameContent() {
       onClickCapture={handleUiButtonClick}
     >
       <header className="game-header">
-        <div className="brand-lockup" aria-label="Kessel-Krawall">
+        <div
+          className="brand-lockup"
+          aria-label={language === "en" ? "Cauldron Rumble" : "Kessel-Krawall"}
+        >
           <span className="brand-kicker">{t("magicalAutobattler")}</span>
-          <strong>KESSEL <i>•</i> KRAWALL</strong>
+          <strong>
+            {language === "en" ? "CAULDRON" : "KESSEL"} <i>•</i>{" "}
+            {language === "en" ? "RUMBLE" : "KRAWALL"}
+          </strong>
           <span
             className="round-pips"
             aria-label={t("campaignProgress", { round: game.round, max: maxRounds })}
@@ -3630,7 +3639,7 @@ function GameContent() {
             <span className="menu-return-glyph" aria-hidden="true" />
             <small>{t("menu")}</small>
           </button>
-          {!IS_CRAZYGAMES_BUILD && (
+          {!IS_EMBEDDED_PORTAL_BUILD && (
             <button
               type="button"
               className="fullscreen-button"
