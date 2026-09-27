@@ -141,6 +141,9 @@ synchronisiert, statt nur eine abstrakte Zahl einzublenden.
 - eine eigenständige Desktop-Werkbank im Hexenmarkt mit interaktivem Kessel,
   Ritualkreis und kompakten Aktionsbuttons; die mobile Vorbereitung bleibt
   bewusst platzsparend
+- ein inszeniertes Kesselkabinett mit eigenen Kampagnenbühnen, einem
+  achtteiligen Gegnerpfad, sichtbarem Bossziel sowie Fortschrittsanzeigen für
+  Trophäen und entdeckte Familien
 - Fullscreen-Modus, Safe Areas und große Touchziele für moderne Smartphones
 - vollständige DE/EN-Lokalisierung für Menüs, Kampagnen, Gegner, Zutaten,
   Tooltips, Kampfmeldungen und barrierefreie Beschriftungen

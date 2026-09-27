@@ -3166,6 +3166,10 @@ function GameContent() {
       progress,
       "grand-tournament",
     );
+    const completedCampaignCount = CAMPAIGNS.filter((entry) =>
+      hasCompletedCampaign(progress, entry.id),
+    ).length;
+    const discoveredFamilyCount = firstCampaignComplete ? 5 : 3;
     return (
       <main
         className={`cabinet-shell ${fullscreenActive ? "is-fullscreen" : ""}`}
@@ -3236,15 +3240,67 @@ function GameContent() {
                   } ${completed ? "is-completed" : ""}`}
                   key={entry.id}
                 >
+                  <BackdropImage
+                    className="campaign-card-art"
+                    backdrop={
+                      entry.id === "grand-tournament"
+                        ? "campaign-grand-tournament-card"
+                        : "campaign-frostbound-card"
+                    }
+                  />
+                  <span className="campaign-card-vignette" aria-hidden="true" />
                   <div className="campaign-card-heading">
                     <span className="campaign-number">{t("campaign", { number: entry.number })}</span>
                     <span className="campaign-state">
                       {completed ? t("trophyReceived") : unlocked ? t("ready") : t("locked")}
                     </span>
                   </div>
-                  <h2>{localizedEntry.name}</h2>
-                  <strong>{localizedEntry.subtitle}</strong>
-                  <p>{localizedEntry.description}</p>
+                  <div className="campaign-card-copy">
+                    <h2>{localizedEntry.name}</h2>
+                    <strong>{localizedEntry.subtitle}</strong>
+                    <p>{localizedEntry.description}</p>
+                  </div>
+
+                  <div
+                    className="campaign-journey"
+                    aria-label={t("campaignJourney")}
+                  >
+                    <span className="campaign-journey-line" aria-hidden="true" />
+                    {entry.opponents.map((opponent, index) => {
+                      const localizedOpponent = opponentText(opponent, language);
+                      const isBoss = index === entry.opponents.length - 1;
+                      const isCleared = completed || (isCurrentRun && index < game.round - 1);
+                      const isCurrent =
+                        !completed &&
+                        unlocked &&
+                        ((isCurrentRun && index === game.round - 1) ||
+                          (!isCurrentRun && index === 0));
+                      return (
+                        <span
+                          className={`campaign-journey-node ${
+                            isBoss ? "is-boss" : ""
+                          } ${isCleared ? "is-cleared" : ""} ${
+                            isCurrent ? "is-current" : ""
+                          } ${!unlocked ? "is-locked" : ""}`}
+                          aria-label={t(
+                            isBoss ? "campaignBossBattle" : "campaignBattle",
+                            {
+                              round: index + 1,
+                              opponent: localizedOpponent.name,
+                            },
+                          )}
+                          title={localizedOpponent.name}
+                          key={opponent.id}
+                        >
+                          <ArtSprite
+                            asset={OPPONENT_ART[opponent.id] ?? "opponent-zischbert"}
+                            className="campaign-journey-portrait"
+                          />
+                          <b aria-hidden="true">{index + 1}</b>
+                        </span>
+                      );
+                    })}
+                  </div>
 
                   {entry.selectableLegacyFamily && unlocked && (
                     <div className="legacy-family-choice">
@@ -3326,19 +3382,27 @@ function GameContent() {
                 <strong>{t("trophies")}</strong>
                 <small>
                   {t("campaignsMastered", {
-                    done: CAMPAIGNS.filter((entry) =>
-                      hasCompletedCampaign(progress, entry.id),
-                    ).length,
+                    done: completedCampaignCount,
                     total: CAMPAIGNS.length,
                   })}
                 </small>
+                <span className="collection-progress" aria-hidden="true">
+                  <i
+                    style={{
+                      width: `${(completedCampaignCount / CAMPAIGNS.length) * 100}%`,
+                    }}
+                  />
+                </span>
               </div>
             </article>
             <article>
               <UiIcon asset="power" className="cabinet-collection-icon" />
               <div>
                 <strong>{t("recipeBook")}</strong>
-                <small>{t("familiesDiscovered", { count: firstCampaignComplete ? 5 : 3 })}</small>
+                <small>{t("familiesDiscovered", { count: discoveredFamilyCount })}</small>
+                <span className="collection-progress is-recipe" aria-hidden="true">
+                  <i style={{ width: `${(discoveredFamilyCount / 5) * 100}%` }} />
+                </span>
               </div>
             </article>
           </section>
@@ -3957,6 +4021,10 @@ function GameContent() {
             backdrop="market"
             desktopBackdrop="market-desktop"
             className="panel-backdrop market-backdrop"
+          />
+          <BackdropImage
+            backdrop="market-foreground-desktop"
+            className="market-foreground"
           />
           <div className="preparation-overview">
             <OpponentPreparationCard

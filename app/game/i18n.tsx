@@ -65,6 +65,9 @@ const DE = {
   fixedFamilyHint:
     "Frost und Echo sind fest. So bleibt der Shop bei genau drei Familien lesbar.",
   activeFamilies: "Aktive Familien",
+  campaignJourney: "Kampagnenpfad",
+  campaignBattle: "Kampf {round}: {opponent}",
+  campaignBossBattle: "Finale {round}: {opponent}",
   campaignRecord: "{wins}× gewonnen · bestes Ergebnis: {seals} Siegel",
   continueRunRound: "RUN FORTSETZEN · RUNDE {round}",
   startFreshRun: "FRISCHEN RUN STARTEN",
@@ -391,6 +394,9 @@ const EN: Record<MessageKey, string> = {
   fixedFamilyHint:
     "Frost and Echo are fixed. This keeps the shop readable with exactly three families.",
   activeFamilies: "Active families",
+  campaignJourney: "Campaign path",
+  campaignBattle: "Battle {round}: {opponent}",
+  campaignBossBattle: "Finale {round}: {opponent}",
   campaignRecord: "Won {wins}× · best result: {seals} seals",
   continueRunRound: "CONTINUE RUN · ROUND {round}",
   startFreshRun: "START FRESH RUN",

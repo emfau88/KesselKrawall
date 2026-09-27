@@ -37,6 +37,10 @@ Online-Systeme.
 Die Kernregeln und die mobile Benutzeroberfläche gelten unverändert für beide
 Kampagnen. Jeder Run beginnt mit einem frischen Kessel, 7 Gold und 3 Siegeln.
 
+Das Kesselkabinett stellt jede Kampagne auf einer eigenen thematischen Bühne
+dar. Ein Pfad aus acht Gegnerporträts zeigt Fortschritt, aktuellen Kampf und
+Bossziel, ohne Kampfkraft oder Inhalte vorzeitig freizuschalten.
+
 ## Kampagnendramaturgie
 
 Eine neue Kampagne zeigt vor dem ersten Einkauf einmalig die Kampfarena mit

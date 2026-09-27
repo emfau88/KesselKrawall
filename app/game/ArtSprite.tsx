@@ -146,6 +146,9 @@ export const BACKDROP_FILES = {
   "menu-desktop": "main-menu-stage-desktop.webp",
   market: "witch-market.webp",
   "market-desktop": "witch-market-scene-desktop-v2.webp",
+  "market-foreground-desktop": "witch-market-foreground-desktop-v1.webp",
+  "campaign-grand-tournament-card": "campaign-grand-tournament-card-v1.webp",
+  "campaign-frostbound-card": "campaign-frostbound-card-v1.webp",
 } as const;
 
 export type BackdropAsset = keyof typeof BACKDROP_FILES;
