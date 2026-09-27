@@ -3292,84 +3292,101 @@ function GameContent() {
                           title={localizedOpponent.name}
                           key={opponent.id}
                         >
-                          <ArtSprite
-                            asset={OPPONENT_ART[opponent.id] ?? "opponent-zischbert"}
-                            className="campaign-journey-portrait"
-                          />
+                          <span className="campaign-journey-portrait-frame">
+                            <ArtSprite
+                              asset={OPPONENT_ART[opponent.id] ?? "opponent-zischbert"}
+                              className="campaign-journey-portrait"
+                            />
+                          </span>
+                          <span className="campaign-journey-name">
+                            {localizedOpponent.name}
+                          </span>
                           <b aria-hidden="true">{index + 1}</b>
                         </span>
                       );
                     })}
                   </div>
 
-                  {entry.selectableLegacyFamily && unlocked && (
-                    <div className="legacy-family-choice">
-                      <span>{t("masteredFamily")}</span>
+                  {!unlocked && (
+                    <div className="campaign-lock-plaque" aria-hidden="true">
+                      <UiIcon asset="run-seal" className="campaign-lock-icon" />
                       <div>
-                        {LEGACY_FAMILIES.map((family) => (
-                          <button
-                            type="button"
-                            className={
-                              selectedLegacyFamily === family ? "is-selected" : ""
-                            }
-                            onClick={() => setSelectedLegacyFamily(family)}
-                            aria-pressed={selectedLegacyFamily === family}
-                            key={family}
-                          >
-                            <UiIcon
-                              asset={FAMILY_ICON[family]}
-                              className="campaign-family-icon"
-                            />
-                            {familyText(family, language, FAMILY_META[family]).name}
-                          </button>
-                        ))}
+                        <strong>{t("locked")}</strong>
+                        <small>{t("defeatBossFirst")}</small>
                       </div>
-                      <small>
-                        {t("fixedFamilyHint")}
-                      </small>
                     </div>
                   )}
 
-                  <div className="campaign-family-row" aria-label={t("activeFamilies")}>
-                    {entryFamilies.map((family) => (
-                      <span className={familyClass(family)} key={family}>
-                        <UiIcon
-                          asset={FAMILY_ICON[family]}
-                          className="campaign-family-icon"
-                        />
-                        {familyText(family, language, FAMILY_META[family]).name}
-                      </span>
-                    ))}
+                  <div className="campaign-card-controls">
+                    {entry.selectableLegacyFamily && unlocked && (
+                      <div className="legacy-family-choice">
+                        <span>{t("masteredFamily")}</span>
+                        <div>
+                          {LEGACY_FAMILIES.map((family) => (
+                            <button
+                              type="button"
+                              className={
+                                selectedLegacyFamily === family ? "is-selected" : ""
+                              }
+                              onClick={() => setSelectedLegacyFamily(family)}
+                              aria-pressed={selectedLegacyFamily === family}
+                              key={family}
+                            >
+                              <UiIcon
+                                asset={FAMILY_ICON[family]}
+                                className="campaign-family-icon"
+                              />
+                              {familyText(family, language, FAMILY_META[family]).name}
+                            </button>
+                          ))}
+                        </div>
+                        <small>
+                          {t("fixedFamilyHint")}
+                        </small>
+                      </div>
+                    )}
+
+                    <div className="campaign-family-row" aria-label={t("activeFamilies")}>
+                      {entryFamilies.map((family) => (
+                        <span className={familyClass(family)} key={family}>
+                          <UiIcon
+                            asset={FAMILY_ICON[family]}
+                            className="campaign-family-icon"
+                          />
+                          {familyText(family, language, FAMILY_META[family]).name}
+                        </span>
+                      ))}
+                    </div>
+
+                    {record && (
+                      <div className="campaign-record">
+                        <span>{localizedEntry.trophyName}</span>
+                        <small>
+                          {t("campaignRecord", {
+                            wins: record.wins,
+                            seals: record.bestSeals,
+                          })}
+                        </small>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      className="campaign-action-button"
+                      disabled={!unlocked || !hydrated}
+                      onClick={() =>
+                        isCurrentRun
+                          ? handleContinueRun()
+                          : requestCampaignStart(entry.id)
+                      }
+                    >
+                      {isCurrentRun
+                        ? t("continueRunRound", { round: game.round })
+                        : unlocked
+                          ? t("startFreshRun")
+                          : t("defeatBossFirst")}
+                    </button>
                   </div>
-
-                  {record && (
-                    <div className="campaign-record">
-                      <span>{localizedEntry.trophyName}</span>
-                      <small>
-                        {t("campaignRecord", {
-                          wins: record.wins,
-                          seals: record.bestSeals,
-                        })}
-                      </small>
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    className="campaign-action-button"
-                    disabled={!unlocked || !hydrated}
-                    onClick={() =>
-                      isCurrentRun
-                        ? handleContinueRun()
-                        : requestCampaignStart(entry.id)
-                    }
-                  >
-                    {isCurrentRun
-                      ? t("continueRunRound", { round: game.round })
-                      : unlocked
-                        ? t("startFreshRun")
-                        : t("defeatBossFirst")}
-                  </button>
                 </article>
               );
             })}
