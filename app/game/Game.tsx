@@ -4131,6 +4131,10 @@ function GameContent() {
               </div>
               <div className="market-brew-stage">
                 <span className="market-brew-stage__halo" aria-hidden="true" />
+                <ArtSprite
+                  asset="market-ritual-platform"
+                  className="market-ritual-platform"
+                />
                 <span className="market-brew-stage__label">
                   {t("prepareCauldron")}
                 </span>
@@ -4264,11 +4268,18 @@ function GameContent() {
                         {t("landsInReserve")}
                       </span>
                     )}
-                    <span className="offer-price">
+                    <span
+                      className={`offer-price ${
+                        !offer.bought && !hasPurchaseSpace ? "is-full" : ""
+                      }`}
+                    >
                       {offer.bought ? (
                         t("bought")
                       ) : !hasPurchaseSpace ? (
-                        t("full")
+                        <span className="offer-full-copy">
+                          <strong>{t("full")}</strong>
+                          <small>{t("makeRoomFirst")}</small>
+                        </span>
                       ) : (
                         <>
                           <UiIcon asset="coin" className="price-icon" />

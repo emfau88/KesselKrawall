@@ -19,6 +19,7 @@ export const ART_FILES = {
   "cauldron-chronokessel": "cauldron-chronokessel.png",
   "menu-rune-ring-outer": "menu-rune-ring-outer.webp",
   "menu-rune-ring-inner": "menu-rune-ring-inner.webp",
+  "market-ritual-platform": "market-ritual-platform-v1.png",
   "result-victory": "result-victory.png",
   "result-defeat": "result-defeat.png",
   "merge-sigil": "merge-sigil.png",
