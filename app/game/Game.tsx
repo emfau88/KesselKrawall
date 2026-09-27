@@ -152,6 +152,7 @@ const IS_EMBEDDED_PORTAL_BUILD =
   IS_CRAZYGAMES_BUILD ||
   process.env.NEXT_PUBLIC_DISTRIBUTION === "kongregate";
 const COMBAT_SOUNDS_STORAGE_KEY = "kessel-krawall:combat-sounds";
+const INTRO_GUIDE_STORAGE_KEY = "kessel-krawall:intro-guide-seen";
 const SHARED_COMBAT_PRELOAD_ASSETS = [
   "vfx-fire",
   "vfx-fire-projectile",
@@ -598,14 +599,16 @@ function HealthBar({
           </span>
         )}
       </div>
-      <div className="health-track">
-        <span
-          style={{
-            width: `${hpPercent}%`,
-            backgroundColor: healthColor,
-            color: healthColor,
-          }}
-        />
+      <div className="health-track-shell" aria-hidden="true">
+        <div className="health-track">
+          <span
+            style={{
+              width: `${hpPercent}%`,
+              backgroundColor: healthColor,
+              color: healthColor,
+            }}
+          />
+        </div>
       </div>
       {showStatuses && (
         <CombatStatusRow
@@ -1799,6 +1802,7 @@ function GameContent() {
   const [combatPaused, setCombatPaused] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [showPowerHelp, setShowPowerHelp] = useState(false);
+  const [showIntroGuide, setShowIntroGuide] = useState(false);
   const [reserveSelected, setReserveSelected] = useState(false);
   const [goldTransfers, setGoldTransfers] = useState<GoldTransferEffect[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -1866,6 +1870,13 @@ function GameContent() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
+      try {
+        setShowIntroGuide(
+          window.localStorage.getItem(INTRO_GUIDE_STORAGE_KEY) !== "seen",
+        );
+      } catch {
+        setShowIntroGuide(true);
+      }
       try {
         let storedProgress = loadPlayerProgress(window.localStorage);
         const parsed = loadStoredGame(window.localStorage);
@@ -2753,6 +2764,12 @@ function GameContent() {
   }
 
   function handleEnterOpeningShop() {
+    setShowIntroGuide(false);
+    try {
+      window.localStorage.setItem(INTRO_GUIDE_STORAGE_KEY, "seen");
+    } catch {
+      // The tutorial remains fully usable when storage is unavailable.
+    }
     setGame((current) => enterOpeningShop(current));
     announce(t("chooseOpeningFeedback"));
   }
@@ -3912,7 +3929,7 @@ function GameContent() {
               {!isCombatPhase && (
                 <span className="eyebrow">{t("yourCauldron")}</span>
               )}
-              {!isCombatPhase && (
+              {!isCombatPhase && game.phase !== "intro" && (
                 <h2>
                   <button
                     type="button"
@@ -3926,7 +3943,7 @@ function GameContent() {
                   </button>
                 </h2>
               )}
-              {!isCombatPhase && showPowerHelp && (
+              {!isCombatPhase && game.phase !== "intro" && showPowerHelp && (
                 <div className="power-explainer" id="power-explainer">
                   <strong>{t("buildEstimate")}</strong>
                   <p>{t("buildEstimateBody")}</p>
@@ -3955,7 +3972,7 @@ function GameContent() {
                 </div>
               )}
             </div>
-            {!isCombatPhase && (
+            {!isCombatPhase && game.phase !== "intro" && (
               <button
                 type="button"
                 className="power-compare"
@@ -4007,25 +4024,33 @@ function GameContent() {
 
       {game.phase === "intro" && (
         <section className="intro-sheet" aria-labelledby="run-intro-title">
-          <span className="eyebrow">{t("firstRound")}</span>
-          <h2 id="run-intro-title">{t("orientThenBrew")}</h2>
-          <p>
-            {t("introPrefix")} <strong>{localizedOpponent.name}</strong>{" "}
-            {t("introSuffix")}
-          </p>
-          <div className="intro-facts" aria-label={t("firstRoundFlow")}>
-            <span><b>1</b> {t("chooseIngredients")}</span>
-            <span><b>2</b> {t("buildSynergies")}</span>
-            <span><b>3</b> {t("startFight")}</span>
+          <BackdropImage backdrop="arena" className="intro-panel-backdrop" />
+          <div className="intro-guide-card">
+            <span className="eyebrow">{t("firstRound")}</span>
+            <h2 id="run-intro-title">{t("orientThenBrew")}</h2>
+            <p>
+              {t("introPrefix")} <strong>{localizedOpponent.name}</strong>{" "}
+              {t("introSuffix")}
+            </p>
+            <div className="intro-facts" aria-label={t("firstRoundFlow")}>
+              <span className="is-active"><b>1</b> {t("chooseIngredients")}</span>
+              <span><b>2</b> {t("buildSynergies")}</span>
+              <span><b>3</b> {t("startFight")}</span>
+            </div>
+            <div className="intro-cta-wrap">
+              <button
+                type="button"
+                className="intro-button"
+                onClick={handleEnterOpeningShop}
+              >
+                {t("toMarket")}
+                <span>{t("openingOfferHint")}</span>
+              </button>
+              {showIntroGuide && (
+                <span className="intro-guide-pointer" aria-hidden="true">☞</span>
+              )}
+            </div>
           </div>
-          <button
-            type="button"
-            className="intro-button"
-            onClick={handleEnterOpeningShop}
-          >
-            {t("toMarket")}
-            <span>{t("openingOfferHint")}</span>
-          </button>
         </section>
       )}
 
