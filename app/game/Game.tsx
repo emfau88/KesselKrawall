@@ -50,6 +50,7 @@ import {
 import { getItemInsights, type ItemInsights } from "./itemInsights";
 import { CauldronFamilyEffects } from "./CauldronFamilyEffects";
 import { ArenaAtmosphere } from "./ArenaAtmosphere";
+import { getCombatPreloadAssets } from "./combatArtPreload";
 import {
   campaignText,
   familyText,
@@ -155,54 +156,6 @@ const IS_EMBEDDED_PORTAL_BUILD =
   process.env.NEXT_PUBLIC_DISTRIBUTION === "kongregate";
 const COMBAT_SOUNDS_STORAGE_KEY = "kessel-krawall:combat-sounds";
 const INTRO_GUIDE_STORAGE_KEY = "kessel-krawall:intro-guide-seen";
-const SHARED_COMBAT_PRELOAD_ASSETS = [
-  "vfx-fire",
-  "vfx-fire-projectile",
-  "vfx-dragon-tooth-projectile",
-  "vfx-ember-core-projectile",
-  "vfx-cinder-berry-projectile",
-  "vfx-poison",
-  "vfx-poison-projectile",
-  "vfx-nightwing-projectile",
-  "vfx-witch-eye-projectile",
-  "vfx-venom-bulb-projectile",
-  "vfx-shield",
-  "vfx-ward-bloom",
-  "vfx-gold-spoon-projectile",
-  "vfx-moon-salt-projectile",
-  "vfx-impact",
-] as const satisfies readonly ArtAsset[];
-
-const CAMPAIGN_PRELOAD_ASSETS: Record<CampaignId, readonly ArtAsset[]> = {
-  "grand-tournament": [
-  "cauldron-zischbert",
-  "cauldron-moor-martha",
-  "cauldron-schild-siggi",
-  "cauldron-knister-klara",
-  "cauldron-tox-toni",
-  "cauldron-broesel-berta",
-  "cauldron-meisterin-mirea",
-  "cauldron-boss",
-  ],
-  "frostbound-vault": [
-    "cauldron-reif-rudi",
-    "cauldron-hall-hanne",
-    "cauldron-eis-elsa",
-    "cauldron-takt-tilda",
-    "cauldron-splitter-sven",
-    "cauldron-resonanz-rosa",
-    "cauldron-archivarin-aeva",
-    "cauldron-chronokessel",
-    "vfx-frost-shard-projectile",
-    "vfx-ice-bell-projectile",
-    "vfx-rime-clock-projectile",
-    "vfx-mirror-shard-projectile",
-    "vfx-echo-bell-projectile",
-    "vfx-time-thread-projectile",
-    "vfx-frost-stasis",
-    "vfx-echo-afterimage",
-  ],
-};
 type AppScreen = "menu" | "cabinet" | "game";
 
 interface BattleView {
@@ -1928,11 +1881,11 @@ function GameContent() {
   }, []);
 
   useEffect(() => {
-    void preloadArtAssets([
-      ...SHARED_COMBAT_PRELOAD_ASSETS,
-      ...CAMPAIGN_PRELOAD_ASSETS[game.campaignId],
-    ]);
-  }, [game.campaignId]);
+    if (!hydrated || screen !== "game") return;
+    void preloadArtAssets(getCombatPreloadAssets(game.board, {
+      id: opponent.id, board: opponent.board,
+    }));
+  }, [hydrated, screen, game.board, opponent.id, opponent.board]);
 
   useEffect(() => {
     preloadGameAudio();

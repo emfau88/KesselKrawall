@@ -1,25 +1,25 @@
 export const ART_FILES = {
-  "cauldron-player": "cauldron-player-v3.png",
-  "cauldron-enemy": "cauldron-enemy.png",
-  "cauldron-boss": "cauldron-boss.png",
-  "cauldron-zischbert": "cauldron-zischbert.png",
-  "cauldron-moor-martha": "cauldron-moor-martha.png",
-  "cauldron-schild-siggi": "cauldron-schild-siggi.png",
-  "cauldron-knister-klara": "cauldron-knister-klara.png",
-  "cauldron-tox-toni": "cauldron-tox-toni.png",
-  "cauldron-broesel-berta": "cauldron-broesel-berta.png",
-  "cauldron-meisterin-mirea": "cauldron-meisterin-mirea.png",
-  "cauldron-reif-rudi": "cauldron-reif-rudi.png",
-  "cauldron-hall-hanne": "cauldron-hall-hanne.png",
-  "cauldron-eis-elsa": "cauldron-eis-elsa.png",
-  "cauldron-takt-tilda": "cauldron-takt-tilda.png",
-  "cauldron-splitter-sven": "cauldron-splitter-sven.png",
-  "cauldron-resonanz-rosa": "cauldron-resonanz-rosa.png",
-  "cauldron-archivarin-aeva": "cauldron-archivarin-aeva.png",
-  "cauldron-chronokessel": "cauldron-chronokessel.png",
+  "cauldron-player": "cauldron-player-v3.webp",
+  "cauldron-enemy": "cauldron-enemy.webp",
+  "cauldron-boss": "cauldron-boss.webp",
+  "cauldron-zischbert": "cauldron-zischbert.webp",
+  "cauldron-moor-martha": "cauldron-moor-martha.webp",
+  "cauldron-schild-siggi": "cauldron-schild-siggi.webp",
+  "cauldron-knister-klara": "cauldron-knister-klara.webp",
+  "cauldron-tox-toni": "cauldron-tox-toni.webp",
+  "cauldron-broesel-berta": "cauldron-broesel-berta.webp",
+  "cauldron-meisterin-mirea": "cauldron-meisterin-mirea.webp",
+  "cauldron-reif-rudi": "cauldron-reif-rudi.webp",
+  "cauldron-hall-hanne": "cauldron-hall-hanne.webp",
+  "cauldron-eis-elsa": "cauldron-eis-elsa.webp",
+  "cauldron-takt-tilda": "cauldron-takt-tilda.webp",
+  "cauldron-splitter-sven": "cauldron-splitter-sven.webp",
+  "cauldron-resonanz-rosa": "cauldron-resonanz-rosa.webp",
+  "cauldron-archivarin-aeva": "cauldron-archivarin-aeva.webp",
+  "cauldron-chronokessel": "cauldron-chronokessel.webp",
   "menu-rune-ring-outer": "menu-rune-ring-outer.webp",
   "menu-rune-ring-inner": "menu-rune-ring-inner.webp",
-  "market-ritual-platform": "market-ritual-platform-v1.png",
+  "market-ritual-platform": "market-ritual-platform-v1.webp",
   "family-fire-atlas": "family-fire-atlas-v1.webp",
   "family-poison-atlas": "family-poison-atlas-v1.webp",
   "family-guard-atlas": "family-guard-atlas-v1.webp",
@@ -91,6 +91,8 @@ export const ART_FILES = {
 
 export type ArtAsset = keyof typeof ART_FILES;
 
+const artPreloads = new Map<string, Promise<void>>();
+
 export async function preloadArtAssets(
   assets: readonly ArtAsset[],
 ): Promise<void> {
@@ -98,27 +100,37 @@ export async function preloadArtAssets(
 
   await Promise.all(
     assets.map(async (asset) => {
-      const image = new Image();
-      image.src = new URL(
+      const src = new URL(
         `assets/art/${ART_FILES[asset]}`,
         document.baseURI,
       ).href;
+      const existing = artPreloads.get(src);
+      if (existing) return existing;
 
-      if (typeof image.decode === "function") {
-        try {
-          await image.decode();
-        } catch {
-          // A failed eager decode must not block the game. The normal image
-          // element can still retry through the browser cache when rendered.
+      const preload = (async () => {
+        const image = new Image();
+        image.src = src;
+        if (typeof image.decode === "function") {
+          try {
+            await image.decode();
+          } catch {
+            // Allow a later preparation step to retry without blocking play.
+            artPreloads.delete(src);
+          }
+          return;
         }
-        return;
-      }
 
-      if (image.complete) return;
-      await new Promise<void>((resolve) => {
-        image.addEventListener("load", () => resolve(), { once: true });
-        image.addEventListener("error", () => resolve(), { once: true });
-      });
+        if (image.complete && image.naturalWidth > 0) return;
+        await new Promise<void>((resolve) => {
+          image.addEventListener("load", () => resolve(), { once: true });
+          image.addEventListener("error", () => {
+            artPreloads.delete(src);
+            resolve();
+          }, { once: true });
+        });
+      })();
+      artPreloads.set(src, preload);
+      return preload;
     }),
   );
 }

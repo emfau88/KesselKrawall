@@ -1,6 +1,24 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ARENA_PLATE, ARENA_FIRES, fitArenaPlate, emberAt, lightStrength, candleMotion, vaporVertex } from "../app/game/arenaLife";
+import { ARENA_PLATE, ARENA_FIRES, fitArenaPlate, isArenaBoundsVisible, emberAt, lightStrength, candleMotion, vaporVertex } from "../app/game/arenaLife";
+
+test("cropped corner effects are skipped, and become visible in a wide arena", () => {
+  const corners = [
+    { left: -27, right: 187, top: 532, bottom: 743 },
+    { left: 1493, right: 1707, top: 532, bottom: 743 },
+    { left: 1548, right: 1646, top: 118, bottom: 256 },
+  ];
+  for (const [width, height] of [[1020, 824], [390, 709]]) {
+    for (const bounds of corners) assert.equal(isArenaBoundsVisible(bounds, fitArenaPlate(width, height), width, height), false);
+  }
+  for (const bounds of corners) assert.equal(isArenaBoundsVisible(bounds, fitArenaPlate(1672, 941), 1672, 941), true);
+});
+
+test("partially visible effects keep rendering until their entire bounds leave the view", () => {
+  const fit = fitArenaPlate(1672, 941);
+  assert.ok(isArenaBoundsVisible({ left: -50, right: 1, top: 100, bottom: 150 }, fit, 1672, 941));
+  assert.equal(isArenaBoundsVisible({ left: -50, right: -1, top: 100, bottom: 150 }, fit, 1672, 941), false);
+});
 
 test("fire anchors follow the same centered cover crop as the background on desktop, mobile and portal", () => {
   for (const [width, height] of [[1020, 825], [390, 711], [521, 401], [1600, 900]]) {

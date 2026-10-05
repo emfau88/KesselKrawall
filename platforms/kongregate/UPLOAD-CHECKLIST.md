@@ -12,9 +12,10 @@
 ## Upload
 
 - Game type: `HTML5/WebGL`
-- Upload: `cauldron-rumble-kongregate.zip`
+- Main game file: `index.html`
+- Additional files: `cauldron-rumble-kongregate-assets.zip`
 - Do not use the Netlify iframe URL when uploading this self-contained build
-- Verify that `index.html` is at the ZIP root
+- The additional-files ZIP excludes index.html and has no wrapper directory
 - Accept the Game License & Upload Agreement only after reading it
 - Confirm no third-party ads, outside login or external microtransactions
 

@@ -2,7 +2,8 @@ import { Application, Assets, Container, Graphics, Rectangle, RenderTexture, Spr
 import { COLS, ROWS, plane } from "./arenaSceneParts";
 import { clothVertex, windGust } from "./arenaMotion";
 import { ARENA_BANNERS, ARENA_CANDLES, ARENA_FIRES, ARENA_LIGHTS, ARENA_VAPOR,
-  candleMotion, emberAt, fitArenaPlate, lightStrength, vaporVertex } from "./arenaLife";
+  candleMotion, emberAt, fitArenaPlate, isArenaBoundsVisible, lightStrength, vaporVertex,
+  type ArenaBounds } from "./arenaLife";
 import flameAtlas from "../../public/assets/animation/brazier-flame-atlas-v1.json";
 import vaporAtlas from "../../public/assets/animation/alchemy-vapor-atlas-v1.json";
 
@@ -156,26 +157,78 @@ export async function createArenaAtmosphere(host: HTMLElement, assetBase?: URL):
     let settings: AtmosphereSettings = { paused: true, celebration: null };
     let destroyed = false;
     let compact = false;
+    let width = host.clientWidth;
+    let height = host.clientHeight;
+    let fit = fitArenaPlate(width, height);
+
+    // Conservative source-space bounds are computed once, not for every frame.
+    function flameBounds(x: number, y: number, flameHeight: number, narrow = 1): ArenaBounds {
+      const scale = flameHeight / flameAtlas.referenceHeight;
+      return {
+        left: x - Math.max(...flameAtlas.frames.map((frame) => frame.anchorX * flameAtlas.cellWidth)) * scale * narrow - 8,
+        right: x + Math.max(...flameAtlas.frames.map((frame) => (1 - frame.anchorX) * flameAtlas.cellWidth)) * scale * narrow + 8,
+        top: y - Math.max(...flameAtlas.frames.map((frame) => frame.anchorY * flameAtlas.cellHeight)) * scale * 1.05 - 8,
+        bottom: y + Math.max(...flameAtlas.frames.map((frame) => (1 - frame.anchorY) * flameAtlas.cellHeight)) * scale * 1.05 + 8,
+      };
+    }
+    const fireBounds = ARENA_FIRES.map((source) => flameBounds(source.x, source.y + 1, source.height));
+    const candleBounds = ARENA_CANDLES.map((source) => flameBounds(source.x, source.y, source.height, .68));
+    const vaporBounds = ARENA_VAPOR.map((source) => {
+      const scale = source.height / (vaporAtlas.referenceHeight * 256 / vaporAtlas.cellHeight);
+      return { left: source.x - 132 * scale, right: source.x + 132 * scale,
+        top: source.y - 239 * scale, bottom: source.y + 21 * scale };
+    });
+    const bannerBounds = ARENA_BANNERS.map((source) => {
+      const bannerHeight = source.width * clothTexture.height / clothTexture.width;
+      return { left: source.x - source.width * .2, right: source.x + source.width * 1.2,
+        top: source.y - bannerHeight * .03, bottom: source.y + bannerHeight * 1.03 };
+    });
+    const lightBounds = ARENA_LIGHTS.map((source) => ({ left: source.x - source.width / 2,
+      right: source.x + source.width / 2, top: source.y - source.lightHeight / 2, bottom: source.y + source.lightHeight / 2 }));
+    const emberBounds = ARENA_FIRES.map((source) => ({ left: source.x - 24, right: source.x + 24,
+      top: source.y - 72, bottom: source.y + 2 }));
+
+    function updateVisibility() {
+      const visible = (bounds: ArenaBounds) => isArenaBoundsVisible(bounds, fit, width, height);
+      const ambient = (bounds: ArenaBounds) => settings.life !== false && visible(bounds);
+      banners.forEach((banner, index) => { banner.visible = visible(bannerBounds[index]); });
+      fires.forEach((layers, index) => layers.forEach((fire) => { fire.visible = ambient(fireBounds[index]); }));
+      candles.forEach((candle, index) => { candle.visible = ambient(candleBounds[index]); });
+      furnace.visible = ambient({ left: 1548, right: 1646, top: 118, bottom: 256 });
+      vapors.forEach(({ mesh }, index) => { mesh.visible = ambient(vaporBounds[index]); });
+      lights.forEach((light, index) => { light.visible = ambient(lightBounds[index]); });
+      embers.forEach((ember, index) => {
+        ember.visible = (!compact || index < 4) && ambient(emberBounds[index % ARENA_FIRES.length]);
+      });
+      // Updated only on resize/configuration, also useful in the arena preview.
+      host.dataset.visibleVapors = String(vapors.filter(({ mesh }) => mesh.visible).length);
+      host.dataset.visibleCandles = String(candles.filter((candle) => candle.visible).length);
+      host.dataset.visibleFurnace = String(furnace.visible);
+    }
 
     function layout() {
       if (destroyed) return;
       const w = host.clientWidth;
       const h = host.clientHeight;
       if (!w || !h) return;
+      width = w;
+      height = h;
       app.renderer.resize(w, h);
       compact = w < 600;
       app.ticker.maxFPS = compact ? 30 : 60;
-      const fit = fitArenaPlate(w, h);
+      fit = fitArenaPlate(w, h);
       world.scale.set(fit.scale);
       world.position.set(fit.x, fit.y);
       bannerWorld.scale.set(fit.scale);
       bannerWorld.position.set(fit.x, fit.y);
+      updateVisibility();
     }
 
     function draw(render = true) {
       const elapsed = time - gustStart;
       const gust = windGust(elapsed);
       banners.forEach((banner, index) => {
+        if (!banner.visible) return;
         const vertices = banner.vertices;
         for (let row = 0; row < ROWS; row++) {
           for (let col = 0; col < COLS; col++) {
@@ -189,6 +242,7 @@ export async function createArenaAtmosphere(host: HTMLElement, assetBase?: URL):
       });
       const fireFrames: number[] = [];
       fires.forEach((layers, index) => {
+        if (!layers[0].visible) return;
         const source = ARENA_FIRES[index];
         const position = (time * (11.5 + index * .3) + source.phase * 12) % frames.length;
         const frame = Math.floor(position);
@@ -203,6 +257,7 @@ export async function createArenaAtmosphere(host: HTMLElement, assetBase?: URL):
         fireFrames.push(frame);
       });
       candles.forEach((flame, index) => {
+        if (!flame.visible) return;
         const frame = Math.floor((time * (9.3 + index % 3 * .27) + index * 2.7) % frames.length);
         flame.texture = frames[frame];
         flame.anchor.set(flameAtlas.frames[frame].anchorX, flameAtlas.frames[frame].anchorY);
@@ -213,6 +268,7 @@ export async function createArenaAtmosphere(host: HTMLElement, assetBase?: URL):
         flame.alpha = motion.alpha;
       });
       furnaceFires.forEach(({ flame, source }) => {
+        if (!furnace.visible) return;
         const frame = Math.floor((time * 10.7 + source.phase * 12) % frames.length);
         flame.texture = frames[frame];
         flame.anchor.set(flameAtlas.frames[frame].anchorX, flameAtlas.frames[frame].anchorY);
@@ -220,6 +276,7 @@ export async function createArenaAtmosphere(host: HTMLElement, assetBase?: URL):
       });
       const vaporCells: number[] = [];
       vapors.forEach(({ layers, target, composite, mesh }, index) => {
+        if (!mesh.visible) return;
         const source = ARENA_VAPOR[index];
         const position = (time * 1.6 + source.phase) % vaporFrames.length;
         const frame = Math.floor(position);
@@ -242,14 +299,15 @@ export async function createArenaAtmosphere(host: HTMLElement, assetBase?: URL):
         vaporCells.push(frame);
       });
       lights.forEach((light, index) => {
+        if (!light.visible) return;
         const source = ARENA_LIGHTS[index];
         light.alpha = source.strength * lightStrength(time, source.phase);
       });
       embers.forEach((ember, index) => {
+        if (!ember.visible) return;
         // One spark per bowl in a narrow arena; two per bowl on desktop.
         const source = ARENA_FIRES[index % ARENA_FIRES.length];
         const motion = emberAt(time, index);
-        ember.visible = !compact || index < 4;
         ember.position.set(source.x + motion.x, source.y + motion.y);
         ember.alpha = motion.alpha;
       });
@@ -279,6 +337,7 @@ export async function createArenaAtmosphere(host: HTMLElement, assetBase?: URL):
       configure(next) {
         settings = next;
         world.visible = next.life !== false;
+        updateVisibility();
         // A precomputed combat winner must never trigger this before presentation ends.
         if (next.celebration && next.celebration !== lastCelebration && !next.paused) {
           lastCelebration = next.celebration;

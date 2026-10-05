@@ -4,7 +4,8 @@ $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $outputRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot "dist\kongregate"))
 $gameDir = [IO.Path]::GetFullPath((Join-Path $outputRoot "game"))
 $submissionDir = [IO.Path]::GetFullPath((Join-Path $outputRoot "submission"))
-$zipPath = [IO.Path]::GetFullPath((Join-Path $outputRoot "cauldron-rumble-kongregate.zip"))
+$zipPath = [IO.Path]::GetFullPath((Join-Path $outputRoot "cauldron-rumble-kongregate-assets.zip"))
+$uploadIndexPath = [IO.Path]::GetFullPath((Join-Path $outputRoot "index.html"))
 $outDir = [IO.Path]::GetFullPath((Join-Path $repoRoot "out"))
 $platformDir = [IO.Path]::GetFullPath((Join-Path $repoRoot "platforms\kongregate"))
 $repoPrefix = $repoRoot.TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
@@ -46,7 +47,13 @@ foreach ($relativePath in @(
   "_not-found.txt",
   "_not-found",
   "og.png",
-  ".nojekyll"
+  ".nojekyll",
+  "animationsprobe",
+  "animationsprobe.html",
+  "animationsprobe.txt",
+  "arenaprobe",
+  "arenaprobe.html",
+  "arenaprobe.txt"
 )) {
   $target = [IO.Path]::GetFullPath((Join-Path $gameDir $relativePath))
   $gamePrefix = $gameDir.TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
@@ -58,12 +65,21 @@ foreach ($relativePath in @(
   }
 }
 
+# These source assets support local animation studies, not the released game.
+Get-ChildItem -LiteralPath (Join-Path $gameDir "assets\animation") -File -Filter "spectator-*" | Remove-Item -Force
+foreach ($name in @("tournament-arena-clean-v1.webp", "tournament-arena-motion-v1.webp")) {
+  Remove-Item -LiteralPath (Join-Path $gameDir "assets\backgrounds\$name") -Force
+}
+
 Copy-Item -LiteralPath (Join-Path $platformDir "CREDITS.txt") -Destination (Join-Path $gameDir "CREDITS.txt") -Force
 
 $indexPath = Join-Path $gameDir "index.html"
 $indexContent = Get-Content -LiteralPath $indexPath -Raw
 if ($indexContent -notmatch "Cauldron Rumble") {
   throw "index.html does not contain the English game title."
+}
+if ($indexContent -notmatch '<html\b[^>]*\blang="en"') {
+  throw "index.html does not declare English as its initial language."
 }
 if ($indexContent -match '(?i)(?:src|href)=["'']/((?!/)[^"'']*)') {
   throw "index.html contains a root-relative resource reference: $($Matches[0])"
@@ -97,17 +113,31 @@ if ($totalBytes -gt $maxUploadBytes) {
   throw "Package is $totalBytes bytes; Kongregate permits at most 1 GB."
 }
 
-Compress-Archive -Path (Join-Path $gameDir "*") -DestinationPath $zipPath -CompressionLevel Optimal
+Copy-Item -LiteralPath $indexPath -Destination $uploadIndexPath -Force
+$additionalFiles = @(Get-ChildItem -LiteralPath $gameDir -Force | Where-Object Name -ne "index.html" | ForEach-Object FullName)
+Compress-Archive -Path $additionalFiles -DestinationPath $zipPath -CompressionLevel Optimal
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $archive = [IO.Compression.ZipFile]::OpenRead($zipPath)
 try {
   $entryNames = @($archive.Entries | ForEach-Object FullName)
-  if ($entryNames -notcontains "index.html") {
-    throw "The ZIP does not contain index.html at its root."
+  if ($entryNames -contains "index.html") {
+    throw "The additional-files ZIP must not contain the separately uploaded index.html."
   }
   if ($entryNames | Where-Object { $_ -match '^game/' }) {
     throw "The ZIP incorrectly contains a game/ wrapper directory."
+  }
+  if ($entryNames | Where-Object { $_.Contains('\') }) {
+    throw "The ZIP must use portable forward-slash paths."
+  }
+  $entryByName = @{}
+  foreach ($entry in $archive.Entries) { $entryByName[$entry.FullName] = $entry }
+  foreach ($file in $files) {
+    if ($file.FullName -eq $indexPath) { continue }
+    $relativeName = $file.FullName.Substring($gameDir.Length + 1).Replace('\', '/')
+    if (-not $entryByName.ContainsKey($relativeName) -or $entryByName[$relativeName].Length -ne $file.Length) {
+      throw "The additional-files ZIP is missing or has truncated: $relativeName"
+    }
   }
 }
 finally {
@@ -147,6 +177,7 @@ Write-Host "Files:        $fileCount"
 Write-Host "Unpacked:     $unpackedMiB MiB / 1024 MiB"
 Write-Host "ZIP size:     $zipMiB MiB"
 Write-Host "SHA-256:      $sha256"
-Write-Host "Upload ZIP:   $zipPath"
+Write-Host "Game file:    $uploadIndexPath"
+Write-Host "Extra files:  $zipPath"
 Write-Host "Portal files: $submissionDir"
 Write-Host "Local game:   $gameDir"

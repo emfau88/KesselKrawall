@@ -64,6 +64,18 @@ export function fitArenaPlate(width: number, height: number) {
   return { scale, x: (width - ARENA_PLATE.width * scale) / 2, y: (height - ARENA_PLATE.height * scale) / 2 };
 }
 
+export type ArenaBounds = { left: number; top: number; right: number; bottom: number };
+
+/** Bounds include transparent margins and maximum motion; partial sprites stay visible. */
+export function isArenaBoundsVisible(
+  bounds: ArenaBounds, fit: ReturnType<typeof fitArenaPlate>, width: number, height: number,
+): boolean {
+  return fit.x + bounds.right * fit.scale > 0
+    && fit.x + bounds.left * fit.scale < width
+    && fit.y + bounds.bottom * fit.scale > 0
+    && fit.y + bounds.top * fit.scale < height;
+}
+
 /** Small, continuous fluctuations: never a strobe or an on/off blink. */
 export function lightStrength(time: number, phase: number) {
   return 1 + Math.sin(time * 1.7 + phase * 9) * .075 + Math.sin(time * 4.3 + phase * 13) * .035;

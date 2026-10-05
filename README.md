@@ -215,8 +215,10 @@ npm.cmd run build:kongregate
 ```
 
 Der Befehl erstellt und validiert
-`dist/kongregate/cauldron-rumble-kongregate.zip`. Portaltexte, AI-Hinweis,
-Credits, Upload-Checkliste, Icon und fünf aktuelle Screenshots liegen danach
+`dist/kongregate/index.html` als Hauptdatei und
+`dist/kongregate/cauldron-rumble-kongregate-assets.zip` für die zusätzlichen Dateien.
+Die ZIP enthält den Rest ohne `index.html` und ohne äußeren Ordner. Portaltexte, AI-Hinweis,
+Credits, Upload-Checkliste, Icon und fünf vorbereitete Screenshots liegen danach
 unter `dist/kongregate/submission/`. Die reproduzierbaren Quelldateien dafür
 stehen in [`platforms/kongregate/README.md`](platforms/kongregate/README.md).
 
