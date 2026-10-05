@@ -48,6 +48,7 @@ import {
   type FloatingCombatNumber,
 } from "./combatFloatingNumbers";
 import { getItemInsights, type ItemInsights } from "./itemInsights";
+import { CauldronFamilyEffects } from "./CauldronFamilyEffects";
 import {
   campaignText,
   familyText,
@@ -738,6 +739,10 @@ function CauldronBoard({
             key={reactionKey}
             asset={cauldronAsset}
             className="cauldron-art"
+          />
+          <CauldronFamilyEffects
+            board={board}
+            suppressed={defeated || (!interactive && !combatActive)}
           />
           {cauldronVariant && (
             <>
@@ -3558,6 +3563,17 @@ function GameContent() {
 
           <section className="menu-command-panel" aria-label={t("mainMenu")}>
             <div className="menu-primary-actions">
+              {!hasStoredRun && (
+                <button
+                  type="button"
+                  className="menu-primary-button"
+                  onClick={() => requestCampaignStart("grand-tournament")}
+                  disabled={!hydrated}
+                >
+                  <span><UiIcon asset="battle" className="menu-button-icon" />{t("playNow")}</span>
+                  <small>{hydrated ? t("quickStartHint") : t("checkingProgress")}</small>
+                </button>
+              )}
               {hasStoredRun && hydrated && (
                 <button
                   type="button"
@@ -3581,25 +3597,17 @@ function GameContent() {
               )}
               <button
                 type="button"
-                className={hasStoredRun ? "menu-secondary-button" : "menu-primary-button"}
-                onClick={() =>
-                  IS_CRAZYGAMES_BUILD && !hasStoredRun
-                    ? requestCampaignStart("grand-tournament")
-                    : handleOpenCabinet()
-                }
+                className="menu-secondary-button"
+                onClick={handleOpenCabinet}
                 disabled={!hydrated}
               >
                 <span>
                   <UiIcon asset="elite" className="menu-button-icon" />
-                  {IS_CRAZYGAMES_BUILD && !hasStoredRun
-                    ? t("startFreshRun")
-                    : t("openCabinet")}
+                  {t("openCabinet")}
                 </span>
                 <small>
                   {hydrated
-                    ? IS_CRAZYGAMES_BUILD && !hasStoredRun
-                      ? t("quickStartHint")
-                      : t("chooseCampaigns")
+                    ? t("chooseCampaigns")
                     : t("checkingProgress")}
                 </small>
               </button>
@@ -4076,6 +4084,11 @@ function GameContent() {
             />
 
             <section className="player-workbench" aria-labelledby="player-workbench-title">
+              <BackdropImage
+                backdrop="market"
+                desktopBackdrop="market-workbench"
+                className="workbench-backdrop"
+              />
               <div className="workbench-heading">
                 <div>
                   <span className="eyebrow">{t("yourBuild")}</span>
@@ -4131,33 +4144,35 @@ function GameContent() {
               </div>
               <div className="market-brew-stage">
                 <span className="market-brew-stage__halo" aria-hidden="true" />
-                <ArtSprite
-                  asset="market-ritual-platform"
-                  className="market-ritual-platform"
-                />
                 <span className="market-brew-stage__label">
                   {t("prepareCauldron")}
                 </span>
-                <CauldronBoard
-                  board={game.board}
-                  side="player"
-                  cauldronAsset="cauldron-player"
-                  cauldronVariant="player"
-                  selectedSlot={game.selectedSlot}
-                  activeUids={[]}
-                  hitKind={null}
-                  interactive
-                  onSlot={handleSlot}
-                  insightTargetSlots={selectedInsights?.affects.slots}
-                  insightSourceSlots={selectedInsights?.benefits.slots}
-                />
-                {game.round >= RESERVE_UNLOCK_ROUND && (
-                  <ReservePocket
-                    item={game.reserve}
-                    selected={reserveSelected}
-                    onClick={handleReserve}
+                <div className="market-brew-scene">
+                  <ArtSprite
+                    asset="market-ritual-platform"
+                    className="market-ritual-platform"
                   />
-                )}
+                  <CauldronBoard
+                    board={game.board}
+                    side="player"
+                    cauldronAsset="cauldron-player"
+                    cauldronVariant="player"
+                    selectedSlot={game.selectedSlot}
+                    activeUids={[]}
+                    hitKind={null}
+                    interactive
+                    onSlot={handleSlot}
+                    insightTargetSlots={selectedInsights?.affects.slots}
+                    insightSourceSlots={selectedInsights?.benefits.slots}
+                  />
+                  {game.round >= RESERVE_UNLOCK_ROUND && (
+                    <ReservePocket
+                      item={game.reserve}
+                      selected={reserveSelected}
+                      onClick={handleReserve}
+                    />
+                  )}
+                </div>
               </div>
               <SynergyStrip board={game.board} families={game.activeFamilies} />
             </section>
@@ -4170,22 +4185,6 @@ function GameContent() {
                 <h2>{t("chooseThree")}</h2>
               </div>
             </div>
-
-            {selectedDefinition && selectedItem && selectedInsights && (
-              <ItemInspectorCard
-                item={selectedItem}
-                definition={selectedDefinition}
-                insights={selectedInsights}
-                inReserve={reserveSelected}
-                onClose={() => {
-                  if (reserveSelected) handleReserve();
-                  else if (game.selectedSlot !== null) {
-                    handleSlot(game.selectedSlot);
-                  }
-                }}
-                onSell={handleSell}
-              />
-            )}
 
             <div className="offer-grid">
               {game.offers.map((offer) => {
@@ -4290,6 +4289,31 @@ function GameContent() {
                   </button>
                 );
               })}
+            </div>
+            <div className={`shop-inspection ${selectedItem ? "has-selection" : ""}`}>
+              {selectedDefinition && selectedItem && selectedInsights ? (
+                <ItemInspectorCard
+                  item={selectedItem}
+                  definition={selectedDefinition}
+                  insights={selectedInsights}
+                  inReserve={reserveSelected}
+                  onClose={() => {
+                    if (reserveSelected) handleReserve();
+                    else if (game.selectedSlot !== null) handleSlot(game.selectedSlot);
+                  }}
+                  onSell={handleSell}
+                />
+              ) : (
+                <div className="shop-build-guide">
+                  <UiIcon asset="power" className="shop-guide-icon" />
+                  <div>
+                    <span className="eyebrow">{t("yourBuild")}</span>
+                    <h3>{t("inspectIngredient")}</h3>
+                    <p>{t("inspectIngredientHint")}</p>
+                    <small>{t("mergeBuildHint")}</small>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

@@ -1,0 +1,313 @@
+/* Preparation, inspection and compact portal layouts share one sizing policy. */
+.shop-inspection:not(.has-selection) { display: none; }
+.phase-shop .shop-card { border-color: rgba(255, 255, 255, .15); box-shadow: inset 0 1px rgba(255,255,255,.04); }
+.phase-shop .shop-card > strong { font-size: 15px; }
+.phase-shop .shop-card > small { font-size: 12px; line-height: 1.35; color: #e0d6c3; }
+.phase-shop .offer-synergy, .phase-shop .offer-merge-target { font-size: 11px; line-height: 1.3; }
+.phase-shop .offer-family { font-size: 10px; }
+.phase-shop .shop-card, .phase-shop .shop-card:has(.offer-merge-target) { min-height: 92px; gap: 2px 7px; }
+.phase-shop .offer-price { font-size: 13px; min-height: 38px; }
+.phase-shop .shop-card.is-bought { opacity: .7; }
+@media (max-width: 699px), (orientation: portrait) {
+  .phase-shop .shop-card, .phase-shop .shop-card:has(.offer-merge-target) { grid-template-columns: 46px minmax(0,1fr) 52px; }
+  .phase-shop .offer-price { width: 52px; }
+  .phase-shop .is-bought .offer-price { padding: 4px 2px; font-size: 9px; }
+}
+.phase-shop .shop-inspection.has-selection {
+  position: absolute; z-index: 20; inset: auto 6px 6px;
+  max-height: 100%; overflow-y: auto; scrollbar-width: thin;
+}
+.phase-shop .item-inspector { margin: 0; }
+.inspector-close { width: 40px; height: 40px; }
+.item-inspector { grid-template-columns: 44px minmax(0, 1fr) 40px; }
+.inspector-heading p { font-size: 12px; }
+.inspector-family { font-size: 10px; }
+.inspector-fact > span, .inspector-influence > span { font-size: 9px; }
+.inspector-fact b, .inspector-influence b { font-size: 12px; }
+.inspector-fact small, .inspector-influence small, .inspector-actions > small { font-size: 11px; line-height: 1.35; }
+.inspector-actions .sell-button { min-height: 40px; }
+.workbench-heading > div:first-child { min-width: 0; }
+.workbench-stats { flex-wrap: nowrap; }
+.result-heading p { font-size: 12px; line-height: 1.4; }
+.stat-name { font-size: 14px; }
+.stat-name small { font-size: 11px; }
+.stat-primary small { font-size: 9px; }
+.phase-shop .board-slot.is-empty { border-color: rgba(245,197,91,.32); }
+
+@media (max-height: 680px) and (max-width: 699px) {
+  .phase-shop .shop-card, .phase-shop .shop-card:has(.offer-merge-target) { min-height: 82px; }
+  .phase-shop .shop-card > strong { font-size: 14px; }
+}
+@media (min-height: 780px) and (max-width: 699px) {
+  .phase-shop .shop-card, .phase-shop .shop-card:has(.offer-merge-target) { min-height: 116px; padding: 10px 7px; }
+  .phase-shop .offer-grid { gap: 7px; }
+  .phase-shop .offer-icon { width: 48px; height: 48px; }
+}
+
+@media (min-width: 700px) and (orientation: landscape) {
+  .game-shell.phase-shop { grid-template-columns: minmax(0, .43fr) minmax(0, .57fr); }
+  .phase-shop .shop-sheet {
+    grid-column: 1 / -1; grid-row: 2;
+    grid-template-columns: minmax(0, .43fr) minmax(0, .57fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+  .phase-shop .market-backdrop { opacity: .75; filter: saturate(.8) brightness(.7); }
+  .phase-shop .shop-sheet::after { background: linear-gradient(90deg, rgba(8,5,12,.28), rgba(12,8,18,.4)); }
+  .phase-shop .preparation-overview {
+    grid-column: 1; grid-row: 1; padding: 18px; gap: 12px;
+    grid-template-rows: auto minmax(0, 1fr); overflow: visible;
+    border-bottom: 0; border-right: 1px solid rgba(245,197,91,.12);
+    background: rgba(12,8,18,.45);
+  }
+  .phase-shop .next-opponent-card summary { min-height: 62px; }
+  .phase-shop .prep-opponent-copy > strong { font-size: 20px; }
+  .phase-shop .prep-opponent-copy > small { font-size: 12px; }
+  .phase-shop .player-workbench {
+    min-width: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
+    padding: 14px; overflow: hidden; border-color: rgba(245,197,91,.16);
+    background: radial-gradient(ellipse at 50% 65%, rgba(141,215,91,.08), transparent 65%), rgba(10,7,15,.48);
+  }
+  .phase-shop .workbench-heading { min-width: 0; min-height: 54px; flex-wrap: wrap; }
+  .phase-shop .workbench-heading h2 { font-size: 20px; line-height: 1.15; }
+  .phase-shop .workbench-stats > span, .phase-shop .workbench-stats > button { font-size: 12px; min-height: 30px; }
+  .phase-shop .workbench-inventory-compact { display: none; }
+  .phase-shop .market-brew-stage {
+    position: relative; min-height: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 8px; isolation: isolate; container-type: size;
+  }
+  .phase-shop .market-brew-stage__label {
+    position: relative; z-index: 5; margin: 0; color: #d9c99f; font-size: 12px;
+    text-align: center; line-height: 1.4;
+  }
+  .market-brew-scene {
+    position: relative; container-type: inline-size; flex: 0 0 auto;
+    width: min(100%, 620px, calc((100cqh - 28px) * 1.25)); aspect-ratio: 1.25;
+  }
+  .phase-shop .market-ritual-platform {
+    position: absolute; z-index: 0; bottom: 0; left: 0; width: 100%; height: auto;
+    filter: drop-shadow(0 14px 20px rgba(0,0,0,.55));
+  }
+  .phase-shop .market-brew-scene .cauldron-board {
+    --pot-size: 42cqw; --slot-size: 13cqw; --board-height: 58cqw; --arc-rise: 6cqw;
+    position: absolute; z-index: 2; bottom: 22%; left: 5%; width: 90%;
+    height: var(--board-height); min-height: 0; margin: 0; transform: none;
+  }
+  .phase-shop .market-brew-scene .reserve-pocket {
+    position: absolute; z-index: 6; bottom: 0; right: 0;
+    display: grid; grid-template-columns: auto 48px; gap: 6px;
+  }
+  .phase-shop .reserve-slot { --slot-size: 48px; }
+  .phase-shop .reserve-pocket-label { font-size: 10px; }
+  .phase-shop .reserve-pocket-label small { font-size: 9px; }
+  .phase-shop .player-workbench .synergy-strip { margin: 0; gap: 8px; }
+  .phase-shop .player-workbench .synergy-pill { min-height: 64px; padding: 8px; background: rgba(8,5,13,.48); }
+  .phase-shop .player-workbench .synergy-bonus { display: block; font-size: 12px; line-height: 1.3; }
+  .phase-shop .synergy-heading b, .phase-shop .synergy-heading strong { font-size: 12px; }
+  .phase-shop .shop-scroll {
+    grid-column: 2; grid-row: 1; padding: 18px 22px;
+    display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 16px;
+    align-content: start; overflow-y: auto;
+  }
+  .phase-shop .shop-topline { min-height: 44px; padding: 0; align-items: center; }
+  .phase-shop .shop-topline h2 { font-size: 24px; line-height: 1.15; }
+  .phase-shop .offer-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; overflow: visible; }
+  .phase-shop .shop-card, .phase-shop .shop-card:has(.offer-merge-target) {
+    --frame-accent: var(--gold); min-height: 340px; padding: 16px 12px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 128px auto minmax(54px, auto) auto auto 44px;
+    gap: 8px; align-items: start; text-align: center;
+    border-radius: 16px; animation: market-card-arrive 350ms ease-out both;
+    background: radial-gradient(ellipse at 50% 25%, color-mix(in srgb, var(--frame-accent) 10%, transparent), transparent 65%), linear-gradient(160deg,#302139,#110c19);
+  }
+  .phase-shop .shop-card.family-fire { --frame-accent: var(--fire); }
+  .phase-shop .shop-card.family-poison { --frame-accent: var(--poison); }
+  .phase-shop .shop-card.family-guard { --frame-accent: var(--guard); }
+  .phase-shop .shop-card.family-frost { --frame-accent: var(--frost); }
+  .phase-shop .shop-card.family-echo { --frame-accent: var(--echo); }
+  .phase-shop .offer-family { display: inline-flex; position: static; grid-column: 1; grid-row: 1; justify-self: center; font-size: 11px; }
+  .phase-shop .offer-icon { grid-column: 1; grid-row: 2; width: 128px; max-width: 100%; height: 128px; margin: auto; }
+  .phase-shop .shop-card > strong { grid-column: 1; grid-row: 3; font-size: 21px; align-self: start; text-align: center; overflow-wrap: anywhere; }
+  .phase-shop .shop-card > small { grid-column: 1; grid-row: 4; font-size: 14px; line-height: 1.4; text-align: center; -webkit-line-clamp: unset; }
+  .phase-shop .offer-synergy, .phase-shop .shop-card:has(.offer-merge-target) .offer-synergy {
+    position: static; grid-column: 1; grid-row: 5; min-height: 20px;
+    padding: 0; place-items: center; font-size: 12px; text-align: center;
+  }
+  .phase-shop .offer-merge-target { grid-column: 1; grid-row: 6; min-height: 16px; font-size: 11px; place-items: center; text-align: center; }
+  .phase-shop .offer-price {
+    position: static; inset: auto; grid-column: 1; grid-row: 7; width: 100%; min-height: 44px;
+    align-self: end; transform: none; border-radius: 10px; font-size: 15px;
+    background: rgba(0,0,0,.24); border-color: color-mix(in srgb, var(--frame-accent) 32%, transparent);
+  }
+  .phase-shop .shop-card.is-bought { opacity: .65; }
+  .phase-shop .shop-inspection, .phase-shop .shop-inspection.has-selection {
+    position: relative; z-index: 3; inset: auto; min-height: 0; max-height: none; display: flex;
+    flex-direction: column; justify-content: center; overflow: visible;
+  }
+  .shop-build-guide { display: flex; align-items: start; gap: 18px; padding: 24px; border-radius: 16px; background: rgba(15,10,21,.78); border: 1px solid rgba(255,255,255,.08); }
+  .shop-guide-icon { width: 48px; height: 48px; flex: 0 0 auto; opacity: .8; }
+  .shop-build-guide h3 { margin: 4px 0 8px; font: bold 23px Georgia,serif; }
+  .shop-build-guide p { margin: 0; font-size: 15px; color: #e0d6c3; line-height: 1.5; }
+  .shop-build-guide small { display: block; margin-top: 12px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .phase-shop .shop-inspection.has-selection { overflow-y: auto; justify-content: flex-start; scrollbar-width: thin; }
+  .phase-shop .item-inspector { flex: 0 0 auto; padding: 12px; gap: 8px; grid-template-columns: 56px minmax(0,1fr) 40px; }
+  .phase-shop .inspector-icon { width: 56px; height: 56px; }
+  .phase-shop .inspector-heading > strong { font-size: 23px; }
+  .phase-shop .inspector-heading p { font-size: 14px; }
+  .phase-shop .inspector-fact, .phase-shop .inspector-influence { min-height: 58px; padding-top: 6px; padding-bottom: 6px; }
+  .phase-shop .inspector-fact b, .phase-shop .inspector-influence b { font-size: 14px; }
+  .phase-shop .inspector-fact small, .phase-shop .inspector-influence small { font-size: 12px; }
+  .phase-shop .shop-actions {
+    grid-column: 1 / -1; grid-row: 2; grid-template-columns: minmax(140px,200px) minmax(200px,440px);
+    justify-content: end; gap: 12px; padding: 12px 22px max(12px,var(--safe-bottom));
+    border-top: 1px solid rgba(245,197,91,.14); background: rgba(12,8,18,.96);
+  }
+  .phase-shop .secondary-button, .phase-shop .fight-button { min-height: 54px; }
+  .phase-shop .fight-button { font-size: 17px; }
+  .phase-shop .fight-button b, .phase-shop .secondary-button { font-size: 13px; }
+  .phase-shop .offer-full-copy small { display: block; font-size: 11px; }
+
+  /* The result card uses its content height; the arena keeps a larger visual role. */
+  .game-shell.phase-result, .game-shell.phase-battle, .game-shell.phase-intro { grid-template-columns: minmax(0,1fr) clamp(300px,30vw,420px); }
+  .phase-result .result-sheet {
+    align-self: center; margin: 16px; padding: 22px; max-height: calc(100% - 32px);
+    display: grid; grid-template-rows: auto minmax(0,1fr) auto; overflow: hidden;
+    border: 1px solid rgba(245,197,91,.2); border-radius: 20px;
+    background: linear-gradient(150deg,#302039,#171020); box-shadow: 0 20px 50px rgba(0,0,0,.45);
+  }
+  .phase-result .result-sheet .stats-list { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+  .phase-battle .battle-controls {
+    align-self: center; margin: 16px; padding: 22px; max-height: calc(100% - 32px);
+    grid-template-rows: auto auto auto auto; gap: 16px; overflow-y: auto;
+    border: 1px solid rgba(245,197,91,.2); border-radius: 20px;
+  }
+  .phase-battle .battle-status small { font-size: 12px; line-height: 1.4; }
+  .phase-battle .battle-event-panel { min-height: 140px; padding: 16px; grid-template-columns: 48px minmax(0,1fr); gap: 6px 12px; }
+  .phase-battle .battle-event-icon { grid-column: 1; grid-row: 1 / 3; width: 48px; height: 48px; }
+  .phase-battle .battle-event-panel span { grid-column: 2; white-space: normal; overflow-wrap: anywhere; font-size: 14px; line-height: 1.4; }
+  .phase-battle .battle-event-panel strong { grid-column: 2; font-size: 23px; }
+  .result-heading { grid-template-columns: 58px minmax(0,1fr); }
+  .result-emblem { width: 58px; height: 58px; }
+  .result-heading p { font-size: 14px; line-height: 1.4; }
+  .stat-name { font-size: 15px; }
+  .stat-name small { font-size: 12px; }
+  .stat-primary small { font-size: 10px; }
+  .stat-row { min-height: 66px; }
+  .stats-heading, .stats-heading small { font-size: 11px; }
+  .phase-result .arena, .phase-battle .arena { padding: 12px 20px; grid-template-rows: minmax(0,1fr) 40px minmax(0,1fr); }
+  .phase-result .cauldron-board, .phase-battle .cauldron-board {
+    --pot-size: clamp(140px,20vh,220px); --slot-size: clamp(48px,6.5vh,72px);
+    --board-height: clamp(190px,29vh,310px); --arc-rise: 30px; width: min(100%,560px);
+  }
+  .phase-result .player-combatant .cauldron-board, .phase-battle .player-combatant .cauldron-board { margin: 0 auto auto; transform: none; }
+  .phase-result .opponent-copy, .phase-battle .opponent-copy, .phase-result .player-heading, .phase-battle .player-heading { min-height: 48px; }
+  .health-meta, .health-meta strong { font-size: 13px; }
+  .health-cluster > .health-meta, .health-cluster > .health-track-shell { width: min(90%,560px); }
+  .phase-intro .intro-sheet { overflow-x: hidden; min-width: 0; padding: 20px; }
+  .phase-intro .intro-guide-card { min-width: 0; width: 100%; }
+}
+
+/* Narrow or short desktop frames need readable offer rows rather than tiny cards. */
+@media (min-width: 700px) and (orientation: landscape) and (max-width: 1100px),
+       (min-width: 700px) and (orientation: landscape) and (max-height: 700px) {
+  .game-header { min-height: 58px; padding: 6px 12px; }
+  .brand-lockup strong { font-size: 20px; }
+  .brand-kicker { display: none; }
+  .phase-shop .preparation-overview { padding: 10px; gap: 8px; }
+  .phase-shop .next-opponent-card summary { min-height: 50px; }
+  .phase-shop .prep-opponent-copy > strong { font-size: 17px; }
+  .phase-shop .player-workbench { padding: 8px; }
+  .phase-shop .workbench-heading { min-height: 48px; display: block; }
+  .phase-shop .workbench-heading h2 { padding-top: 5px; }
+  .phase-shop .workbench-stats { position: absolute; top: 7px; right: 8px; }
+  .phase-shop .workbench-stats > button { font-size: 10px; min-height: 24px; }
+  .phase-shop .workbench-heading h2 { font-size: 16px; }
+  .phase-shop .workbench-stats > span { display: none; }
+  .phase-shop .market-brew-stage__label { font-size: 11px; }
+  .market-brew-scene { width: min(100%,calc((100cqh - 26px) * 1.25)); aspect-ratio: 1.25; }
+  .phase-shop .market-brew-scene .cauldron-board { --pot-size: 42cqw; --slot-size: 16cqw; --board-height: 58cqw; --arc-rise: 4cqw; width: 96%; left: 2%; }
+  .phase-shop .player-workbench .synergy-pill { padding: 5px; min-height: 44px; }
+  .phase-shop .player-workbench .synergy-bonus { font-size: 10px; }
+  .phase-shop .synergy-heading b, .phase-shop .synergy-heading strong { font-size: 11px; }
+  .phase-shop .shop-scroll { padding: 10px 12px; gap: 8px; grid-template-rows: auto auto minmax(0,1fr); }
+  .phase-shop .shop-topline { min-height: 34px; }
+  .phase-shop .shop-topline h2 { font-size: 19px; }
+  .phase-shop .offer-grid { grid-template-columns: minmax(0,1fr); gap: 6px; }
+  .phase-shop .shop-card, .phase-shop .shop-card:has(.offer-merge-target) {
+    min-height: 82px; padding: 7px 10px; grid-template-columns: 58px minmax(0,1fr) 70px;
+    grid-template-rows: auto auto auto auto auto; gap: 1px 8px; text-align: left;
+  }
+  .phase-shop .offer-family { grid-column: 2; grid-row: 1; justify-self: start; font-size: 10px; }
+  .phase-shop .offer-icon { grid-column: 1; grid-row: 1 / 6; width: 56px; height: 56px; }
+  .phase-shop .shop-card > strong { grid-column: 2; grid-row: 2; font-size: 16px; text-align: left; }
+  .phase-shop .shop-card > small { grid-column: 2; grid-row: 3; font-size: 12px; text-align: left; line-height: 1.3; }
+  .phase-shop .offer-synergy, .phase-shop .shop-card:has(.offer-merge-target) .offer-synergy { grid-column: 2; grid-row: 4; min-height: 14px; font-size: 11px; place-items: center start; text-align: left; }
+  .phase-shop .offer-merge-target { grid-column: 2; grid-row: 5; min-height: 0; font-size: 10px; place-items: center start; text-align: left; }
+  .phase-shop .offer-price { grid-column: 3; grid-row: 1 / 6; min-height: 40px; align-self: center; font-size: 12px; }
+  .shop-build-guide { padding: 10px; gap: 12px; }
+  .shop-build-guide h3 { font-size: 18px; }
+  .shop-build-guide p { font-size: 13px; }
+  .shop-build-guide small { font-size: 12px; margin-top: 6px; }
+  .shop-guide-icon { width: 32px; height: 32px; }
+  .phase-shop .shop-actions { padding: 8px 12px; gap: 8px; }
+  .phase-shop .secondary-button, .phase-shop .fight-button { min-height: 46px; }
+  .phase-shop .item-inspector { padding: 10px; gap: 8px; }
+  .phase-shop .inspector-heading > strong { font-size: 19px; }
+  .phase-shop .inspector-heading p { font-size: 12px; }
+  .phase-shop .inspector-fact small, .phase-shop .inspector-influence small { font-size: 11px; }
+}
+@media (min-width: 700px) and (orientation: landscape) and (max-height: 560px) {
+  .phase-shop .market-brew-stage__label { display: none; }
+  .phase-shop .player-workbench { grid-template-rows: auto 44px minmax(0,1fr) auto; gap: 6px; }
+  .phase-shop .workbench-inventory-compact { display: grid; }
+  .phase-shop .workbench-inventory-compact .cauldron-board.without-cauldron { --slot-size: 44px; width: min(100%,300px); margin: 0 auto; }
+  .phase-shop .market-brew-scene .slot-arc { display: none; }
+  .market-brew-scene { width: min(100%,260px); height: 100%; aspect-ratio: auto; }
+  .phase-shop .market-ritual-platform { width: 65%; left: 17.5%; }
+  .phase-shop .market-brew-scene .cauldron-board { --pot-size: 64px; --board-height: 64px; bottom: 16px; }
+  .phase-shop .market-brew-scene .reserve-pocket { display: none; }
+  .phase-shop .shop-inspection:not(.has-selection) { display: none; }
+  .phase-shop .shop-scroll { grid-template-rows: auto auto; align-content: start; }
+  .phase-shop .player-workbench .synergy-bonus { display: none; }
+  .phase-result .cauldron-board, .phase-battle .cauldron-board { --pot-size: 86px; --slot-size: 42px; --board-height: 120px; --arc-rise: 14px; width: min(100%,340px); }
+  .phase-result .opponent-copy, .phase-battle .opponent-copy { min-height: 34px; }
+  .phase-result .opponent-copy p, .phase-battle .opponent-copy p { display: none; }
+  .phase-result .opponent-copy h2, .phase-battle .opponent-copy h2 { font-size: 19px; }
+  .phase-result .opponent-emblem, .phase-battle .opponent-emblem { width: 34px; height: 34px; }
+  .phase-result .combatant, .phase-battle .combatant { padding: 2px 6px; }
+  .phase-result .player-heading, .phase-battle .player-heading { min-height: 0; }
+  .phase-result .result-sheet { padding: 14px; margin: 8px; max-height: calc(100% - 16px); }
+  .phase-battle .battle-controls { margin: 8px; padding: 12px; max-height: calc(100% - 16px); gap: 10px; }
+  .phase-battle .battle-status { padding-bottom: 8px; }
+  .phase-battle .battle-status strong { font-size: 18px; }
+  .phase-battle .battle-status small { font-size: 11px; }
+  .phase-battle .battle-score-grid { grid-template-columns: minmax(0,1fr) 24px minmax(0,1fr); gap: 6px; }
+  .phase-battle .battle-score-grid > div { padding: 8px 6px; }
+  .phase-battle .score-versus-icon { width: 24px; height: 24px; }
+  .phase-battle .battle-event-panel { min-height: 100px; padding: 10px; grid-template-columns: 36px minmax(0,1fr); gap: 4px 8px; }
+  .phase-battle .battle-event-icon { width: 36px; height: 36px; }
+  .phase-battle .battle-event-panel span { font-size: 12px; }
+  .phase-battle .battle-speed { padding-top: 10px; gap: 6px; }
+}
+
+/* Keep the first action above the fold on phones and simplify menu hierarchy. */
+.menu-build-hash { display: none; }
+.menu-secondary-button { box-shadow: none; }
+.menu-explainer-grid article { border-color: rgba(255,255,255,.08); }
+@media (max-width: 819px) {
+  .menu-hero { min-height: 0; height: clamp(300px,44dvh,390px); grid-template-rows: auto minmax(0,1fr) auto; padding: 16px 16px 10px; }
+  .menu-cauldron-stage { min-height: 0; height: 100%; }
+  .menu-cauldron { width: clamp(140px,22dvh,190px); height: clamp(140px,22dvh,190px); bottom: 12px; }
+  .menu-magic-ring { width: 220px; height: 220px; bottom: 5px; }
+  .menu-family-legend { margin-top: 0; }
+  .menu-command-panel { padding-top: 12px; }
+  .menu-explainer-grid p { font-size: 13px; line-height: 1.45; }
+  .menu-primary-button small, .menu-secondary-button small { font-size: 12px; }
+}
+@media (min-width: 820px) {
+  .menu-explainer-grid { grid-template-columns: 1fr; }
+  .menu-explainer-grid article { min-height: 0; padding: 14px; grid-template-columns: 34px minmax(0,1fr); gap: 12px; }
+  .menu-info-icon { width: 34px; height: 34px; }
+  .menu-explainer-grid p { font-size: 14px; line-height: 1.45; }
+  .coming-soon-grid { grid-template-columns: 1fr; }
+  .coming-soon-grid article { min-height: 58px; grid-template-columns: 30px minmax(0,1fr); text-align: left; justify-items: start; }
+}

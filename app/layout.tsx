@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./menu.css";
+import "./game-layout.css";
+import "./brew-atmosphere.css";
 
 const publicUrl =
   process.env.NEXT_PUBLIC_SITE_URL ??

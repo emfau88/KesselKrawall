@@ -1,0 +1,95 @@
+/* Background, character and painted magic remain independent layers. */
+.workbench-backdrop { display: none; }
+@media (min-width: 700px) and (orientation: landscape) {
+  .phase-shop .player-workbench { isolation: isolate; background: #15101b; }
+  .phase-shop .workbench-backdrop { display: block; position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; pointer-events: none; }
+  .phase-shop .workbench-backdrop > .backdrop-image { object-position: 50% 60%; opacity: .94; }
+  .phase-shop .player-workbench::before {
+    content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background: linear-gradient(180deg,rgba(10,6,14,.78),rgba(10,6,14,.18) 24%,transparent 52%,rgba(10,6,14,.15) 78%,rgba(10,6,14,.8));
+  }
+  .phase-shop .market-brew-scene::after {
+    content: ""; position: absolute; z-index: -1; left: 7%; right: 7%; bottom: -3%; height: 16%;
+    border-radius: 50%; background: radial-gradient(ellipse,rgba(0,0,0,.7),transparent 70%); pointer-events: none;
+  }
+  .phase-shop .player-workbench .synergy-pill { background: rgba(11,7,16,.8); }
+}
+
+/* Mirrored smoke stays at the upper body and rim; the ground ring is separate. */
+.cauldron-family-effects, .family-brew-fx { display: contents; pointer-events: none; }
+.family-art-layer {
+  position: absolute; pointer-events: none; overflow: hidden;
+  animation-timing-function: ease-in-out; animation-iteration-count: infinite;
+}
+.family-art-layer > .family-atlas-image { position: absolute; width: 200%; height: 200%; max-width: none; object-fit: fill; left: 0; top: 0; }
+.family-art-brew > .family-atlas-image { left: -100%; }
+.family-art-brew-right > .family-atlas-image { left: -100%; }
+.family-art-motes > .family-atlas-image { width: 400%; height: 400%; top: -200%; }
+.family-art-motes-right > .family-atlas-image { width: 400%; height: 400%; left: -100%; top: -300%; }
+.family-art-ground > .family-atlas-image { left: -100%; top: -100%; }
+.family-art-aura, .family-art-aura-right {
+  z-index: 1; left: -5%; top: -5%; width: 110%; height: 110%;
+  opacity: .34; transform-origin: 50% 65%;
+  clip-path: inset(0 50% 0 0);
+  mask-image: linear-gradient(transparent,black 20%,black 38%,transparent 70%);
+  animation-name: family-painted-aura; animation-duration: 5.8s;
+}
+.family-art-aura-right { scale: -1 1; }
+.family-art-brew, .family-art-brew-right {
+  z-index: 3; left: 19%; top: -6%; width: 32%; height: 27%;
+  opacity: .56;
+  animation-name: family-painted-brew; animation-duration: 4.6s; animation-delay: -1.8s;
+}
+.family-art-brew-right { left: 49%; scale: -1 1; }
+.family-art-motes, .family-art-motes-right {
+  z-index: 3; left: 23%; top: -2%; width: 13%; height: 13%;
+  opacity: .36;
+  animation-name: family-painted-motes; animation-duration: 6.4s; animation-delay: -3.2s;
+}
+.family-art-motes-right { left: 64%; animation-delay: -1.1s; animation-duration: 7.1s; }
+.family-art-ground {
+  z-index: 1; left: -5%; bottom: -4%; width: 110%; height: 27%; opacity: .34;
+  animation-name: family-painted-ground; animation-duration: 6.8s;
+  mask-image: linear-gradient(transparent,black 35%,black);
+}
+.family-fire .family-art-aura, .family-fire .family-art-aura-right { animation-duration: 3.8s; opacity: .4; }
+.family-fire .family-art-brew, .family-fire .family-art-brew-right { animation-duration: 3.2s; }
+.family-poison .family-art-aura, .family-poison .family-art-aura-right { animation-duration: 7s; }
+.family-poison .family-art-brew, .family-poison .family-art-brew-right { animation-duration: 6.8s; }
+.family-guard .family-art-aura, .family-guard .family-art-aura-right { opacity: .37; animation-duration: 8s; }
+.family-guard .family-art-brew, .family-guard .family-art-brew-right { opacity: .46; }
+.family-frost .family-art-brew, .family-frost .family-art-brew-right { opacity: .5; animation-duration: 7.4s; }
+.family-frost .family-art-motes, .family-frost .family-art-motes-right { animation-name: family-painted-frost; animation-duration: 8s; }
+.family-echo .family-art-aura, .family-echo .family-art-aura-right { animation-duration: 9s; }
+.family-echo .family-art-brew, .family-echo .family-art-brew-right { animation-name: family-painted-echo; animation-duration: 6s; }
+
+@keyframes family-painted-aura {
+  0%,100% { transform: scale(.96) rotate(-2deg); }
+  50% { transform: scale(1.035) rotate(2deg); }
+}
+@keyframes family-painted-brew {
+  0%,100% { transform: translate(-3%,2%) scale(.96); }
+  50% { transform: translate(3%,-5%) scale(1.04); }
+}
+@keyframes family-painted-motes {
+  0% { opacity: 0; transform: translateY(8%) scale(.85); }
+  30%,65% { opacity: .4; }
+  100% { opacity: 0; transform: translateY(-95%) scale(1.08); }
+}
+@keyframes family-painted-ground {
+  0%,100% { transform: scaleX(.96); }
+  50% { transform: scaleX(1.035); }
+}
+@keyframes family-painted-frost {
+  0% { opacity: 0; transform: translate(-2%,-65%) rotate(-3deg); }
+  30%,65% { opacity: .45; }
+  100% { opacity: 0; transform: translate(3%,30%) rotate(4deg); }
+}
+@keyframes family-painted-echo {
+  0%,100% { transform: scaleX(.92) translateY(2%); }
+  50% { transform: scaleX(1.08) translateY(-7%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .family-art-layer { animation: none !important; transform: none; }
+  .family-art-motes, .family-art-motes-right { display: none; }
+}

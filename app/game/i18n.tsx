@@ -22,6 +22,10 @@ export type Language = "de" | "en";
 export const LANGUAGE_STORAGE_KEY = "kessel-krawall:language";
 
 const DE = {
+  playNow: "SPIELEN",
+  inspectIngredient: "Deine Zutaten im Blick",
+  inspectIngredientHint: "Wähle eine Zutat in deinem Kessel, um Takt, Synergien und Platzierungs-Boni zu sehen.",
+  mergeBuildHint: "Gleiche Zutaten verschmelzen. Drei Familienpunkte aktivieren einen Bonus.",
   settingsClose: "Einstellungen schließen",
   settingsKicker: "TON, SPRACHE & ATMOSPHÄRE",
   settingsTitle: "Einstellungen",
@@ -352,6 +356,10 @@ type MessageKey = keyof typeof DE;
 type Replacements = Record<string, string | number>;
 
 const EN: Record<MessageKey, string> = {
+  playNow: "PLAY",
+  inspectIngredient: "Know your ingredients",
+  inspectIngredientHint: "Select an ingredient in your cauldron to inspect its timing, synergies and placement bonuses.",
+  mergeBuildHint: "Matching ingredients merge. Three family points activate a bonus.",
   settingsClose: "Close settings",
   settingsKicker: "SOUND, LANGUAGE & ATMOSPHERE",
   settingsTitle: "Settings",
