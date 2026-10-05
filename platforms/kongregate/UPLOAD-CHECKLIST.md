@@ -8,12 +8,15 @@
 - Monetization: `No monetization`
 - AI-generated content: `Yes`
 - Include the AI disclosure from `submission-en.md` in the public description
+- Target audience: `Ages 13+`
+- Category: `Strategy & Defense`
 
 ## Upload
 
 - Game type: `HTML5/WebGL`
 - Main game file: `index.html`
 - Additional files: `cauldron-rumble-kongregate-assets.zip`
+- Initial player frame: width `1100 px`, height `700 px`
 - Do not use the Netlify iframe URL when uploading this self-contained build
 - The additional-files ZIP excludes index.html and has no wrapper directory
 - Accept the Game License & Upload Agreement only after reading it
@@ -21,8 +24,10 @@
 
 ## Media
 
-- Game icon: `submission/game-icon-800x800.png`
-- Screenshots: upload the PNG files from `submission/screenshots/` (up to five)
+- Game icon: `submission/upload-v2/cauldron-rumble-icon-v2.png`
+- Screenshots: start with the two English PNG captures in
+  `submission/upload-v2/`; supplemental older captures remain in
+  `submission/screenshots/` (up to five screenshots total)
 
 ## Preview and review
 

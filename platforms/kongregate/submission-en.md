@@ -16,6 +16,8 @@ opponents, collect trophies and defeat the campaign bosses.
 Cauldron Rumble supports English and German and saves campaign progress in the
 player's browser.
 
+Target audience: Ages 13+
+
 AI disclosure: AI tools assisted with programming and the creation of some
 visual assets, including backgrounds, characters, cauldrons, items and
 promotional artwork. All such content was manually reviewed, edited and

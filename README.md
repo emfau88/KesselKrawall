@@ -1,11 +1,13 @@
 # Kessel-Krawall
 
-[![Kessel-Krawall auf Netlify spielen](https://img.shields.io/badge/SPIELEN-Netlify-f5c55b?style=for-the-badge&labelColor=21172b)](https://kessel-krawall.netlify.app/)
-[![GitHub-Pages-Spiegel](https://img.shields.io/badge/SPIEGEL-GitHub%20Pages-6f587c?style=for-the-badge&labelColor=21172b)](https://emfau88.github.io/KesselKrawall/)
+[![Kessel-Krawall auf GitHub Pages spielen](https://img.shields.io/badge/SPIELEN-GitHub%20Pages-f5c55b?style=for-the-badge&labelColor=21172b)](https://emfau88.github.io/KesselKrawall/)
 
-![Kessel-Krawall – magischer Mobile-Autobattler](public/og.png)
+<p align="center">
+  <img src="platforms/kongregate/media/upload-v2/cauldron-rumble-icon-v2.png" alt="Cauldron Rumble – goldener Spielerkessel, Zutaten und Großkessel" width="360">
+</p>
 
-**Kessel-Krawall ist ein zugänglicher Mobile-Autobattler über einen magischen
+**Kessel-Krawall (englisch: Cauldron Rumble) ist ein zugänglicher
+Browser-Autobattler für Desktop und Mobile über einen magischen
 Kessel, fünf Zutatenplätze und möglichst wirkungsvolle Kettenreaktionen.**
 
 Im Hexenmarkt kaufst du Zutaten, verschmilzt gleiche Exemplare zu stärkeren
@@ -15,10 +17,12 @@ funktioniert.
 
 ## Direkt spielen
 
-[**Kessel-Krawall auf Netlify öffnen**](https://kessel-krawall.netlify.app/)
+[**Kessel-Krawall auf GitHub Pages öffnen**](https://emfau88.github.io/KesselKrawall/)
 
-Als unabhängiger Spiegel bleibt die
-[GitHub-Pages-Version](https://emfau88.github.io/KesselKrawall/) erreichbar.
+Jeder Push auf `main` startet die automatische Prüfung und Veröffentlichung
+über [GitHub Actions](https://github.com/emfau88/KesselKrawall/actions/workflows/deploy-pages.yml).
+Nach erfolgreicher Veröffentlichung entspricht der Playlink diesem Stand;
+die Kennung `Build …` im Hauptmenü zeigt den veröffentlichten Commit.
 
 Das Spiel läuft ohne Installation im Browser. Der Kampagnenstand wird lokal auf
 dem Gerät gespeichert.
@@ -32,12 +36,21 @@ bewusst getrennt, sodass ein Sprachwechsel keinen Run verändert.
 
 <p align="center">
   <img src="docs/readme/startscreen.png" alt="Startscreen von Kessel-Krawall" width="49%">
-  <img src="docs/readme/hexenmarkt.png" alt="Hexenmarkt und Aufbauphase" width="49%">
+  <img src="platforms/kongregate/media/upload-v2/01-build-your-cauldron-en.png" alt="Englischer Hexenmarkt mit fünf Zutaten, aktivem Feuerbonus und Merge-Angeboten" width="49%">
 </p>
 
 <p align="center">
-  <em>Startscreen mit animiertem Kessel · Hexenmarkt mit Angeboten, Aufbau und Synergien</em>
+  <img src="platforms/kongregate/media/upload-v2/02-unleash-your-synergies-en.png" alt="Englischer Kampf gegen Crackle Klara mit animierten Stoffbannern, Feuerbonus und fliegendem Glutkern" width="90%">
 </p>
+
+<p align="center">
+  <em>Echte Spielaufnahmen · Zutaten aufbauen und mergen · automatisch kämpfen</em>
+</p>
+
+Das Spiel richtet sich an **13+**. KI-Unterstützung wurde für die Erstellung
+einiger Grafik-Assets und bei der Programmierung verwendet. Das Icon ist eine
+Werbeillustration mit den tatsächlichen Kesseln und Zutaten; die englischen
+Screenshots sind unveränderte Aufnahmen des spielbaren Builds.
 
 ## Der Spielablauf
 
@@ -118,6 +131,10 @@ synchronisiert, statt nur eine abstrakte Zahl einzublenden.
 
 ## Aktueller spielbarer Stand
 
+- angepasste Desktop-Werkbank und mobile Oberfläche
+- gemalte Familien-Effekte sowie bewegte Stoffbanner, Feuer und Alchemierauch
+- kleinere WebP-Kesselbilder, gezieltes Vorladen und übersprungene Animationen
+  bei vollständig abgeschnittenen Arena-Effekten
 - zwei Kampagnen mit je acht Kämpfen, eigenen Gegnern und Bossregeln
 - zwanzig Zutaten in fünf Familien, Merge-Kaskaden bis Level III
 - Kesselkabinett mit Freischaltung, Trophäen und Kampagnenrekorden ohne
@@ -218,7 +235,8 @@ Der Befehl erstellt und validiert
 `dist/kongregate/index.html` als Hauptdatei und
 `dist/kongregate/cauldron-rumble-kongregate-assets.zip` für die zusätzlichen Dateien.
 Die ZIP enthält den Rest ohne `index.html` und ohne äußeren Ordner. Portaltexte, AI-Hinweis,
-Credits, Upload-Checkliste, Icon und fünf vorbereitete Screenshots liegen danach
+Credits, Upload-Checkliste, das neue Icon und zwei aktuelle englische Screenshots
+sowie ergänzende ältere Screenshots liegen danach
 unter `dist/kongregate/submission/`. Die reproduzierbaren Quelldateien dafür
 stehen in [`platforms/kongregate/README.md`](platforms/kongregate/README.md).
 

@@ -16,6 +16,24 @@ The command creates and validates:
 - `dist/kongregate/cauldron-rumble-kongregate-assets.zip` — upload as additional files
 - `dist/kongregate/submission/` — portal copy, icon, screenshots and checklist
 
+## Current upload media
+
+Use the three images in [`media/upload-v2/`](media/upload-v2/):
+
+- `cauldron-rumble-icon-v2.png` — 1254 × 1254 promotional illustration, based on
+  the actual player/boss cauldrons and ingredients, generated with ImageGen.
+- `01-build-your-cauldron-en.png` — 1440 × 900 English screenshot showing a full
+  cauldron, an active Fire synergy and ingredient merge offers.
+- `02-unleash-your-synergies-en.png` — 1440 × 900 English screenshot of a battle
+  against Crackle Klara, with a real Ember Core projectile in flight.
+
+The screenshots are unaltered captures of release build `e41507e`. The icon's
+generation prompt is preserved in `media/upload-v2/IMAGEGEN-PROMPT.md`.
+Target audience: ages 13+. The tested initial player frame is 1100 × 700 px.
+Packaging copies these files to `dist/kongregate/submission/upload-v2/`.
+
+## Runtime package
+
 The ZIP contains the remaining runtime files at their original paths, without
 index.html or a wrapper folder. Animation study pages and spectator prototypes
 are excluded. The unpacked game directory remains complete for local QA. The
