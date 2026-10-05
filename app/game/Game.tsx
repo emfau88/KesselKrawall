@@ -49,6 +49,7 @@ import {
 } from "./combatFloatingNumbers";
 import { getItemInsights, type ItemInsights } from "./itemInsights";
 import { CauldronFamilyEffects } from "./CauldronFamilyEffects";
+import { ArenaAtmosphere } from "./ArenaAtmosphere";
 import {
   campaignText,
   familyText,
@@ -3777,7 +3778,14 @@ function GameContent() {
             game.phase === "battle" ? combatPaused : undefined
           }
         >
-          <BackdropImage backdrop="arena" className="arena-backdrop" />
+          <BackdropImage backdrop={isCombatPhase ? "arena-motion" : "arena"} className="arena-backdrop" />
+          {isCombatPhase && (
+            <ArenaAtmosphere
+              paused={(game.phase === "battle" && combatPaused) || showAudioSettings}
+              celebration={(battleEnding || game.phase === "result") && combat?.winner === "player"
+                ? `${game.campaignId}:${game.round}:${game.opponentVariant}` : null}
+            />
+          )}
         {battleView?.event && battleView.tier && (
           <BattleVolleyVfx
             key={battleView.beatId}

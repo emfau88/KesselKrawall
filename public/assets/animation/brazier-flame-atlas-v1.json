@@ -1,0 +1,69 @@
+{
+  "columns": 4,
+  "rows": 3,
+  "cellWidth": 362,
+  "cellHeight": 362,
+  "referenceHeight": 292.5,
+  "frames": [
+    {
+      "anchorX": 0.512518,
+      "anchorY": 0.911602,
+      "paintedHeight": 273
+    },
+    {
+      "anchorX": 0.507085,
+      "anchorY": 0.90884,
+      "paintedHeight": 282
+    },
+    {
+      "anchorX": 0.503021,
+      "anchorY": 0.911602,
+      "paintedHeight": 291
+    },
+    {
+      "anchorX": 0.501997,
+      "anchorY": 0.911602,
+      "paintedHeight": 289
+    },
+    {
+      "anchorX": 0.512938,
+      "anchorY": 0.914365,
+      "paintedHeight": 299
+    },
+    {
+      "anchorX": 0.507185,
+      "anchorY": 0.914365,
+      "paintedHeight": 299
+    },
+    {
+      "anchorX": 0.500224,
+      "anchorY": 0.914365,
+      "paintedHeight": 301
+    },
+    {
+      "anchorX": 0.49856,
+      "anchorY": 0.914365,
+      "paintedHeight": 300
+    },
+    {
+      "anchorX": 0.512328,
+      "anchorY": 0.90884,
+      "paintedHeight": 290
+    },
+    {
+      "anchorX": 0.50941,
+      "anchorY": 0.90884,
+      "paintedHeight": 306
+    },
+    {
+      "anchorX": 0.504118,
+      "anchorY": 0.90884,
+      "paintedHeight": 294
+    },
+    {
+      "anchorX": 0.51139,
+      "anchorY": 0.90884,
+      "paintedHeight": 276
+    }
+  ]
+}

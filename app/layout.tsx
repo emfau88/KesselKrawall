@@ -3,6 +3,7 @@ import "./globals.css";
 import "./menu.css";
 import "./game-layout.css";
 import "./brew-atmosphere.css";
+import "./arena-atmosphere.css";
 
 const publicUrl =
   process.env.NEXT_PUBLIC_SITE_URL ??

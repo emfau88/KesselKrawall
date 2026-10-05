@@ -148,6 +148,8 @@ export type UiAsset = keyof typeof UI_FILES;
 
 export const BACKDROP_FILES = {
   arena: "tournament-arena.webp",
+  "arena-clean": "tournament-arena-clean-v1.webp",
+  "arena-motion": "tournament-arena-motion-v2.webp",
   menu: "main-menu-stage.webp",
   "menu-desktop": "main-menu-stage-desktop.webp",
   market: "witch-market.webp",
